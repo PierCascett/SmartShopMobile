@@ -48,6 +48,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -124,7 +126,10 @@ fun LoginScreenMVVM(
                             withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) { append("Smart") }
                             withStyle(SpanStyle(color = MaterialTheme.colorScheme.secondary)) { append("Shop") }
                         },
-                        style = MaterialTheme.typography.headlineSmall
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 26.sp
+                        )
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -250,7 +255,10 @@ fun LoginScreen(
                             withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) { append("Smart") }
                             withStyle(SpanStyle(color = MaterialTheme.colorScheme.secondary)) { append("Shop") }
                         },
-                        style = MaterialTheme.typography.headlineSmall
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 26.sp
+                        )
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
