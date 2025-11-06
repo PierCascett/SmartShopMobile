@@ -90,12 +90,9 @@ fun LoginScreenMVVM(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0.0f to MaterialTheme.colorScheme.primary.copy(alpha = 0.95f),
-                            0.33f to MaterialTheme.colorScheme.primaryContainer,
-                            0.35f to MaterialTheme.colorScheme.tertiary.copy(alpha = 0.75f),
-                            0.85f to MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
-                            1.0f to MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f),
+                        listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.95f),
+                            MaterialTheme.colorScheme.background
                         )
                     )
                 )
@@ -119,7 +116,7 @@ fun LoginScreenMVVM(
                     Image(
                         painter = painterResource(id = R.drawable.logo_no_centro),
                         contentDescription = "Logo SmartShop",
-                        modifier = Modifier.height(88.dp)
+                        modifier = Modifier.height(120.dp)
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
@@ -219,12 +216,9 @@ fun LoginScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0.0f to MaterialTheme.colorScheme.primary.copy(alpha = 0.95f),
-                            0.33f to MaterialTheme.colorScheme.primaryContainer,
-                            0.35f to MaterialTheme.colorScheme.tertiary.copy(alpha = 0.75f),
-                            0.85f to MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
-                            1.0f to MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f),
+                        listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.95f),
+                            MaterialTheme.colorScheme.background
                         )
                     )
                 )
@@ -248,7 +242,7 @@ fun LoginScreen(
                     Image(
                         painter = painterResource(id = R.drawable.logo_no_centro),
                         contentDescription = "Logo SmartShop",
-                        modifier = Modifier.height(88.dp)
+                        modifier = Modifier.height(120.dp)
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
