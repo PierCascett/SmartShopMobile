@@ -56,6 +56,39 @@ class FakeCatalogRepository : CatalogRepository {
             tags = listOf("Formato famiglia"),
             rating = 4.8,
             reviewsCount = 214
+        ),
+        Product(
+            id = "prd-04",
+            name = "Bevanda Avena",
+            brand = "GreenChoice",
+            category = ProductCategory.DRINKS,
+            price = 2.79,
+            availability = ProductAvailability.OUT_OF_STOCK,
+            tags = listOf("Veg", "Senza lattosio"),
+            rating = 4.3,
+            reviewsCount = 54
+        ),
+        Product(
+            id = "prd-05",
+            name = "Insalata Mista",
+            brand = "OrtoExpress",
+            category = ProductCategory.VEGETABLES,
+            price = 1.99,
+            availability = ProductAvailability.AVAILABLE,
+            tags = listOf("Pronta da condire"),
+            rating = 4.1,
+            reviewsCount = 36
+        ),
+        Product(
+            id = "prd-06",
+            name = "Detergente Multiuso",
+            brand = "Splendit",
+            category = ProductCategory.HOME,
+            price = 3.49,
+            availability = ProductAvailability.RUNNING_LOW,
+            tags = listOf("Antibatterico"),
+            rating = 4.7,
+            reviewsCount = 149
         )
     )
 
