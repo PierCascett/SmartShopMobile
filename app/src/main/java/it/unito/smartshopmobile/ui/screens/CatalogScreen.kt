@@ -88,6 +88,8 @@ fun CatalogScreen(
     state: CatalogUiState,
     modifier: Modifier = Modifier,
     onSearchQueryChange: (String) -> Unit = {},
+    onMenuClick: () -> Unit = {},
+    onCartClick: () -> Unit = {},
     onToggleOffers: () -> Unit = {},
     onAvailabilityFilterChange: (AvailabilityFilter) -> Unit = {},
     onTagToggle: (String) -> Unit = {},
@@ -96,9 +98,6 @@ fun CatalogScreen(
     onDecreaseCartItem: (String) -> Unit = {},
     onRemoveFromCart: (String) -> Unit = {}
 ) {
-    var showMenu by rememberSaveable { mutableStateOf(false) }
-    var showCart by rememberSaveable { mutableStateOf(false) }
-
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -114,12 +113,12 @@ fun CatalogScreen(
             Spacer(modifier = Modifier.height(2.dp))
             TopActionRow(
                 cartItemsCount = state.cartItemsCount,
-                onMenuClick = { showMenu = true },
-                onCartClick = { showCart = true }
+                onMenuClick = onMenuClick,
+                onCartClick = onCartClick
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            //Spacer(modifier = Modifier.height(12.dp))
             // CategorySection removed (categories already available via chips)
-            Spacer(modifier = Modifier.height(8.dp))
+            //Spacer(modifier = Modifier.height(8.dp))
             FilterRow(
                 onlyOffers = state.onlyOffers,
                 availabilityFilter = state.availabilityFilter,
@@ -140,29 +139,6 @@ fun CatalogScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-            )
-        }
-
-        if (showMenu) {
-            SideMenuOverlay(
-                onDismiss = { showMenu = false },
-                sections = supermarketSideMenu,
-                onEntrySelected = {
-                    showMenu = false
-                    onSearchQueryChange(it)
-                }
-            )
-        }
-
-        if (showCart) {
-            CartOverlay(
-                onDismiss = { showCart = false },
-                cartItems = state.cartItems,
-                cartItemsCount = state.cartItemsCount,
-                total = state.cartTotal,
-                onIncrease = onAddToCart,
-                onDecrease = onDecreaseCartItem,
-                onRemove = onRemoveFromCart
             )
         }
     }
@@ -683,25 +659,6 @@ private fun CartActionButton(
 }
 
 @Composable
-private fun SideMenuOverlay(
-    onDismiss: () -> Unit,
-    sections: List<SideMenuSection>,
-    onEntrySelected: (String) -> Unit
-) {
-    OverlayContainer(onDismiss = onDismiss) {
-        SideMenu(
-            sections = sections,
-            onEntrySelected = onEntrySelected,
-            modifier = Modifier
-                .align(Alignment.Center) // centra sia orizz. che vert.
-                .padding(16.dp)
-                .heightIn(max = 1000.dp) // non occupa tutto lo schermo
-                .widthIn(max = 360.dp)
-        )
-    }
-}
-
-@Composable
 private fun CartOverlay(
     onDismiss: () -> Unit,
     cartItems: List<CartItemUi>,
@@ -734,13 +691,14 @@ private fun OverlayContainer(
     content: @Composable BoxScope.() -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
+        // Sfondo grigio opaco che copre tutto lo schermo (incluso lo Scaffold)
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .background(Color.Black.copy(alpha = 0.45f))
+                .background(Color.Gray.copy(alpha = 0.6f))
                 .clickable(onClick = onDismiss)
-        )
-        Box(modifier = Modifier.fillMaxSize()) {
+        ) {}
+        Box(modifier = Modifier.matchParentSize()) {
             content()
         }
     }
@@ -832,13 +790,13 @@ private fun SideAccordion(
     }
 }
 
-private data class SideMenuSection(
+data class SideMenuSection(
     val id: String,
     val title: String,
     val entries: List<String>
 )
 
-private val supermarketSideMenu = listOf(
+val supermarketSideMenu = listOf(
     SideMenuSection(
         id = "meat",
         title = "Carne e Pesce",
@@ -885,6 +843,62 @@ private val supermarketSideMenu = listOf(
 )
 
 private fun formatPrice(value: Double): String = "\u20AC ${String.format(java.util.Locale.ROOT, "%.2f", value)}"
+
+/**
+ * Public overlay wrapper so other parts (e.g. MainActivity) can open the side menu above the whole UI.
+ */
+@Composable
+fun SideMenuOverlay(
+    onDismiss: () -> Unit,
+    sections: List<SideMenuSection>,
+    onEntrySelected: (String) -> Unit
+) {
+    OverlayContainer(onDismiss = onDismiss) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            SideMenu(
+                sections = sections,
+                onEntrySelected = onEntrySelected,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(16.dp)
+                    .heightIn(max = 1000.dp)
+                    .widthIn(max = 360.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Overlay pubblico per il carrello usato da MainActivity
+ */
+@Composable
+fun AppCartOverlay(
+    onDismiss: () -> Unit,
+    cartItems: List<CartItemUi>,
+    cartItemsCount: Int,
+    total: Double,
+    onIncrease: (String) -> Unit,
+    onDecrease: (String) -> Unit,
+    onRemove: (String) -> Unit
+) {
+    OverlayContainer(onDismiss = onDismiss) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            CartPanel(
+                cartItems = cartItems,
+                cartItemsCount = cartItemsCount,
+                total = total,
+                onIncrease = onIncrease,
+                onDecrease = onDecrease,
+                onRemove = onRemove,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(16.dp)
+                    .heightIn(max = 560.dp)
+                    .widthIn(max = 360.dp)
+            )
+        }
+    }
+}
 
 @Preview(showBackground = true, widthDp = 1200)
 @Composable

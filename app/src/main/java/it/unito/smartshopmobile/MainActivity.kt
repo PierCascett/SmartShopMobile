@@ -38,6 +38,9 @@ import it.unito.smartshopmobile.ui.screens.LoginScreenMVVM
 import it.unito.smartshopmobile.ui.screens.LoginScreen
 import it.unito.smartshopmobile.ui.screens.EmployeeScreen
 import it.unito.smartshopmobile.ui.screens.ManagerScreen
+import it.unito.smartshopmobile.ui.screens.SideMenuOverlay
+import it.unito.smartshopmobile.ui.screens.supermarketSideMenu
+import it.unito.smartshopmobile.ui.screens.AppCartOverlay
 import it.unito.smartshopmobile.ui.theme.SmartShopMobileTheme
 import it.unito.smartshopmobile.viewModel.CatalogUiState
 import it.unito.smartshopmobile.viewModel.CatalogViewModel
@@ -54,31 +57,60 @@ class MainActivity : ComponentActivity() {
             SmartShopMobileTheme {
                 var loggedUser by rememberSaveable { mutableStateOf<String?>(null) }
                 var selectedRole by rememberSaveable { mutableStateOf<UserRole?>(null) }
+                var showMenu by rememberSaveable { mutableStateOf(false) }
+                var showCart by rememberSaveable { mutableStateOf(false) }
                 val catalogState by catalogViewModel.uiState.collectAsState()
 
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    val contentModifier = Modifier.padding(innerPadding)
-                    if (loggedUser == null) {
-                        LoginScreenMVVM(
-                            viewModel = loginViewModel,
-                            modifier = contentModifier,
-                            onLoginSuccess = { email, role ->
-                                loggedUser = email
-                                selectedRole = role
-                                Toast.makeText(this, "Accesso: $email", Toast.LENGTH_SHORT).show()
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                        val contentModifier = Modifier.padding(innerPadding)
+                        if (loggedUser == null) {
+                            LoginScreenMVVM(
+                                viewModel = loginViewModel,
+                                modifier = contentModifier,
+                                onLoginSuccess = { email, role ->
+                                    loggedUser = email
+                                    selectedRole = role
+                                    Toast.makeText(this@MainActivity, "Accesso: $email", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        } else {
+                            ContentWithSessionBar(
+                                modifier = contentModifier,
+                                email = loggedUser ?: "",
+                                role = selectedRole,
+                                onLogout = {
+                                    loggedUser = null
+                                    selectedRole = null
+                                },
+                                catalogState = catalogState,
+                                catalogViewModel = catalogViewModel,
+                                onMenuClick = { showMenu = true },
+                                onCartClick = { showCart = true }
+                            )
+                        }
+                    }
+
+                    if (showMenu) {
+                        SideMenuOverlay(
+                            onDismiss = { showMenu = false },
+                            sections = supermarketSideMenu,
+                            onEntrySelected = { selection: String ->
+                                showMenu = false
+                                catalogViewModel.onSearchQueryChange(selection)
                             }
                         )
-                    } else {
-                        ContentWithSessionBar(
-                            modifier = contentModifier,
-                            email = loggedUser ?: "",
-                            role = selectedRole,
-                            onLogout = {
-                                loggedUser = null
-                                selectedRole = null
-                            },
-                            catalogState = catalogState,
-                            catalogViewModel = catalogViewModel
+                    }
+
+                    if (showCart) {
+                        AppCartOverlay(
+                            onDismiss = { showCart = false },
+                            cartItems = catalogState.cartItems,
+                            cartItemsCount = catalogState.cartItemsCount,
+                            total = catalogState.cartTotal,
+                            onIncrease = { id -> catalogViewModel.onAddToCart(id) },
+                            onDecrease = { id -> catalogViewModel.onDecreaseCartItem(id) },
+                            onRemove = { id -> catalogViewModel.onRemoveFromCart(id) }
                         )
                     }
                 }
@@ -94,7 +126,9 @@ private fun ContentWithSessionBar(
     role: UserRole?,
     onLogout: () -> Unit,
     catalogState: CatalogUiState,
-    catalogViewModel: CatalogViewModel
+    catalogViewModel: CatalogViewModel,
+    onMenuClick: () -> Unit,
+    onCartClick: () -> Unit
 ) {
     Column(
         modifier = modifier
@@ -108,6 +142,8 @@ private fun ContentWithSessionBar(
                 UserRole.CUSTOMER -> CatalogScreen(
                     state = catalogState,
                     modifier = Modifier.fillMaxSize(),
+                    onMenuClick = onMenuClick,
+                    onCartClick = onCartClick,
                     onSearchQueryChange = catalogViewModel::onSearchQueryChange,
                     onToggleOffers = catalogViewModel::onOnlyOffersToggle,
                     onAvailabilityFilterChange = catalogViewModel::onAvailabilityFilterChange,
@@ -129,7 +165,7 @@ private fun ContentWithSessionBar(
 @Composable
 private fun SessionBar(
     email: String,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
