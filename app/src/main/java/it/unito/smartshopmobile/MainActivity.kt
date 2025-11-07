@@ -59,7 +59,9 @@ class MainActivity : ComponentActivity() {
                             onToggleOffers = catalogViewModel::onOnlyOffersToggle,
                             onAvailabilityFilterChange = catalogViewModel::onAvailabilityFilterChange,
                             onBookmark = catalogViewModel::onBookmark,
-                            onAddToCart = catalogViewModel::onAddToCart
+                            onAddToCart = catalogViewModel::onAddToCart,
+                            onDecreaseCartItem = catalogViewModel::onDecreaseCartItem,
+                            onRemoveFromCart = catalogViewModel::onRemoveFromCart
                         )
                     }
                 }
