@@ -67,6 +67,13 @@ class CatalogViewModel(
         it.copy(availabilityFilter = filter)
     }
 
+    fun onTagToggle(tag: String) = mutateState { state ->
+        val updated = state.selectedTags.toMutableSet().apply {
+            if (contains(tag)) remove(tag) else add(tag)
+        }
+        state.copy(selectedTags = updated)
+    }
+
     fun onBookmark(productId: String) = mutateState { state ->
         val updatedProducts = state.products.map { product ->
             if (product.id == productId) product.copy(isFavorite = !product.isFavorite) else product
@@ -120,6 +127,10 @@ class CatalogViewModel(
                         product.brand.contains(query, ignoreCase = true)
                 }
             }
+            .filter { product ->
+                // tag filter: if none selected, pass all; otherwise product must have at least one selected tag
+                state.selectedTags.isEmpty() || product.tags.any { it in state.selectedTags }
+            }
     }
 
     private fun mutateState(transform: (CatalogUiState) -> CatalogUiState) {
@@ -157,6 +168,7 @@ data class CatalogUiState(
     val searchQuery: String = "",
     val selectedCategory: ProductCategory? = null,
     val onlyOffers: Boolean = false,
+    val selectedTags: Set<String> = emptySet(),
     val availabilityFilter: AvailabilityFilter = AvailabilityFilter.ALL,
     val isLoading: Boolean = true,
     val errorMessage: String? = null,

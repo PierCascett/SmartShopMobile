@@ -9,23 +9,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BookmarkBorder
@@ -47,7 +44,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
-import androidx.compose.material3.ElevatedFilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -92,9 +88,9 @@ fun CatalogScreen(
     state: CatalogUiState,
     modifier: Modifier = Modifier,
     onSearchQueryChange: (String) -> Unit = {},
-    onCategorySelected: (ProductCategory?) -> Unit = {},
     onToggleOffers: () -> Unit = {},
     onAvailabilityFilterChange: (AvailabilityFilter) -> Unit = {},
+    onTagToggle: (String) -> Unit = {},
     onBookmark: (String) -> Unit = {},
     onAddToCart: (String) -> Unit = {},
     onDecreaseCartItem: (String) -> Unit = {},
@@ -113,27 +109,28 @@ fun CatalogScreen(
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(0.dp))
             CatalogHeader(state.searchQuery, onSearchQueryChange)
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             TopActionRow(
                 cartItemsCount = state.cartItemsCount,
                 onMenuClick = { showMenu = true },
                 onCartClick = { showCart = true }
             )
             Spacer(modifier = Modifier.height(12.dp))
-            CategorySection(
-                selected = state.selectedCategory,
-                onCategorySelected = onCategorySelected
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+            // CategorySection removed (categories already available via chips)
+            Spacer(modifier = Modifier.height(8.dp))
             FilterRow(
                 onlyOffers = state.onlyOffers,
                 availabilityFilter = state.availabilityFilter,
                 onToggleOffers = onToggleOffers,
-                onAvailabilityFilterChange = onAvailabilityFilterChange
+                onAvailabilityFilterChange = onAvailabilityFilterChange,
+                allTags = state.products.flatMap { it.tags }.distinct(),
+                selectedTags = state.selectedTags,
+                onTagToggle = onTagToggle
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+
             CatalogContent(
                 state = state,
                 cartQuantities = state.cart,
@@ -572,7 +569,10 @@ private fun FilterRow(
     onlyOffers: Boolean,
     availabilityFilter: AvailabilityFilter,
     onToggleOffers: () -> Unit,
-    onAvailabilityFilterChange: (AvailabilityFilter) -> Unit
+    onAvailabilityFilterChange: (AvailabilityFilter) -> Unit,
+    allTags: List<String> = emptyList(),
+    selectedTags: Set<String> = emptySet(),
+    onTagToggle: (String) -> Unit = {}
 ) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         item {
@@ -588,7 +588,7 @@ private fun FilterRow(
                 )
             )
         }
-        items(AvailabilityFilter.values()) { filter ->
+        items(AvailabilityFilter.entries) { filter ->
             SuggestionChip(
                 onClick = { onAvailabilityFilterChange(filter) },
                 label = { Text(filter.label) },
@@ -603,31 +603,23 @@ private fun FilterRow(
                 )
             )
         }
+
+        // render tag chips after availability filters
+        if (allTags.isNotEmpty()) {
+            items(allTags) { tag ->
+                val selected = tag in selectedTags
+                AssistChip(
+                    onClick = { onTagToggle(tag) },
+                    label = { Text(tag) },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+                    )
+                )
+            }
+        }
     }
 }
 
-@Composable
-private fun CategorySection(
-    selected: ProductCategory?,
-    onCategorySelected: (ProductCategory?) -> Unit
-) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        item {
-            ElevatedFilterChip(
-                selected = selected == null,
-                onClick = { onCategorySelected(null) },
-                label = { Text("Tutto") }
-            )
-        }
-        items(ProductCategory.values()) { category ->
-            ElevatedFilterChip(
-                selected = selected == category,
-                onClick = { onCategorySelected(category) },
-                label = { Text(category.label) }
-            )
-        }
-    }
-}
 
 @Composable
 private fun CatalogHeader(
@@ -765,16 +757,18 @@ private fun SideMenu(
             sections.forEach { put(it.id, false) }
         }
     }
-    Column(
+
+    LazyColumn(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
+            .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Categorie", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        sections.forEach { section ->
+        item {
+            Text("Categorie", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        }
+        items(sections) { section ->
             val expanded = expansionState[section.id] == true
             SideAccordion(
                 section = section,
@@ -890,7 +884,7 @@ private val supermarketSideMenu = listOf(
     )
 )
 
-private fun formatPrice(value: Double): String = "\u20AC ${String.format("%.2f", value)}"
+private fun formatPrice(value: Double): String = "\u20AC ${String.format(java.util.Locale.ROOT, "%.2f", value)}"
 
 @Preview(showBackground = true, widthDp = 1200)
 @Composable
