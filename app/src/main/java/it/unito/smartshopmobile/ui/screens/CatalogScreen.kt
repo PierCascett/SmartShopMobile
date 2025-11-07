@@ -63,6 +63,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -349,73 +352,93 @@ private fun CartPanel(
     onRemove: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(16.dp)
+    // Robust dynamic panel color: decide based on the luminance of the theme surface.
+    // If the app theme uses a dark surface color, pick a dark panel derived from surface/surfaceVariant.
+    // Otherwise use the off-white color for light mode.
+    val surface = MaterialTheme.colorScheme.surface
+    val sv = MaterialTheme.colorScheme.surfaceVariant
+    val isSurfaceDark = surface.luminance() < 0.5f
+    val systemDark = isSystemInDarkTheme()
+    val preferDark = systemDark || isSurfaceDark
+
+    val panelColor = if (!preferDark) {
+        // light mode: off-white
+        Color(0xFFFBFBFC)
+    } else {
+        // dark mode: base on surfaceVariant but ensure it's dark enough
+        val base = if (sv.luminance() > surface.luminance()) lerp(sv, surface, 0.25f) else sv
+        if (base.luminance() > 0.5f) lerp(base, Color.Black, 0.3f) else base
+    }
+
+    androidx.compose.material3.Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        tonalElevation = 8.dp,
+        color = panelColor
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(Icons.Filled.ShoppingCart, contentDescription = null)
-            Column {
-                Text("Carrello", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text("$cartItemsCount articoli", style = MaterialTheme.typography.bodySmall)
-            }
-        }
-        Divider(modifier = Modifier.padding(vertical = 12.dp))
-        if (cartItems.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f, fill = true),
-                contentAlignment = Alignment.Center
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = "Non hai ancora aggiunto prodotti",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f, fill = true)
-                    .padding(bottom = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(bottom = 16.dp)
-            ) {
-                items(cartItems, key = { it.product.id }) { item ->
-                    CartItemRow(
-                        item = item,
-                        onIncrease = { onIncrease(item.product.id) },
-                        onDecrease = { onDecrease(item.product.id) },
-                        onRemove = { onRemove(item.product.id) }
-                    )
+                Icon(Icons.Filled.ShoppingCart, contentDescription = null)
+                Column {
+                    Text("Carrello", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text("$cartItemsCount articoli", style = MaterialTheme.typography.bodySmall)
                 }
             }
-        }
+            Divider(modifier = Modifier.padding(vertical = 12.dp))
+            if (cartItems.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = true),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Non hai ancora aggiunto prodotti",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f, fill = true)
+                        .padding(bottom = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    items(cartItems, key = { it.product.id }) { item ->
+                        CartItemRow(
+                            item = item,
+                            onIncrease = { onIncrease(item.product.id) },
+                            onDecrease = { onDecrease(item.product.id) },
+                            onRemove = { onRemove(item.product.id) }
+                        )
+                    }
+                }
+            }
 
-        Divider()
-        Spacer(modifier = Modifier.height(12.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Totale", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Text(formatPrice(total), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        }
-        Spacer(modifier = Modifier.height(12.dp))
-        Button(
-            onClick = { /* CTA da collegare in futuro */ },
-            enabled = cartItems.isNotEmpty(),
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text("Procedi all'ordine")
+            Divider()
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Totale", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(formatPrice(total), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = { /* CTA da collegare in futuro */ },
+                enabled = cartItems.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Procedi all'ordine")
+            }
         }
     }
 }
