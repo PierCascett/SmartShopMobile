@@ -3,6 +3,7 @@ package it.unito.smartshopmobile.ui.screens
 import android.content.res.Configuration
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,9 +11,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
@@ -35,13 +39,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -54,6 +62,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import it.unito.smartshopmobile.R
+import it.unito.smartshopmobile.data.model.UserRole
 import it.unito.smartshopmobile.viewModel.LoginViewModel
 import kotlinx.coroutines.launch
 
@@ -61,14 +70,15 @@ import kotlinx.coroutines.launch
 @Composable
 fun LoginScreenMVVM(
     viewModel: LoginViewModel,
-    onLoginSuccess: (email: String) -> Unit,
+    onLoginSuccess: (email: String, role: UserRole) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    // stato locale per la visibilità della password
+    // stato locale per la visibilità della password e per il ruolo scelto
     val passwordVisible = remember { mutableStateOf(false) }
+    var selectedRole by rememberSaveable { mutableStateOf(UserRole.CUSTOMER) }
 
     // mostro errorMessage del ViewModel
     LaunchedEffect(viewModel.errorMessage.value) {
@@ -81,7 +91,7 @@ fun LoginScreenMVVM(
     // quando loginSuccessEmail cambia, notifico l'Activity
     LaunchedEffect(viewModel.loginSuccessEmail.value) {
         viewModel.loginSuccessEmail.value?.let { email ->
-            onLoginSuccess(email)
+            onLoginSuccess(email, selectedRole)
             viewModel.clearLoginSuccess()
         }
     }
@@ -112,7 +122,7 @@ fun LoginScreenMVVM(
                     modifier = Modifier
                         .padding(24.dp)
                         .fillMaxWidth(),
-                    verticalArrangement = Arrangement.Center,
+                    verticalArrangement = Arrangement.Top,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Image(
@@ -176,7 +186,15 @@ fun LoginScreenMVVM(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // rendi scrollabile solo la selezione del ruolo
+                    RoleSelectorSection(
+                        selectedRole = selectedRole,
+                        onRoleSelected = { selectedRole = it }
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     // loader o pulsante
                     if (viewModel.isLoading.value) {
@@ -187,7 +205,7 @@ fun LoginScreenMVVM(
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
-                            Text("Accedi")
+                            Text("Accedi come ${selectedRole.title.lowercase()}")
                         }
                     }
 
@@ -206,12 +224,13 @@ fun LoginScreenMVVM(
 // Variante per preview senza ViewModel
 @Composable
 fun LoginScreen(
-    onLogin: (email: String, password: String) -> Unit,
+    onLogin: (email: String, password: String, role: UserRole) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val email = remember { mutableStateOf("") }
     val password = remember { mutableStateOf("") }
     val passwordVisible = remember { mutableStateOf(false) }
+    val selectedRole = rememberSaveable { mutableStateOf(UserRole.CUSTOMER) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -241,7 +260,7 @@ fun LoginScreen(
                     modifier = Modifier
                         .padding(24.dp)
                         .fillMaxWidth(),
-                    verticalArrangement = Arrangement.Center,
+                    verticalArrangement = Arrangement.Top,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Image(
@@ -303,20 +322,28 @@ fun LoginScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // rendi scrollabile solo la selezione del ruolo
+                    RoleSelectorSection(
+                        selectedRole = selectedRole.value,
+                        onRoleSelected = { selectedRole.value = it }
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     Button(
                         onClick = {
                             if (email.value.isBlank() || password.value.isBlank()) {
                                 scope.launch { snackbarHostState.showSnackbar("Inserisci email e password") }
                             } else {
-                                onLogin(email.value.trim(), password.value)
+                                onLogin(email.value.trim(), password.value, selectedRole.value)
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
-                        Text("Accedi")
+                        Text("Accedi come ${selectedRole.value.title.lowercase()}")
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -333,11 +360,79 @@ fun LoginScreen(
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_NO)
 @Composable
 fun LoginPreviewLight() {
-    LoginScreen(onLogin = { _, _ -> })
+    LoginScreen(onLogin = { _, _, _ -> })
 }
 
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun LoginPreviewDark() {
-    LoginScreen(onLogin = { _, _ -> })
+    LoginScreen(onLogin = { _, _, _ -> })
+}
+
+@Composable
+private fun RoleSelectorSection(
+    selectedRole: UserRole,
+    onRoleSelected: (UserRole) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // titolo fisso
+        Text(
+            text = "Seleziona il ruolo",
+            style = MaterialTheme.typography.titleSmall
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // calcolo dinamico dell'altezza massima in base all'altezza dello schermo
+        val configuration = LocalConfiguration.current
+        val screenHeightDp = configuration.screenHeightDp.dp
+        // vogliamo che le card occupino al massimo il 35% dello schermo o 160.dp
+        val calculatedMax = screenHeightDp * 0.35f
+        val maxRoleHeight = if (calculatedMax < 160.dp) calculatedMax else 160.dp
+
+        // lista scrollabile delle card (solo le card scorrono)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = maxRoleHeight)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                UserRole.entries.forEach { role ->
+                    RoleChoiceCard(
+                        role = role,
+                        isSelected = role == selectedRole,
+                        onClick = { onRoleSelected(role) }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RoleChoiceCard(
+    role: UserRole,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val containerColor =
+        if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+    val contentColor =
+        if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = containerColor)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(text = role.title, style = MaterialTheme.typography.bodyLarge, color = contentColor)
+            Text(
+                text = role.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = contentColor.copy(alpha = 0.8f)
+            )
+        }
+    }
 }
