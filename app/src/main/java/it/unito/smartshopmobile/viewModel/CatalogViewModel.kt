@@ -30,9 +30,9 @@ class CatalogViewModel(
     private fun observeCatalog() {
         viewModelScope.launch {
             repository.observeCatalog()
-                .onStart { _uiState.update { it.copy(isLoading = true, errorMessage = null) } }
+                .onStart { mutateState { it.copy(isLoading = true, errorMessage = null) } }
                 .catch { throwable ->
-                    _uiState.update {
+                    mutateState {
                         it.copy(
                             isLoading = false,
                             errorMessage = throwable.message ?: "Errore nel recupero del catalogo"
@@ -40,64 +40,60 @@ class CatalogViewModel(
                     }
                 }
                 .collect { products ->
-                    _uiState.update { state ->
-                        val updated = state.copy(
+                    mutateState {
+                        it.copy(
                             products = products,
                             isLoading = false,
                             errorMessage = null
                         )
-                        updated.copy(visibleProducts = filterProducts(updated))
                     }
                 }
         }
     }
 
-    fun onSearchQueryChange(query: String) {
-        _uiState.update { state ->
-            val updated = state.copy(searchQuery = query)
-            updated.copy(visibleProducts = filterProducts(updated))
-        }
+    fun onSearchQueryChange(query: String) = mutateState {
+        it.copy(searchQuery = query)
     }
 
-    fun onCategorySelected(category: ProductCategory?) {
-        _uiState.update { state ->
-            val updated = state.copy(selectedCategory = category)
-            updated.copy(visibleProducts = filterProducts(updated))
-        }
+    fun onCategorySelected(category: ProductCategory?) = mutateState {
+        it.copy(selectedCategory = category)
     }
 
-    fun onOnlyOffersToggle() {
-        _uiState.update { state ->
-            val updated = state.copy(onlyOffers = !state.onlyOffers)
-            updated.copy(visibleProducts = filterProducts(updated))
-        }
+    fun onOnlyOffersToggle() = mutateState { current ->
+        current.copy(onlyOffers = !current.onlyOffers)
     }
 
-    fun onAvailabilityFilterChange(filter: AvailabilityFilter) {
-        _uiState.update { state ->
-            val updated = state.copy(availabilityFilter = filter)
-            updated.copy(visibleProducts = filterProducts(updated))
-        }
+    fun onAvailabilityFilterChange(filter: AvailabilityFilter) = mutateState {
+        it.copy(availabilityFilter = filter)
     }
 
-    fun onBookmark(productId: String) {
-        _uiState.update { state ->
-            val updatedProducts = state.products.map { product ->
-                if (product.id == productId) product.copy(isFavorite = !product.isFavorite) else product
-            }
-            val updated = state.copy(products = updatedProducts)
-            updated.copy(visibleProducts = filterProducts(updated))
+    fun onBookmark(productId: String) = mutateState { state ->
+        val updatedProducts = state.products.map { product ->
+            if (product.id == productId) product.copy(isFavorite = !product.isFavorite) else product
         }
+        state.copy(products = updatedProducts)
     }
 
-    fun onAddToCart(productId: String) {
-        _uiState.update { state ->
-            val updatedProducts = state.products.map { product ->
-                if (product.id == productId) product.copy(isInCart = !product.isInCart) else product
-            }
-            val updated = state.copy(products = updatedProducts)
-            updated.copy(visibleProducts = filterProducts(updated))
+    fun onAddToCart(productId: String) = mutateState { state ->
+        val updatedCart = state.cart.toMutableMap().apply {
+            val nextQuantity = getOrDefault(productId, 0) + 1
+            put(productId, nextQuantity)
         }
+        state.copy(cart = updatedCart.toMap())
+    }
+
+    fun onDecreaseCartItem(productId: String) = mutateState { state ->
+        val currentQuantity = state.cart[productId] ?: return@mutateState state
+        val updatedCart = state.cart.toMutableMap().apply {
+            if (currentQuantity <= 1) remove(productId) else put(productId, currentQuantity - 1)
+        }
+        state.copy(cart = updatedCart.toMap())
+    }
+
+    fun onRemoveFromCart(productId: String) = mutateState { state ->
+        if (!state.cart.containsKey(productId)) return@mutateState state
+        val updatedCart = state.cart.toMutableMap().apply { remove(productId) }
+        state.copy(cart = updatedCart.toMap())
     }
 
     private fun filterProducts(state: CatalogUiState): List<Product> {
@@ -125,6 +121,34 @@ class CatalogViewModel(
                 }
             }
     }
+
+    private fun mutateState(transform: (CatalogUiState) -> CatalogUiState) {
+        _uiState.update { current ->
+            val updated = transform(current)
+            recomputeDerivedState(updated)
+        }
+    }
+
+    private fun recomputeDerivedState(state: CatalogUiState): CatalogUiState {
+        val productsWithCartFlag = state.products.map { product ->
+            product.copy(isInCart = state.cart.containsKey(product.id))
+        }
+        val stateWithProducts = state.copy(products = productsWithCartFlag)
+        val visibleProducts = filterProducts(stateWithProducts)
+        val cartItems = state.cart.mapNotNull { (productId, quantity) ->
+            productsWithCartFlag.firstOrNull { it.id == productId }?.let { product ->
+                CartItemUi(product = product, quantity = quantity)
+            }
+        }
+        val total = cartItems.sumOf { it.product.price * it.quantity }
+        val count = cartItems.sumOf { it.quantity }
+        return stateWithProducts.copy(
+            visibleProducts = visibleProducts,
+            cartItems = cartItems,
+            cartItemsCount = count,
+            cartTotal = total
+        )
+    }
 }
 
 data class CatalogUiState(
@@ -135,7 +159,11 @@ data class CatalogUiState(
     val onlyOffers: Boolean = false,
     val availabilityFilter: AvailabilityFilter = AvailabilityFilter.ALL,
     val isLoading: Boolean = true,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val cart: Map<String, Int> = emptyMap(),
+    val cartItems: List<CartItemUi> = emptyList(),
+    val cartItemsCount: Int = 0,
+    val cartTotal: Double = 0.0
 )
 
 enum class AvailabilityFilter(val label: String) {
@@ -143,3 +171,8 @@ enum class AvailabilityFilter(val label: String) {
     ONLY_AVAILABLE("Solo disponibili"),
     INCLUDING_LOW_STOCK("Disponibili + in esaurimento")
 }
+
+data class CartItemUi(
+    val product: Product,
+    val quantity: Int
+)
