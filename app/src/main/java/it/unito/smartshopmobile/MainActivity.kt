@@ -36,6 +36,8 @@ import it.unito.smartshopmobile.data.model.UserRole
 import it.unito.smartshopmobile.ui.screens.CatalogScreen
 import it.unito.smartshopmobile.ui.screens.LoginScreenMVVM
 import it.unito.smartshopmobile.ui.screens.LoginScreen
+import it.unito.smartshopmobile.ui.screens.EmployeeScreen
+import it.unito.smartshopmobile.ui.screens.ManagerScreen
 import it.unito.smartshopmobile.ui.theme.SmartShopMobileTheme
 import it.unito.smartshopmobile.viewModel.CatalogUiState
 import it.unito.smartshopmobile.viewModel.CatalogViewModel
@@ -116,7 +118,9 @@ private fun ContentWithSessionBar(
                     onRemoveFromCart = catalogViewModel::onRemoveFromCart
                 )
 
-                UserRole.EMPLOYEE, UserRole.MANAGER, null -> Unit
+                UserRole.EMPLOYEE -> EmployeeScreen(modifier = Modifier.fillMaxSize())
+                UserRole.MANAGER -> ManagerScreen(modifier = Modifier.fillMaxSize())
+                null -> Unit
             }
         }
     }
