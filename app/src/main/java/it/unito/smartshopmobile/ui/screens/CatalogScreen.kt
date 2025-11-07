@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -700,10 +701,10 @@ private fun SideMenuOverlay(
             sections = sections,
             onEntrySelected = onEntrySelected,
             modifier = Modifier
-                .align(Alignment.CenterStart)
+                .align(Alignment.Center) // centra sia orizz. che vert.
                 .padding(16.dp)
-                .fillMaxHeight()
-                .widthIn(max = 320.dp)
+                .heightIn(max = 1000.dp) // non occupa tutto lo schermo
+                .widthIn(max = 360.dp)
         )
     }
 }
@@ -727,9 +728,9 @@ private fun CartOverlay(
             onDecrease = onDecrease,
             onRemove = onRemove,
             modifier = Modifier
-                .align(Alignment.CenterEnd)
+                .align(Alignment.Center) // centra sia orizz. che vert.
                 .padding(16.dp)
-                .fillMaxHeight()
+                .heightIn(max = 560.dp) // dimensione compatta per il pannello
                 .widthIn(max = 360.dp)
         )
     }
