@@ -99,13 +99,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import it.unito.smartshopmobile.R
-import it.unito.smartshopmobile.data.model.Product
-import it.unito.smartshopmobile.data.model.ProductAvailability
-import it.unito.smartshopmobile.data.model.ProductCategory
+import it.unito.smartshopmobile.data.entity.Product
 import it.unito.smartshopmobile.ui.theme.SmartShopMobileTheme
 import it.unito.smartshopmobile.viewModel.AvailabilityFilter
 import it.unito.smartshopmobile.viewModel.CartItemUi
 import it.unito.smartshopmobile.viewModel.CatalogUiState
+
+// Extension properties per Product entity
+val Product.isFavorite: Boolean get() = false // TODO: implementare logica favorites
+val Product.isInCart: Boolean get() = false // TODO: implementare da state
+val Product.tagsList: List<String> get() = tags?.split(",")?.map { it.trim() } ?: emptyList()
 
 /**
  * Schermata MVVM del catalogo cliente con tre colonne principali:
@@ -154,7 +157,7 @@ fun CatalogScreen(
                 availabilityFilter = state.availabilityFilter,
                 onToggleOffers = onToggleOffers,
                 onAvailabilityFilterChange = onAvailabilityFilterChange,
-                allTags = state.products.flatMap { it.tags }.distinct(),
+                allTags = state.allAvailableTags, // <-- usa i tag parsati dal ViewModel
                 selectedTags = state.selectedTags,
                 onTagToggle = onTagToggle
             )
@@ -196,7 +199,7 @@ private fun CatalogContent(
 
             state.errorMessage != null -> ErrorState(state.errorMessage)
 
-            state.visibleProducts.isEmpty() -> EmptyState(state.searchQuery, state.selectedCategory != null)
+            state.visibleProducts.isEmpty() -> EmptyState(state.searchQuery)
 
             else -> CatalogList(
                 products = state.visibleProducts,
@@ -325,40 +328,44 @@ private fun PriceRow(product: Product) {
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            text = formatPrice(product.price),
+            text = formatPrice(product.price.toDouble()),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
         product.oldPrice?.let {
             Text(
-                text = formatPrice(it),
+                text = formatPrice(it.toDouble()),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Normal
             )
         }
-        if (product.tags.isNotEmpty()) {
-            Text(
-                text = product.tags.first(),
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.secondaryContainer)
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
-            )
+        if (!product.tags.isNullOrEmpty()) {
+            val firstTag = product.tagsList.firstOrNull() ?: ""
+            if (firstTag.isNotEmpty()) {
+                Text(
+                    text = firstTag,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.secondaryContainer)
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                )
+            }
         }
     }
 }
 
 @Composable
 private fun AvailabilityBadge(
-    availability: ProductAvailability,
+    availability: String,
     modifier: Modifier = Modifier
 ) {
-    val (label, color) = when (availability) {
-        ProductAvailability.AVAILABLE -> "Disponibile" to MaterialTheme.colorScheme.primary
-        ProductAvailability.RUNNING_LOW -> "Quasi finito" to MaterialTheme.colorScheme.tertiary
-        ProductAvailability.OUT_OF_STOCK -> "Non disponibile" to MaterialTheme.colorScheme.error
+    val (label, color) = when (availability.lowercase()) {
+        "disponibile", "available" -> "Disponibile" to MaterialTheme.colorScheme.primary
+        "quasi finito", "running_low", "low" -> "Quasi finito" to MaterialTheme.colorScheme.tertiary
+        "non disponibile", "out_of_stock", "out" -> "Non disponibile" to MaterialTheme.colorScheme.error
+        else -> availability to MaterialTheme.colorScheme.onSurface
     }
     Badge(
         modifier = modifier,
@@ -490,7 +497,7 @@ private fun CartItemRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = formatPrice(item.product.price),
+                    text = formatPrice(item.product.price.toDouble()),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -509,7 +516,7 @@ private fun CartItemRow(
 }
 
 @Composable
-private fun EmptyState(query: String, filteredByCategory: Boolean) {
+private fun EmptyState(query: String, filteredByCategory: Boolean = false) {
     Column(
         modifier = Modifier
             .fillMaxSize(),
@@ -846,51 +853,8 @@ data class SideMenuSection(
     val entries: List<String>
 )
 
-val supermarketSideMenu = listOf(
-    SideMenuSection(
-        id = "meat",
-        title = "Carne e Pesce",
-        entries = listOf(
-            "Pollo e Tacchino",
-            "Manzo e Vitello",
-            "Maiale",
-            "Spiedini, Polpette e Specialita' di Carne",
-            "Altre Carni",
-            "Wurstel e Carni Impanate",
-            "Pesce Fresco",
-            "Specialita' di Pesce"
-        )
-    ),
-    SideMenuSection(
-        id = "fruitveg",
-        title = "Frutta e Verdura",
-        entries = listOf(
-            "Frutta",
-            "Verdura",
-            "Bio",
-            "In offerta"
-        )
-    ),
-    SideMenuSection(
-        id = "dispensa",
-        title = "Dispensa",
-        entries = listOf(
-            "Pasta",
-            "Riso e Cereali",
-            "Sughi e Condimenti",
-            "Snack e Biscotti"
-        )
-    ),
-    SideMenuSection(
-        id = "det",
-        title = "Detersivi",
-        entries = listOf(
-            "Piatti",
-            "Lavatrice",
-            "Casa"
-        )
-    )
-)
+// La lista supermarketSideMenu è stata rimossa: ora le categorie vengono caricate dal DB
+// tramite CatalogViewModel.sideMenuSections
 
 private fun formatPrice(value: Double): String = "\u20AC ${String.format(java.util.Locale.ROOT, "%.2f", value)}"
 
@@ -956,13 +920,12 @@ private fun CatalogScreenPreview() {
     val products = previewProducts()
     val cartProduct = products.first()
     val sampleState = CatalogUiState(
-        products = products,
         visibleProducts = products,
         isLoading = false,
         cart = mapOf(cartProduct.id to 2),
         cartItems = listOf(CartItemUi(cartProduct, 2)),
         cartItemsCount = 2,
-        cartTotal = cartProduct.price * 2
+        cartTotal = cartProduct.price.toDouble() * 2
     )
     SmartShopMobileTheme {
         CatalogScreen(state = sampleState)
@@ -975,34 +938,28 @@ private fun previewProducts(): List<Product> = listOf(
         id = "prev-1",
         name = "Succo ACE",
         brand = "Freshly",
-        category = ProductCategory.DRINKS,
-        price = 2.59,
-        oldPrice = 2.99,
-        availability = ProductAvailability.AVAILABLE,
-        tags = listOf("Offerta"),
-        rating = 4.5,
-        reviewsCount = 120
+        categoryId = "drinks",
+        price = 2.59f,
+        oldPrice = 2.99f,
+        availability = "disponibile",
+        tags = "Offerta"
     ),
     Product(
         id = "prev-2",
         name = "Detersivo Piatti",
         brand = "CleanUp",
-        category = ProductCategory.CLEANING,
-        price = 1.99,
-        availability = ProductAvailability.RUNNING_LOW,
-        tags = listOf("Formato max"),
-        rating = 4.2,
-        reviewsCount = 80
+        categoryId = "cleaning",
+        price = 1.99f,
+        availability = "quasi finito",
+        tags = "Formato max"
     ),
     Product(
         id = "prev-3",
         name = "Pasta Integrale",
         brand = "GranDuro",
-        category = ProductCategory.PASTA,
-        price = 1.29,
-        availability = ProductAvailability.AVAILABLE,
-        tags = listOf("Dispensa"),
-        rating = 4.0,
-        reviewsCount = 40
+        categoryId = "pasta",
+        price = 1.29f,
+        availability = "disponibile",
+        tags = "Dispensa"
     )
 )
