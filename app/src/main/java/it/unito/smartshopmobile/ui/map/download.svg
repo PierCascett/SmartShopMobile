@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+  <!-- Definizioni -->
+  <defs>
+    <style>
+      .aisle {
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+      .aisle:hover {
+        filter: brightness(1.1);
+      }
+      .aisle-selected {
+        stroke: #1976D2;
+        stroke-width: 4;
+      }
+      .aisle-text {
+        font-family: Arial, sans-serif;
+        font-size: 16px;
+        font-weight: bold;
+        fill: #333;
+        pointer-events: none;
+      }
+      .aisle-desc {
+        font-family: Arial, sans-serif;
+        font-size: 12px;
+        fill: #666;
+        pointer-events: none;
+      }
+    </style>
+  </defs>
+
+  <!-- Sfondo -->
+  <rect width="1200" height="900" fill="#f5f5f5"/>
+
+  <!-- Titolo -->
+  <text x="600" y="40" text-anchor="middle" font-size="28" font-weight="bold" fill="#333">Mappa Supermercato</text>
+
+  <!-- Ingresso -->
+  <rect x="500" y="70" width="200" height="40" fill="#4CAF50" stroke="#2E7D32" stroke-width="2" rx="5"/>
+  <text x="600" y="95" text-anchor="middle" font-size="16" font-weight="bold" fill="white">INGRESSO</text>
+
+  <!-- RIGA 1 - Prodotti Freschi -->
+  <!-- A1 - Frutta &amp; Verdura -->
+  <g id="A1" class="aisle">
+    <rect x="100" y="150" width="300" height="120" fill="#81C784" stroke="#66BB6A" stroke-width="2" rx="8"/>
+    <text x="250" y="195" text-anchor="middle" class="aisle-text">A1</text>
+    <text x="250" y="215" text-anchor="middle" class="aisle-desc">Frutta &amp; Verdura</text>
+  </g>
+
+  <!-- A2 - Panetteria -->
+  <g id="A2" class="aisle">
+    <rect x="450" y="150" width="300" height="120" fill="#FFB74D" stroke="#FFA726" stroke-width="2" rx="8"/>
+    <text x="600" y="195" text-anchor="middle" class="aisle-text">A2</text>
+    <text x="600" y="215" text-anchor="middle" class="aisle-desc">Panetteria</text>
+  </g>
+
+  <!-- A3 - Salumeria -->
+  <g id="A3" class="aisle">
+    <rect x="800" y="150" width="300" height="120" fill="#E57373" stroke="#EF5350" stroke-width="2" rx="8"/>
+    <text x="950" y="195" text-anchor="middle" class="aisle-text">A3</text>
+    <text x="950" y="215" text-anchor="middle" class="aisle-desc">Salumeria</text>
+  </g>
+
+  <!-- RIGA 2 - Dispensa -->
+  <!-- B1 - Pasta e Riso -->
+  <g id="B1" class="aisle">
+    <rect x="100" y="310" width="300" height="120" fill="#FFD54F" stroke="#FFCA28" stroke-width="2" rx="8"/>
+    <text x="250" y="355" text-anchor="middle" class="aisle-text">B1</text>
+    <text x="250" y="375" text-anchor="middle" class="aisle-desc">Pasta e Riso</text>
+  </g>
+
+  <!-- B2 - Conserve -->
+  <g id="B2" class="aisle">
+    <rect x="450" y="310" width="300" height="120" fill="#A1887F" stroke="#8D6E63" stroke-width="2" rx="8"/>
+    <text x="600" y="355" text-anchor="middle" class="aisle-text">B2</text>
+    <text x="600" y="375" text-anchor="middle" class="aisle-desc">Conserve</text>
+  </g>
+
+  <!-- B3 - Condimenti -->
+  <g id="B3" class="aisle">
+    <rect x="800" y="310" width="300" height="120" fill="#DCE775" stroke="#D4E157" stroke-width="2" rx="8"/>
+    <text x="950" y="355" text-anchor="middle" class="aisle-text">B3</text>
+    <text x="950" y="375" text-anchor="middle" class="aisle-desc">Condimenti</text>
+  </g>
+
+  <!-- RIGA 3 - Bevande e Snack -->
+  <!-- C1 - Bevande -->
+  <g id="C1" class="aisle">
+    <rect x="100" y="470" width="300" height="120" fill="#64B5F6" stroke="#42A5F5" stroke-width="2" rx="8"/>
+    <text x="250" y="515" text-anchor="middle" class="aisle-text">C1</text>
+    <text x="250" y="535" text-anchor="middle" class="aisle-desc">Bevande</text>
+  </g>
+
+  <!-- C2 - Snack e Dolci -->
+  <g id="C2" class="aisle">
+    <rect x="450" y="470" width="300" height="120" fill="#F06292" stroke="#EC407A" stroke-width="2" rx="8"/>
+    <text x="600" y="515" text-anchor="middle" class="aisle-text">C2</text>
+    <text x="600" y="535" text-anchor="middle" class="aisle-desc">Snack e Dolci</text>
+  </g>
+
+  <!-- C3 - Surgelati -->
+  <g id="C3" class="aisle">
+    <rect x="800" y="470" width="300" height="120" fill="#90CAF9" stroke="#64B5F6" stroke-width="2" rx="8"/>
+    <text x="950" y="515" text-anchor="middle" class="aisle-text">C3</text>
+    <text x="950" y="535" text-anchor="middle" class="aisle-desc">Surgelati</text>
+  </g>
+
+  <!-- RIGA 4 - Casa e Pet -->
+  <!-- D1 - Detersivi -->
+  <g id="D1" class="aisle">
+    <rect x="100" y="630" width="300" height="120" fill="#BA68C8" stroke="#AB47BC" stroke-width="2" rx="8"/>
+    <text x="250" y="675" text-anchor="middle" class="aisle-text">D1</text>
+    <text x="250" y="695" text-anchor="middle" class="aisle-desc">Detersivi</text>
+  </g>
+
+  <!-- D2 - Igiene -->
+  <g id="D2" class="aisle">
+    <rect x="450" y="630" width="300" height="120" fill="#4DB6AC" stroke="#26A69A" stroke-width="2" rx="8"/>
+    <text x="600" y="675" text-anchor="middle" class="aisle-text">D2</text>
+    <text x="600" y="695" text-anchor="middle" class="aisle-desc">Igiene</text>
+  </g>
+
+  <!-- D3 - Pet Care -->
+  <g id="D3" class="aisle">
+    <rect x="800" y="630" width="300" height="120" fill="#FF8A65" stroke="#FF7043" stroke-width="2" rx="8"/>
+    <text x="950" y="675" text-anchor="middle" class="aisle-text">D3</text>
+    <text x="950" y="695" text-anchor="middle" class="aisle-desc">Pet Care</text>
+  </g>
+
+  <!-- Casse -->
+  <rect x="400" y="800" width="400" height="60" fill="#757575" stroke="#616161" stroke-width="2" rx="5"/>
+  <text x="600" y="835" text-anchor="middle" font-size="18" font-weight="bold" fill="white">CASSE</text>
+
+  <!-- JavaScript per interattivitÃƒÆ’Ã‚Â  -->
+  <script type="text/javascript">
+    <![CDATA[
+    let selectedAisle = null;
+
+    document.querySelectorAll('.aisle').forEach(el => {
+      el.addEventListener('click', function() {
+        const aisleId = this.id;
+
+        // Rimuovi selezione precedente
+        if (selectedAisle) {
+          selectedAisle.querySelector('rect').classList.remove('aisle-selected');
+        }
+
+        // Aggiungi nuova selezione
+        this.querySelector('rect').classList.add('aisle-selected');
+        selectedAisle = this;
+
+        // Notifica Android
+        if (window.AndroidBridge) {
+          window.AndroidBridge.onAisleClick(aisleId);
+        }
+      });
+    });
+    ]]>
+  </script>
+</svg>
