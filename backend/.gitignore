@@ -1,0 +1,97 @@
+node_modules/
+.env
+*.log
+.DS_Store
+const express = require('express');
+const cors = require('cors');
+const morgan = require('morgan');
+require('dotenv').config();
+
+const categoriesRoutes = require('./routes/categories');
+const productsRoutes = require('./routes/products');
+const db = require('./db');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors()); // Permette richieste da Android
+app.use(express.json());
+app.use(morgan('dev')); // Logging delle richieste
+
+// Test route
+app.get('/', (req, res) => {
+    res.json({
+        message: 'SmartShop Backend API',
+        version: '1.0.0',
+        status: 'running'
+    });
+});
+
+// Health check
+app.get('/health', async (req, res) => {
+    try {
+        await db.query('SELECT 1');
+        res.json({
+            status: 'healthy',
+            database: 'connected',
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({
+            status: 'unhealthy',
+            database: 'disconnected',
+            error: error.message
+        });
+    }
+});
+
+// API Routes
+app.use('/api/categorie', categoriesRoutes);
+app.use('/api/prodotti', productsRoutes);
+
+// 404 handler
+app.use((req, res) => {
+    res.status(404).json({ error: 'Endpoint non trovato' });
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+    console.error('Errore server:', err);
+    res.status(500).json({
+        error: 'Errore interno del server',
+        message: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+});
+
+// Avvio server
+app.listen(PORT, () => {
+    console.log(`
+╔════════════════════════════════════════════╗
+║   🚀 SmartShop Backend Server              ║
+║   📡 Server running on port ${PORT}         ║
+║   🌍 http://localhost:${PORT}               ║
+║   💾 Database: PostgreSQL                  ║
+║   📱 Ready for Android app connections     ║
+╚════════════════════════════════════════════╝
+    `);
+    console.log('📍 Endpoints disponibili:');
+    console.log('   GET  /health                            - Health check');
+    console.log('   GET  /api/categorie                     - Tutte le categorie');
+    console.log('   GET  /api/categorie/macro               - Macro categorie');
+    console.log('   GET  /api/categorie/:id/sottocategorie  - Sottocategorie');
+    console.log('   GET  /api/prodotti                      - Tutti i prodotti');
+    console.log('   GET  /api/prodotti/categoria/:id        - Prodotti per categoria');
+    console.log('   GET  /api/prodotti/search?q=...         - Cerca prodotti');
+    console.log('');
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('SIGTERM ricevuto, chiusura graceful...');
+    db.pool.end(() => {
+        console.log('Pool PostgreSQL chiuso');
+        process.exit(0);
+    });
+});
+
