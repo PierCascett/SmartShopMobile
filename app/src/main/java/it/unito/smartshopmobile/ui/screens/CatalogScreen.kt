@@ -1,3 +1,32 @@
+/**
+ * CatalogScreen.kt
+ *
+ * RUOLO MVVM: View Layer (UI - Jetpack Compose)
+ * - Schermata principale del catalogo prodotti per il ruolo Customer
+ * - Puramente presentazionale: visualizza stato e invia eventi al ViewModel
+ * - Reattiva: si ricompone automaticamente quando lo stato cambia
+ *
+ * RESPONSABILITÀ:
+ * - Osservare stato UI dal CatalogViewModel (collectAsState)
+ * - Renderizzare UI in base allo stato (loading, error, success)
+ * - Inviare intent utente al ViewModel (search, filter, addToCart)
+ * - Gestire navigazione (carrello, dettaglio prodotto)
+ * - NO logica business: solo composizione UI
+ *
+ * PATTERN: MVVM - View
+ * - @Composable: funzioni dichiarative per UI
+ * - State hoisting: stato gestito dal ViewModel
+ * - Unidirectional Data Flow: eventi → ViewModel → stato → UI
+ * - NON conosce Repository, Room, Retrofit
+ *
+ * COMPONENTI PRINCIPALI:
+ * - CatalogScreen: schermata principale
+ * - SearchBar: input ricerca prodotti
+ * - FilterRow: filtri categoria/disponibilità
+ * - ProductGrid: griglia prodotti
+ * - ProductCard: card singolo prodotto
+ * - CartOverlay: overlay carrello laterale
+ */
 package it.unito.smartshopmobile.ui.screens
 
 import androidx.compose.foundation.background

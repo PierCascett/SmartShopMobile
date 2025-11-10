@@ -1,3 +1,21 @@
+/**
+ * CatalogRepository.kt
+ *
+ * RUOLO MVVM: Repository Layer
+ * - Astrae la sorgente dati (Room/Retrofit/Mock) dal ViewModel
+ * - Fornisce un'interfaccia uniforme per accedere ai prodotti del catalogo
+ * - Gestisce la logica di sincronizzazione tra database locale e API remote
+ * - Espone Flow per osservabilità reattiva dei dati
+ *
+ * RESPONSABILITÀ:
+ * - CatalogRepository (interface): contratto per accesso al catalogo
+ * - FakeCatalogRepository (implementazione): dati mock per sviluppo/test
+ * - RoomCatalogRepository (futuro): implementazione reale con Room + Retrofit
+ *
+ * PATTERN: Repository Pattern
+ * - Il ViewModel NON conosce Room o Retrofit, usa solo l'interfaccia Repository
+ * - Permette di sostituire facilmente l'implementazione (fake → real)
+ */
 package it.unito.smartshopmobile.data.repository
 
 import it.unito.smartshopmobile.data.model.Product

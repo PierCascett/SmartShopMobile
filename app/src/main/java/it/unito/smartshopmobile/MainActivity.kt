@@ -1,3 +1,30 @@
+/**
+ * MainActivity.kt
+ *
+ * RUOLO MVVM: Entry Point & Navigation Host
+ * - Activity principale dell'applicazione Android
+ * - Ospita la navigazione tra le diverse schermate
+ * - Inizializza il tema Material Design
+ * - Gestisce il ciclo di vita dell'app
+ *
+ * RESPONSABILITÀ:
+ * - Setup del tema (enableEdgeToEdge, MaterialTheme)
+ * - Inizializzazione ViewModels (by viewModels())
+ * - Gestione navigazione tra Login/Customer/Employee/Manager
+ * - Gestione stato globale (drawer menu, carrello)
+ * - Rispondere a cambiamenti di configurazione (rotazione)
+ *
+ * PATTERN: Controller (Android)
+ * - ComponentActivity: ciclo di vita Android
+ * - setContent: entry point Jetpack Compose
+ * - viewModels(): ViewModel lifecycle-aware
+ * - Navigation: routing condizionale in base a UserRole
+ *
+ * COMPONENTI:
+ * - SmartShopApp: Composable root dell'app
+ * - Routing: switch tra schermate in base al ruolo
+ * - Theme wrapping: MaterialTheme applicato globalmente
+ */
 // Activity principale: avvio tema e schermata di login
 // - uso `LoginViewModel` con `by viewModels()`
 // - mostro `LoginScreenMVVM` e gestisco il successo con un Toast

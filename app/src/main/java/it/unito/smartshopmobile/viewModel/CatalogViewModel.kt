@@ -1,3 +1,28 @@
+/**
+ * CatalogViewModel.kt
+ *
+ * RUOLO MVVM: ViewModel Layer
+ * - Gestisce lo stato UI e la logica di presentazione del catalogo prodotti
+ * - Intermedia tra UI (CatalogScreen) e Repository (CatalogRepository)
+ * - Sopravvive ai cambiamenti di configurazione (rotazione schermo)
+ *
+ * RESPONSABILITÀ:
+ * - Esporre stato UI osservabile (StateFlow<CatalogUiState>)
+ * - Gestire intent utente (ricerca, filtri, aggiungi al carrello)
+ * - Coordinare operazioni asincrone (viewModelScope)
+ * - Trasformare dati dal Repository in stato UI
+ *
+ * PATTERN: MVVM (Model-View-ViewModel)
+ * - NON conosce Compose, Activity o Fragment
+ * - NON accede direttamente a Room o Retrofit
+ * - Usa solo il Repository per i dati
+ * - Espone UI State immutabile (CatalogUiState)
+ *
+ * PRINCIPI RISPETTATI:
+ * - Single Source of Truth: uiState contiene tutto lo stato
+ * - Unidirectional Data Flow: UI → intent → ViewModel → State → UI
+ * - Separation of Concerns: logica UI qui, logica dati nel Repository
+ */
 package it.unito.smartshopmobile.viewModel
 
 import androidx.lifecycle.ViewModel

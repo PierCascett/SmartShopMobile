@@ -1,3 +1,21 @@
+/**
+ * Product.kt
+ *
+ * RUOLO MVVM: Model Layer (Domain Model)
+ * - Rappresenta i dati di business dell'applicazione
+ * - Utilizzato da ViewModel e UI (indipendente da Room/Retrofit)
+ * - Contiene la logica di dominio e le regole di validazione
+ *
+ * RESPONSABILITÀ:
+ * - Product: classe dati principale per i prodotti del catalogo
+ * - ProductCategory: enum per le categorie di prodotti
+ * - ProductAvailability: enum per gli stati di disponibilità
+ *
+ * PATTERN: Domain Model
+ * - Separato dalle Entity Room (data/entity/) e DTO Retrofit (futuro)
+ * - Mapper convertiranno Entity/DTO → Product per l'UI
+ * - Permette di cambiare il database senza toccare UI/ViewModel
+ */
 package it.unito.smartshopmobile.data.model
 
 import androidx.annotation.DrawableRes

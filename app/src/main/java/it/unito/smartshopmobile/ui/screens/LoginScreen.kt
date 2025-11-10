@@ -1,3 +1,31 @@
+/**
+ * LoginScreen.kt
+ *
+ * RUOLO MVVM: View Layer (UI - Jetpack Compose)
+ * - Schermata di autenticazione dell'applicazione
+ * - Punto di ingresso per Customer, Employee e Manager
+ * - Puramente presentazionale: stato dal LoginViewModel
+ *
+ * RESPONSABILITÀ:
+ * - Rendering form di login (email, password)
+ * - Visualizzare stato loading e messaggi errore
+ * - Inviare intent login al LoginViewModel
+ * - Navigare alla schermata corretta in base al ruolo utente
+ * - NO validazione: delegata al ViewModel
+ *
+ * PATTERN: MVVM - View
+ * - Composable stateless: riceve ViewModel come parametro
+ * - Osserva stato tramite .value (MutableState)
+ * - Callback per eventi (onLoginClick)
+ * - Navigazione condizionale tramite LaunchedEffect
+ *
+ * COMPONENTI:
+ * - LoginScreen: schermata principale
+ * - EmailField: input email con validazione visuale
+ * - PasswordField: input password con toggle visibilità
+ * - LoginButton: pulsante con stato loading
+ * - GoogleSignInButton: (mock) autenticazione Google
+ */
 package it.unito.smartshopmobile.ui.screens
 
 import android.content.res.Configuration

@@ -1,3 +1,28 @@
+/**
+ * LoginViewModel.kt
+ *
+ * RUOLO MVVM: ViewModel Layer
+ * - Gestisce lo stato UI e la logica di autenticazione
+ * - Valida credenziali e determina il routing post-login
+ * - Intermedia tra UI (LoginScreen) e futuro AuthRepository
+ *
+ * RESPONSABILITÀ:
+ * - Gestire campi input (email, password)
+ * - Validare formato email e password
+ * - Simulare login (futuro: chiamata API tramite AuthRepository)
+ * - Determinare UserRole in base all'email (customer/employee/manager)
+ * - Esporre stato loading e messaggi di errore
+ *
+ * PATTERN: MVVM (Model-View-ViewModel)
+ * - Stato osservabile tramite MutableState
+ * - Intent utente: login(), setEmail(), setPassword()
+ * - Logica di validazione centralizzata
+ *
+ * FUTURE IMPROVEMENTS:
+ * - Usare AuthRepository invece di logica hardcoded
+ * - Usare sealed class LoginUiState per stato più robusto
+ * - Dependency Injection (Hilt) per il repository
+ */
 package it.unito.smartshopmobile.viewModel
 
 import androidx.compose.runtime.MutableState
