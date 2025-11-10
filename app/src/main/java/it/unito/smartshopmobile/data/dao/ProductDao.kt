@@ -1,33 +1,31 @@
-/**
- * ProductDao.kt
- *
- * RUOLO MVVM: Data Access Object (DAO) - Data Layer
- * - Definisce le operazioni sul database Room per la tabella products
- * - Fornisce query SQL type-safe tramite annotazioni Room
- * - Espone Flow per osservabilità reattiva dei cambiamenti nel DB
- *
- * RESPONSABILITÀ:
- * - @Query: selezionare prodotti dal database (getAll, getById, search)
- * - @Insert: inserire nuovi prodotti
- * - @Update: aggiornare prodotti esistenti
- * - @Delete: eliminare prodotti
- *
- * PATTERN: Data Access Object
- * - Annotato con @Dao (Room)
- * - Restituisce Flow<List<ProductEntity>> per reattività
- * - Usato SOLO dal Repository (mai da ViewModel/UI)
- *
- * ESEMPIO (futuro):
- * @Dao
- * interface ProductDao {
- *     @Query("SELECT * FROM products")
- *     fun observeAll(): Flow<List<ProductEntity>>
- *
- *     @Insert(onConflict = OnConflictStrategy.REPLACE)
- *     suspend fun insertAll(products: List<ProductEntity>)
- * }
- */
 package it.unito.smartshopmobile.data.dao
 
-// ProductDao - interfaccia Room per accesso prodotti
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import it.unito.smartshopmobile.data.entity.Product
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface ProductDao {
+
+    @Query("SELECT * FROM prodotti_catalogo")
+    fun getAllProducts(): Flow<List<Product>>
+
+    @Query("SELECT * FROM prodotti_catalogo WHERE categoria_id = :categoryId")
+    fun getProductsByCategory(categoryId: String): Flow<List<Product>>
+
+    @Query("SELECT * FROM prodotti_catalogo WHERE id = :id")
+    suspend fun getProductById(id: String): Product?
+
+    @Query("SELECT * FROM prodotti_catalogo WHERE nome LIKE '%' || :query || '%' OR marca LIKE '%' || :query || '%'")
+    fun searchProducts(query: String): Flow<List<Product>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(products: List<Product>)
+
+    @Query("DELETE FROM prodotti_catalogo")
+    suspend fun deleteAll()
+}
 

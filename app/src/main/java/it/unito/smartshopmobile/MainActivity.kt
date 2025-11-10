@@ -66,11 +66,10 @@ import it.unito.smartshopmobile.ui.screens.LoginScreen
 import it.unito.smartshopmobile.ui.screens.EmployeeScreen
 import it.unito.smartshopmobile.ui.screens.ManagerScreen
 import it.unito.smartshopmobile.ui.screens.SideMenuOverlay
-import it.unito.smartshopmobile.ui.screens.supermarketSideMenu
 import it.unito.smartshopmobile.ui.screens.AppCartOverlay
 import it.unito.smartshopmobile.ui.theme.SmartShopMobileTheme
-import it.unito.smartshopmobile.viewModel.CatalogUiState
 import it.unito.smartshopmobile.viewModel.CatalogViewModel
+import it.unito.smartshopmobile.viewModel.CatalogUiState
 import it.unito.smartshopmobile.viewModel.LoginViewModel
 
 class MainActivity : ComponentActivity() {
@@ -121,7 +120,7 @@ class MainActivity : ComponentActivity() {
                     if (showMenu) {
                         SideMenuOverlay(
                             onDismiss = { showMenu = false },
-                            sections = supermarketSideMenu,
+                            sections = catalogState.sideMenuSections, // <-- usa categorie dal DB
                             onEntrySelected = { selection: String ->
                                 showMenu = false
                                 catalogViewModel.onSearchQueryChange(selection)
