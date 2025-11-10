@@ -92,8 +92,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -381,29 +379,14 @@ private fun CartPanel(
     onRemove: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Robust dynamic panel color: decide based on the luminance of the theme surface.
-    // If the app theme uses a dark surface color, pick a dark panel derived from surface/surfaceVariant.
-    // Otherwise use the off-white color for light mode.
-    val surface = MaterialTheme.colorScheme.surface
-    val sv = MaterialTheme.colorScheme.surfaceVariant
-    val isSurfaceDark = surface.luminance() < 0.5f
-    val systemDark = isSystemInDarkTheme()
-    val preferDark = systemDark || isSurfaceDark
-
-    val panelColor = if (!preferDark) {
-        // light mode: off-white
-        Color(0xFFFBFBFC)
-    } else {
-        // dark mode: base on surfaceVariant but ensure it's dark enough
-        val base = if (sv.luminance() > surface.luminance()) lerp(sv, surface, 0.25f) else sv
-        if (base.luminance() > 0.5f) lerp(base, Color.Black, 0.3f) else base
-    }
+    val isDark = isSystemInDarkTheme()
 
     androidx.compose.material3.Surface(
         modifier = modifier,
         shape = RoundedCornerShape(20.dp),
-        tonalElevation = 8.dp,
-        color = panelColor
+        tonalElevation = 4.dp,
+        color = if (isDark) Color.Black else Color(0xFFFBFBFC),
+        contentColor = if (isDark) Color.White else MaterialTheme.colorScheme.onSurface
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -768,15 +751,22 @@ private fun SideMenu(
         }
     }
 
+    val isDark = isSystemInDarkTheme()
+
     LazyColumn(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(if (isDark) Color.Black else MaterialTheme.colorScheme.surfaceVariant)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Text("Categorie", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(
+                "Categorie",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = if (isDark) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         items(sections) { section ->
             val expanded = expansionState[section.id] == true
@@ -797,11 +787,13 @@ private fun SideAccordion(
     onToggle: () -> Unit,
     onEntrySelected: (String) -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .background(if (isDark) Color(0xFF1E1E1E) else MaterialTheme.colorScheme.surface)
     ) {
         TextButton(
             onClick = onToggle,
@@ -812,11 +804,13 @@ private fun SideAccordion(
                 text = section.title,
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                color = if (isDark) Color.White else MaterialTheme.colorScheme.onSurface
             )
             Icon(
                 imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                contentDescription = null
+                contentDescription = null,
+                tint = if (isDark) Color.White else MaterialTheme.colorScheme.onSurface
             )
         }
         if (expanded) {
@@ -834,7 +828,11 @@ private fun SideAccordion(
                             .wrapContentHeight(),
                         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)
                     ) {
-                        Text(entry, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            entry,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isDark) Color.White else MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             }
