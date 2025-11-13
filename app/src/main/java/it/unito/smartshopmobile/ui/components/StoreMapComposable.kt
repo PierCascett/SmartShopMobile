@@ -8,7 +8,7 @@
  * 
  * ARCHITETTURA:
  * - Background: Immagine planimetria (supermarket.jpg) caricata da assets/map/
- * - Overlay: Poligoni scaffali definiti in SupermarketPolygons.kt
+ * - Overlay: Poligoni scaffali caricati da assets/map/supermarket.json
  * - Interazioni: Pan, zoom (pinch), tap per selezione scaffale
  * 
  * COORDINATE SYSTEM:
@@ -52,7 +52,6 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.delay
-import it.unito.smartshopmobile.ui.map.SupermarketPolygons
 import it.unito.smartshopmobile.ui.map.ShelfPolygon
 import it.unito.smartshopmobile.ui.map.rememberPolygonsFromJson
 
@@ -98,7 +97,7 @@ fun StoreMapCanvas(
     background: ImageBitmap? = null // opzionale: immagine mappa (supermarket.jpg)
 ) {
     // Usare le dimensioni originali dell'immagine di riferimento per i poligoni
-    // (le coordinate in SupermarketPolygons sono espresse per 11278x8596)
+    // (le coordinate nel JSON sono espresse per 11278x8596)
     val ORIGINAL_IMAGE_WIDTH = 11278f
     val ORIGINAL_IMAGE_HEIGHT = 8596f
 
@@ -108,15 +107,14 @@ fun StoreMapCanvas(
     var scale by remember { mutableStateOf(1f) }
     var translation by remember { mutableStateOf(Offset.Zero) }
     val ripples = remember { mutableStateListOf<Ripple>() }
-    val jsonPolygons = rememberPolygonsFromJson("map/supermarket.json")
-    val polygons = if (jsonPolygons.isNotEmpty()) jsonPolygons else SupermarketPolygons.polygons
+    val polygons = rememberPolygonsFromJson("map/supermarket.json")
     // Stato condiviso tra draw e pointerInput per consentire al pointerInput
     // di trasformare immediatamente i tap in coordinate immagine.
     var currentImgWidth by remember { mutableStateOf(0f) }
     var currentImgHeight by remember { mutableStateOf(0f) }
     var currentImgOffsetX by remember { mutableStateOf(0f) }
     var currentImgOffsetY by remember { mutableStateOf(0f) }
-    // Usa la dimensione originale dell'immagine come riferimento (coerente con SupermarketPolygons).
+    // Usa la dimensione originale dell'immagine come riferimento (coerente con il JSON).
     // Se in futuro i poligoni fossero definiti per un'altra immagine, aggiorna questi valori.
     val baseWidth = ORIGINAL_IMAGE_WIDTH
     val baseHeight = ORIGINAL_IMAGE_HEIGHT
