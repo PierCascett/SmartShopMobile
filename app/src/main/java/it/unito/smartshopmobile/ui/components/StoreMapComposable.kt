@@ -5,9 +5,28 @@
  * - 100% nativo Android, no WebView
  * - Performante e reattivo
  * - Integrato con Material 3
+ * 
+ * ARCHITETTURA:
+ * - Background: Immagine planimetria (supermarket.jpg) caricata da assets/map/
+ * - Overlay: Poligoni scaffali definiti in SupermarketPolygons.kt
+ * - Interazioni: Pan, zoom (pinch), tap per selezione scaffale
+ * 
+ * COORDINATE SYSTEM:
+ * - I poligoni sono definiti in pixel dell'immagine originale
+ * - La canvas scala automaticamente immagine e poligoni insieme
+ * - baseWidth/baseHeight: dimensioni immagine (o fallback 7000x5000)
+ * - scaleX/scaleY: fattori di scala per adattare a dimensioni canvas
+ * 
+ * RENDERING PIPELINE:
+ * 1. Disegna sfondo (immagine o gradient)
+ * 2. Applica trasformazioni (pan + zoom)
+ * 3. Disegna percorso animato dall'ingresso allo scaffale selezionato
+ * 4. Disegna ogni poligono con ombra, riempimento, bordo e label
+ * 5. Disegna effetti ripple su tap (fuori dalla trasformazione)
  */
 package it.unito.smartshopmobile.ui.components
 
+import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -20,103 +39,96 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.delay
+import it.unito.smartshopmobile.ui.map.SupermarketPolygons
+import it.unito.smartshopmobile.ui.map.ShelfPolygon
+import it.unito.smartshopmobile.ui.map.rememberPolygonsFromJson
+
+// Helper: point-in-polygon usando vertici trasformati nello spazio schermo
+private fun isPointInPolygonScreen(
+    tap: Offset,
+    polygon: ShelfPolygon,
+    scale: Float,
+    translation: Offset,
+    imgOffsetX: Float,
+    imgOffsetY: Float,
+    scaleX: Float,
+    scaleY: Float
+): Boolean {
+    // Trasforma ogni vertice nella posizione sullo schermo
+    val screenPoints = polygon.points.map { p ->
+        val sx = p.x * scaleX * scale + translation.x + imgOffsetX
+        val sy = p.y * scaleY * scale + translation.y + imgOffsetY
+        Offset(sx, sy)
+    }
+    // Ray-casting sullo spazio schermo
+    var result = false
+    var j = screenPoints.size - 1
+    for (i in screenPoints.indices) {
+        val pi = screenPoints[i]
+        val pj = screenPoints[j]
+        val intersect = ((pi.y > tap.y) != (pj.y > tap.y)) &&
+            (tap.x < (pj.x - pi.x) * (tap.y - pi.y) / (pj.y - pi.y + 0.00001f) + pi.x)
+        if (intersect) result = !result
+        j = i
+    }
+    return result
+}
 
 // Modello corsia con bounds per hit detection
-data class AisleBounds(
-    val id: String,
-    val x: Float,
-    val y: Float,
-    val width: Float,
-    val height: Float,
-    val color: Color,
-    val strokeColor: Color,
-    val label: String,
-    val description: String,
-    val textColor: Color = Color.Black
-) {
-    fun contains(offset: Offset): Boolean {
-        return offset.x >= x && offset.x <= x + width &&
-               offset.y >= y && offset.y <= y + height
-    }
-}
+// Rettangoli placeholder rimossi: ora usiamo poligoni personalizzati
 
 @Composable
 fun StoreMapCanvas(
     selectedAisleId: String?,
     onAisleClick: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    background: ImageBitmap? = null // opzionale: immagine mappa (supermarket.jpg)
 ) {
-    val textMeasurer = rememberTextMeasurer()
-    var selectedAisle by remember { mutableStateOf(selectedAisleId) }
+    // Usare le dimensioni originali dell'immagine di riferimento per i poligoni
+    // (le coordinate in SupermarketPolygons sono espresse per 11278x8596)
+    val ORIGINAL_IMAGE_WIDTH = 11278f
+    val ORIGINAL_IMAGE_HEIGHT = 8596f
+
+    // Non manteniamo uno stato locale separato per la selezione: usiamo direttamente
+    // il parametro `selectedAisleId` così che la selezione nel ViewModel ricomponi la mappa.
+    val selectedAisle = selectedAisleId
     var scale by remember { mutableStateOf(1f) }
     var translation by remember { mutableStateOf(Offset.Zero) }
-    var lastTapPosition by remember { mutableStateOf<Offset?>(null) }
     val ripples = remember { mutableStateListOf<Ripple>() }
-    var dashPhase by remember { mutableStateOf(0f) }
+    val jsonPolygons = rememberPolygonsFromJson("map/supermarket.json")
+    val polygons = if (jsonPolygons.isNotEmpty()) jsonPolygons else SupermarketPolygons.polygons
+    // Stato condiviso tra draw e pointerInput per consentire al pointerInput
+    // di trasformare immediatamente i tap in coordinate immagine.
+    var currentImgWidth by remember { mutableStateOf(0f) }
+    var currentImgHeight by remember { mutableStateOf(0f) }
+    var currentImgOffsetX by remember { mutableStateOf(0f) }
+    var currentImgOffsetY by remember { mutableStateOf(0f) }
+    // Usa la dimensione originale dell'immagine come riferimento (coerente con SupermarketPolygons).
+    // Se in futuro i poligoni fossero definiti per un'altra immagine, aggiorna questi valori.
+    val baseWidth = ORIGINAL_IMAGE_WIDTH
+    val baseHeight = ORIGINAL_IMAGE_HEIGHT
+
+    // Calcola aspect ratio e offset una volta
+    val imgAspect = baseWidth / baseHeight
     
-    // Definizione corsie con coordinate e colori
-    val aisles = remember {
-        listOf(
-            // RIGA A - Prodotti Freschi
-            AisleBounds("A1", 100f, 150f, 300f, 120f, 
-                Color(0xFF81C784), Color(0xFF66BB6A), "A1", "Frutta & Verdura"),
-            AisleBounds("A2", 450f, 150f, 300f, 120f, 
-                Color(0xFFFFB74D), Color(0xFFFFA726), "A2", "Panetteria"),
-            AisleBounds("A3", 800f, 150f, 300f, 120f, 
-                Color(0xFFE57373), Color(0xFFEF5350), "A3", "Salumeria", Color.White),
-            
-            // RIGA B - Dispensa
-            AisleBounds("B1", 100f, 310f, 300f, 120f, 
-                Color(0xFFFFD54F), Color(0xFFFFCA28), "B1", "Pasta e Riso"),
-            AisleBounds("B2", 450f, 310f, 300f, 120f, 
-                Color(0xFFA1887F), Color(0xFF8D6E63), "B2", "Conserve", Color.White),
-            AisleBounds("B3", 800f, 310f, 300f, 120f, 
-                Color(0xFFDCE775), Color(0xFFD4E157), "B3", "Condimenti"),
-            
-            // RIGA C - Bevande e Snack
-            AisleBounds("C1", 100f, 470f, 300f, 120f, 
-                Color(0xFF64B5F6), Color(0xFF42A5F5), "C1", "Bevande", Color.White),
-            AisleBounds("C2", 450f, 470f, 300f, 120f, 
-                Color(0xFFF06292), Color(0xFFEC407A), "C2", "Snack e Dolci", Color.White),
-            AisleBounds("C3", 800f, 470f, 300f, 120f, 
-                Color(0xFF90CAF9), Color(0xFF64B5F6), "C3", "Surgelati"),
-            
-            // RIGA D - Casa e Pet
-            AisleBounds("D1", 100f, 630f, 300f, 120f, 
-                Color(0xFFBA68C8), Color(0xFFAB47BC), "D1", "Detersivi", Color.White),
-            AisleBounds("D2", 450f, 630f, 300f, 120f, 
-                Color(0xFF4DB6AC), Color(0xFF26A69A), "D2", "Igiene", Color.White),
-            AisleBounds("D3", 800f, 630f, 300f, 120f, 
-                Color(0xFFFF8A65), Color(0xFFFF7043), "D3", "Pet Care", Color.White)
-        )
-    }
-    
-    // Animation side-effects
-    LaunchedEffect(selectedAisle) {
-        // start dash animation when selection changes
-        if (selectedAisle != null) {
-            dashPhase = 0f
-        }
-    }
-    LaunchedEffect(Unit) {
-        while (true) {
-            dashPhase += 6f
+    // Animation side-effects (solo ripple)
+    // Avvia la coroutine solo quando ci sono ripples e riavviala quando cambia il numero di ripples.
+    // Questo evita di avere una coroutine in loop continuo che causa ricomposizioni costanti.
+    LaunchedEffect(ripples.size) {
+        while (ripples.isNotEmpty()) {
             ripples.removeAll { it.isFinished() }
             delay(16) // ~60fps
         }
@@ -126,13 +138,14 @@ fun StoreMapCanvas(
         modifier = modifier
             .fillMaxSize()
             .pointerInput(Unit) {
-                // Combined gesture detection: tap + transform
-                detectTransformGestures { centroid, pan, zoom, _ ->
+                // Combined gesture detection: transform gestures handled first
+                detectTransformGestures { _, pan, zoom, _ ->
                     scale = (scale * zoom).coerceIn(0.6f, 2.5f)
                     translation += pan
                 }
             }
-            .pointerInput(selectedAisle) {
+            .pointerInput(Unit) {
+                // Tap detection after transform to reduce conflicts
                 detectTapGestures(
                     onDoubleTap = {
                         // reset view on double tap
@@ -140,88 +153,136 @@ fun StoreMapCanvas(
                         translation = Offset.Zero
                     },
                     onTap = { tapOffset ->
-                        lastTapPosition = tapOffset
-                        // Convert tap into world coords (before scaling/panning)
-                        val scaleX = size.width / 1200f
-                        val scaleY = size.height / 900f
-                        val world = (tapOffset - translation) / scale
-                        val scaledOffset = Offset(world.x / scaleX, world.y / scaleY)
-                        val tappedAisle = aisles.find { it.contains(scaledOffset) }
-                        if (tappedAisle != null) {
-                            selectedAisle = tappedAisle.id
-                            onAisleClick(tappedAisle.id)
-                        }
-                        // Add ripple on any tap
+                        // Add ripple on any tap (visual feedback)
                         ripples.add(Ripple(center = tapOffset))
-                    }
+
+                        // Try to resolve hit immediately using the latest image geometry
+                        val imgW = currentImgWidth
+                        val imgH = currentImgHeight
+                        val imgOX = currentImgOffsetX
+                        val imgOY = currentImgOffsetY
+                        if (imgW > 0f && imgH > 0f) {
+                             val scaleXLocal = imgW / baseWidth
+                             val scaleYLocal = imgH / baseHeight
+
+                            // Convert screen tap to IMAGE coordinates (inverse transform)
+                            val imgPoint = Offset(
+                                x = (tapOffset.x - imgOX - translation.x) / (scale * scaleXLocal),
+                                y = (tapOffset.y - imgOY - translation.y) / (scale * scaleYLocal)
+                            )
+
+                            // Precise hit test in IMAGE space using polygon.containsPoint
+                            var tapped = polygons.asReversed().firstOrNull { p ->
+                                p.containsPoint(imgPoint)
+                            }
+
+                            // Screen-space fallback using transformed vertices (more robust for slight mismatches)
+                            if (tapped == null) {
+                                tapped = polygons.asReversed().firstOrNull { p ->
+                                    isPointInPolygonScreen(
+                                        tap = tapOffset,
+                                        polygon = p,
+                                        scale = scale,
+                                        translation = translation,
+                                        imgOffsetX = imgOX,
+                                        imgOffsetY = imgOY,
+                                        scaleX = scaleXLocal,
+                                        scaleY = scaleYLocal
+                                    )
+                                }
+                            }
+
+                            // Fallback: nearest centroid in screen space (robusto se polygons slightly mismatch)
+                            if (tapped == null) {
+                                val thresholdPx = 60f // screen pixels
+                                var best: ShelfPolygon? = null
+                                var bestDist = Float.MAX_VALUE
+                                polygons.forEach { p ->
+                                    val c = Offset(
+                                        p.centroid().x * scaleXLocal * scale + translation.x + imgOX,
+                                        p.centroid().y * scaleYLocal * scale + translation.y + imgOY
+                                    )
+                                    val dx = c.x - tapOffset.x
+                                    val dy = c.y - tapOffset.y
+                                    val d2 = dx * dx + dy * dy
+                                    if (d2 < bestDist) {
+                                        bestDist = d2
+                                        best = p
+                                    }
+                                }
+                                if (best != null && bestDist <= thresholdPx * thresholdPx) tapped = best
+                            }
+
+                            Log.d("StoreMap", "pointer tap raw=$tapOffset img=$imgPoint tapped=${tapped?.id}")
+                            tapped?.let { onAisleClick(it.id) }
+                        } else {
+                            // If geometry not yet available, do nothing (unlikely)
+                        }
+                     }
                 )
             }
     ) {
-        val scaleX = size.width / 1200f
-        val scaleY = size.height / 900f
-        
-        // Gradient background
-        drawRect(
-            brush = Brush.verticalGradient(
-                listOf(Color(0xFFE3F2FD), Color(0xFFF5F5F5))
+        // Calcola dimensioni e posizione effettiva dell'immagine (con aspect ratio)
+        val canvasAspect = size.width / size.height
+
+        val imgWidth: Float
+        val imgHeight: Float
+        val imgOffsetX: Float
+        val imgOffsetY: Float
+        if (canvasAspect > imgAspect) {
+            // Canvas più larga: adatta altezza
+            imgHeight = size.height
+            imgWidth = imgHeight * imgAspect
+            imgOffsetX = (size.width - imgWidth) / 2f
+            imgOffsetY = 0f
+        } else {
+            // Canvas più alta: adatta larghezza
+            imgWidth = size.width
+            imgHeight = imgWidth / imgAspect
+            imgOffsetX = 0f
+            imgOffsetY = (size.height - imgHeight) / 2f
+        }
+
+        // Scale factors basati sull'immagine effettivamente mostrata
+        val scaleX = imgWidth / baseWidth
+        val scaleY = imgHeight / baseHeight
+
+        // Salva l'ultima geometria dell'immagine per l'uso dal pointerInput
+        currentImgWidth = imgWidth
+        currentImgHeight = imgHeight
+        currentImgOffsetX = imgOffsetX
+        currentImgOffsetY = imgOffsetY
+
+        // Sfondo: immagine mappa se disponibile, altrimenti gradient
+        if (background != null) {
+            drawImage(
+                image = background,
+                dstOffset = IntOffset(imgOffsetX.toInt(), imgOffsetY.toInt()),
+                dstSize = IntSize(imgWidth.toInt(), imgHeight.toInt())
             )
-        )
-        
-        // Titolo
-        drawText(
-            textMeasurer = textMeasurer,
-            text = "Mappa Supermercato",
-            topLeft = Offset((600f - 120f) * scaleX, 40f * scaleY),
-            style = TextStyle(
-                fontSize = (28 * scaleY).sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF333333)
-            )
-        )
-        
-        // Apply pan & zoom with drawContext transform (manual)
-        withTransform({
-            translate(translation.x, translation.y)
-            scale(scale, scale)
-        }) {
-            // Ingresso (moves with map)
-            drawRoundRect(
-                color = Color(0xFF4CAF50),
-                topLeft = Offset(500f * scaleX, 70f * scaleY),
-                size = Size(200f * scaleX, 40f * scaleY),
-                cornerRadius = CornerRadius(5f * scaleX, 5f * scaleY)
-            )
-            drawRoundRect(
-                color = Color(0xFF2E7D32),
-                topLeft = Offset(500f * scaleX, 70f * scaleY),
-                size = Size(200f * scaleX, 40f * scaleY),
-                cornerRadius = CornerRadius(5f * scaleX, 5f * scaleY),
-                style = Stroke(width = 2f * scaleX)
-            )
-            drawText(
-                textMeasurer = textMeasurer,
-                text = "INGRESSO",
-                topLeft = Offset(560f * scaleX, 82f * scaleY),
-                style = TextStyle(
-                    fontSize = (16 * scaleY).sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+        } else {
+            drawRect(
+                brush = Brush.verticalGradient(
+                    listOf(Color(0xFFE3F2FD), Color(0xFFF5F5F5))
                 )
             )
-            // Draw optional path from entrance to selected aisle
-            selectedAisle?.let { selId ->
-                aisles.find { it.id == selId }?.let { target ->
-                    drawPathToAisle(target, scaleX, scaleY, dashPhase)
-                }
-            }
-            // Corsie
-            aisles.forEach { aisle ->
-                drawAisle(
-                    aisle = aisle,
-                    isSelected = aisle.id == selectedAisle,
+        }
+        
+        // Apply pan & zoom with drawContext transform (manual)
+        // Important: apply SCALE first then TRANSLATE so translation is not scaled.
+        // This ensures the forward mapping is: screen = imgOffset + translation + scale * content
+        withTransform({
+            scale(scale, scale)
+            translate(translation.x + imgOffsetX, translation.y + imgOffsetY)
+        }) {
+            // Scaffali (poligoni) - disegnare anche il numero di zona
+            polygons.forEachIndexed { index, poly ->
+                drawPolygonShelf(
+                    polygon = poly,
+                    isSelected = poly.id == selectedAisle,
                     scaleX = scaleX,
                     scaleY = scaleY,
-                    textMeasurer = textMeasurer
+                    number = index + 1
                 )
             }
         }
@@ -239,130 +300,73 @@ fun StoreMapCanvas(
             )
         }
         
-        // Casse
-        drawRoundRect(
-            color = Color(0xFF757575),
-            topLeft = Offset(400f * scaleX, 800f * scaleY),
-            size = Size(400f * scaleX, 60f * scaleY),
-            cornerRadius = CornerRadius(5f * scaleX, 5f * scaleY)
-        )
-        drawRoundRect(
-            color = Color(0xFF616161),
-            topLeft = Offset(400f * scaleX, 800f * scaleY),
-            size = Size(400f * scaleX, 60f * scaleY),
-            cornerRadius = CornerRadius(5f * scaleX, 5f * scaleY),
-            style = Stroke(width = 2f * scaleX)
-        )
-        drawText(
-            textMeasurer = textMeasurer,
-            text = "CASSE",
-            topLeft = Offset(570f * scaleX, 820f * scaleY),
-            style = TextStyle(
-                fontSize = (18 * scaleY).sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-        )
+        // Elementi extra (es. casse) rimossi finché non mappati sull'immagine
     }
 }
 
-private fun DrawScope.drawAisle(
-    aisle: AisleBounds,
+private fun DrawScope.drawPolygonShelf(
+    polygon: ShelfPolygon,
     isSelected: Boolean,
     scaleX: Float,
     scaleY: Float,
-    textMeasurer: androidx.compose.ui.text.TextMeasurer
+    number: Int
 ) {
-    val cornerRadius = CornerRadius(8f * scaleX, 8f * scaleY)
-    val topLeft = Offset(aisle.x * scaleX, aisle.y * scaleY)
-    val size = Size(aisle.width * scaleX, aisle.height * scaleY)
-    
-    // Base shadow
-    drawRoundRect(
-        color = Color.Black.copy(alpha = 0.10f),
-        topLeft = topLeft + Offset(6f * scaleX, 6f * scaleY),
-        size = size,
-        cornerRadius = cornerRadius
-    )
-    // Rettangolo principale con gradient
-    val fillBrush = if (isSelected) Brush.verticalGradient(
-        listOf(aisle.color.lighten(0.12f), aisle.color)
-    ) else Brush.verticalGradient(listOf(aisle.color, aisle.color.darken(0.08f)))
-    drawRoundRect(
-        brush = fillBrush,
-        topLeft = topLeft,
-        size = size,
-        cornerRadius = cornerRadius
-    )
-    
-    // Bordo pulsante se selezionato
-    val borderColor = if (isSelected) Color(0xFF1976D2) else aisle.strokeColor
-    val borderWidth = if (isSelected) 5f * scaleX else 2f * scaleX
-    drawRoundRect(
-        color = borderColor,
-        topLeft = topLeft,
-        size = size,
-        cornerRadius = cornerRadius,
-        style = Stroke(width = borderWidth)
-    )
-    
-    // Testo ID corsia
-    drawText(
-        textMeasurer = textMeasurer,
-        text = aisle.label,
-        topLeft = Offset(
-            (aisle.x + aisle.width / 2 - 15f) * scaleX,
-            (aisle.y + 30f) * scaleY
-        ),
-        style = TextStyle(
-            fontSize = (16 * scaleY).sp,
-            fontWeight = FontWeight.Bold,
-            color = aisle.textColor
-        )
-    )
-    
-    // Descrizione
-    drawText(
-        textMeasurer = textMeasurer,
-        text = aisle.description,
-        topLeft = Offset(
-            (aisle.x + aisle.width / 2 - aisle.description.length * 3f) * scaleX,
-            (aisle.y + 55f) * scaleY
-        ),
-        style = TextStyle(
-            fontSize = (12 * scaleY).sp,
-            color = aisle.textColor.copy(alpha = 0.85f)
-        )
-    )
-}
-
-// Animated path from entrance (center of ingresso rect) to target aisle center
-private fun DrawScope.drawPathToAisle(
-    target: AisleBounds,
-    scaleX: Float,
-    scaleY: Float,
-    dashPhase: Float
-) {
-    val ingressCenter = Offset((500f + 100f) * scaleX, (70f + 20f) * scaleY)
-    val aisleCenter = Offset((target.x + target.width / 2f) * scaleX, (target.y + target.height / 2f) * scaleY)
-    val path = Path().apply {
-        moveTo(ingressCenter.x, ingressCenter.y)
-        // Simple orthogonal path: vertical then horizontal
-        lineTo(ingressCenter.x, aisleCenter.y)
-        lineTo(aisleCenter.x, aisleCenter.y)
+    // Ombra semplice
+    val shadowPath = Path().apply {
+        polygon.points.forEachIndexed { index, p ->
+            val pt = Offset(p.x * scaleX + 6f * scaleX, p.y * scaleY + 6f * scaleY)
+            if (index == 0) moveTo(pt.x, pt.y) else lineTo(pt.x, pt.y)
+        }
+        close()
     }
-    val dashIntervals = floatArrayOf(18f, 14f)
     drawPath(
-        path = path,
-        color = Color(0xFF1976D2),
-        style = Stroke(width = 8f * scaleX, pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(dashIntervals, dashPhase))
+        path = shadowPath,
+        color = Color.Black.copy(alpha = 0.10f)
     )
-    // Glow overlay
-    drawPath(
-        path = path,
-        color = Color(0xFF1976D2).copy(alpha = 0.25f),
-        style = Stroke(width = 16f * scaleX, pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(dashIntervals, dashPhase + 10f))
+    // Riempimento
+    val path = Path().apply {
+        polygon.points.forEachIndexed { index, p ->
+            val pt = Offset(p.x * scaleX, p.y * scaleY)
+            if (index == 0) moveTo(pt.x, pt.y) else lineTo(pt.x, pt.y)
+        }
+        close()
+    }
+    val fillBrush = if (isSelected) Brush.verticalGradient(
+        listOf(polygon.fillColor.lighten(0.12f), polygon.fillColor)
+    ) else Brush.verticalGradient(listOf(polygon.fillColor, polygon.fillColor.darken(0.08f)))
+    drawPath(path = path, brush = fillBrush)
+    // Bordo
+    val borderColor = if (isSelected) Color(0xFF1976D2) else polygon.strokeColor
+    val borderWidth = if (isSelected) 5f * scaleX else 2f * scaleX
+    drawPath(path = path, color = borderColor, style = Stroke(width = borderWidth))
+    // Draw numeric badge at centroid (small circle with number)
+    val c = polygon.centroid()
+    val cx = c.x * scaleX
+    val cy = c.y * scaleY
+    val badgeRadius = 20f * ((scaleX + scaleY) / 2f)
+    drawCircle(
+        color = if (isSelected) Color(0xFF1976D2) else Color.White,
+        radius = badgeRadius,
+        center = Offset(cx, cy)
     )
+    drawCircle(
+        color = Color.Black.copy(alpha = 0.12f),
+        radius = badgeRadius,
+        center = Offset(cx, cy),
+        style = Stroke(width = 2f * ((scaleX + scaleY) / 2f))
+    )
+    // Number text: use native canvas via drawContext.canvas.nativeCanvas to avoid extension issues
+    val textSizePx = (14f * ((scaleX + scaleY) / 2f)).coerceIn(10f, 24f)
+    val paint = android.graphics.Paint().apply {
+        isAntiAlias = true
+        color = if (isSelected) android.graphics.Color.WHITE else android.graphics.Color.BLACK
+        textAlign = android.graphics.Paint.Align.CENTER
+        textSize = textSizePx
+        typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+    }
+    // vertically center text using paint metrics
+    val baseline = cy - (paint.descent() + paint.ascent()) / 2f
+    drawContext.canvas.nativeCanvas.drawText(number.toString(), cx, baseline, paint)
 }
 
 // Ripple model

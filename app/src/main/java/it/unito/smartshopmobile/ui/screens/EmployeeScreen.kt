@@ -28,20 +28,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
+    import androidx.lifecycle.viewmodel.compose.viewModel
 import it.unito.smartshopmobile.ui.components.StoreMapCanvas
 import it.unito.smartshopmobile.viewModel.AisleProduct
 import it.unito.smartshopmobile.viewModel.EmployeeViewModel
 import it.unito.smartshopmobile.viewModel.StoreAisle
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.draw.clip
 
 @Composable
 fun EmployeeScreen(
     modifier: Modifier = Modifier,
-    viewModel: EmployeeViewModel = EmployeeViewModel()
+    viewModel: EmployeeViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -71,11 +72,13 @@ fun EmployeeScreen(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(20.dp)
         ) {
+            val background = it.unito.smartshopmobile.ui.map.rememberAssetImage("map/supermarket_resized.png")
             StoreMapCanvas(
                 selectedAisleId = uiState.selectedAisleId,
                 onAisleClick = { aisleId ->
                     viewModel.selectAisle(aisleId)
                 },
+                background = background,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(8.dp)
@@ -186,4 +189,3 @@ private fun ProductChip(product: AisleProduct) {
         }
     }
 }
-
