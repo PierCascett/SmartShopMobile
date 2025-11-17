@@ -1,0 +1,54 @@
+package it.unito.smartshopmobile.data.repository
+
+import android.util.Log
+import it.unito.smartshopmobile.data.dao.OrderDao
+import it.unito.smartshopmobile.data.entity.CreateOrderRequest
+import it.unito.smartshopmobile.data.entity.OrderCreated
+import it.unito.smartshopmobile.data.entity.OrderWithLines
+import it.unito.smartshopmobile.data.remote.SmartShopApiService
+import kotlinx.coroutines.flow.Flow
+
+class OrderRepository(
+    private val apiService: SmartShopApiService,
+    private val orderDao: OrderDao
+) {
+    fun observeOrders(): Flow<List<OrderWithLines>> = orderDao.getOrdersWithLines()
+
+    suspend fun createOrder(request: CreateOrderRequest): Result<OrderCreated> {
+        return try {
+            val response = apiService.createOrder(request)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("Errore creazione ordine (${response.code()})"))
+            }
+        } catch (e: Exception) {
+            Log.e("OrderRepository", "Errore create order", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun refreshOrders(): Result<Unit> {
+        return try {
+            val response = apiService.getOrders()
+            if (response.isSuccessful && response.body() != null) {
+                val orders = response.body()!!
+                // separo righe
+                val lines = orders.flatMap { order ->
+                    order.righe.map { it.copy(idOrdine = order.idOrdine) }
+                }
+                // pulizia + insert
+                orderDao.deleteAllLines()
+                orderDao.deleteAllOrders()
+                orderDao.insertOrders(orders.map { it.copy(righe = emptyList()) })
+                orderDao.insertLines(lines)
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Errore nel recupero ordini (${response.code()})"))
+            }
+        } catch (e: Exception) {
+            Log.e("OrderRepository", "Errore fetch ordini", e)
+            Result.failure(e)
+        }
+    }
+}
