@@ -16,7 +16,8 @@ interface ProductDao {
     @Query("SELECT * FROM prodotti_catalogo WHERE categoria_id = :categoryId")
     fun getProductsByCategory(categoryId: String): Flow<List<Product>>
 
-    @Query("SELECT * FROM prodotti_catalogo WHERE id = :id")
+    // id prodotto non è unico (stesso prodotto in più scaffali): restituiamo una riga qualsiasi
+    @Query("SELECT * FROM prodotti_catalogo WHERE id = :id LIMIT 1")
     suspend fun getProductById(id: String): Product?
 
     @Query("SELECT * FROM prodotti_catalogo WHERE nome LIKE '%' || :query || '%' OR marca LIKE '%' || :query || '%'")
@@ -28,4 +29,3 @@ interface ProductDao {
     @Query("DELETE FROM prodotti_catalogo")
     suspend fun deleteAll()
 }
-

@@ -16,10 +16,18 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["categoria_id"])]
+    indices = [
+        Index(value = ["categoria_id"]),
+        Index(value = ["id"]) // indice su productId per ricerche veloci
+    ]
 )
 data class Product(
+    // Chiave primaria: riga di catalogo (univoca per posizione/scaffale)
     @PrimaryKey
+    @ColumnInfo(name = "catalog_id")
+    val catalogId: Int,
+
+    // ID prodotto logico (può ripetersi su più righe catalogo)
     @ColumnInfo(name = "id")
     val id: String,
 
@@ -32,19 +40,37 @@ data class Product(
     @ColumnInfo(name = "categoria_id")
     val categoryId: String,
 
+    @ColumnInfo(name = "categoria_nome")
+    val categoryName: String? = null,
+
+    @ColumnInfo(name = "categoria_descrizione")
+    val categoryDescription: String? = null,
+
+    @ColumnInfo(name = "catalog_quantity")
+    val catalogQuantity: Int = 0,
+
+    @ColumnInfo(name = "warehouse_quantity")
+    val warehouseQuantity: Int = 0,
+
+    @ColumnInfo(name = "total_quantity")
+    val totalQuantity: Int = 0,
+
     @ColumnInfo(name = "prezzo")
-    val price: Float,
+    val price: Double,
 
     @ColumnInfo(name = "vecchio_prezzo")
-    val oldPrice: Float? = null,
+    val oldPrice: Double? = null,
 
     @ColumnInfo(name = "disponibilita")
     val availability: String,
 
     @ColumnInfo(name = "tag")
-    val tags: String? = null,
+    val tags: List<String>? = null,
 
     @ColumnInfo(name = "descrizione")
-    val description: String? = null
-)
+    val description: String? = null,
 
+    // id scaffale da catalogo (se disponibile nel payload)
+    @ColumnInfo(name = "id_scaffale")
+    val shelfId: Int? = null
+)

@@ -10,13 +10,15 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface CategoryDao {
 
-    @Query("SELECT * FROM categorie_catalogo ORDER BY ordine ASC")
+    @Query("SELECT * FROM categorie_catalogo ORDER BY nome ASC")
     fun getAllCategories(): Flow<List<Category>>
 
-    @Query("SELECT * FROM categorie_catalogo WHERE gruppo = 'macro' ORDER BY ordine ASC")
+    // Nel nuovo schema non ci sono macro/sotto categorie: ritorniamo tutte
+    @Query("SELECT * FROM categorie_catalogo ORDER BY nome ASC")
     fun getMacroCategories(): Flow<List<Category>>
 
-    @Query("SELECT * FROM categorie_catalogo WHERE parent_id = :parentId ORDER BY ordine ASC")
+    // Compat: al momento non esistono sottocategorie, uso il parametro per evitare warning KSP
+    @Query("SELECT * FROM categorie_catalogo WHERE 1 = 0 AND :parentId IS NOT NULL")
     fun getSubcategories(parentId: String): Flow<List<Category>>
 
     @Query("SELECT * FROM categorie_catalogo WHERE id = :id")

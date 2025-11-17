@@ -33,9 +33,14 @@ import com.google.gson.reflect.TypeToken
 import it.unito.smartshopmobile.data.database.SmartShopDatabase
 import it.unito.smartshopmobile.data.entity.Category
 import it.unito.smartshopmobile.data.entity.Product
+import it.unito.smartshopmobile.data.entity.User
+import it.unito.smartshopmobile.data.entity.CreateOrderRequest
+import it.unito.smartshopmobile.data.entity.OrderItemRequest
 import it.unito.smartshopmobile.data.remote.RetrofitInstance
 import it.unito.smartshopmobile.data.repository.CategoryRepository
 import it.unito.smartshopmobile.data.repository.ProductRepository
+import it.unito.smartshopmobile.data.repository.ShelfRepository
+import it.unito.smartshopmobile.data.repository.OrderRepository
 import it.unito.smartshopmobile.ui.screens.SideMenuSection
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -52,13 +57,29 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         database.categoryDao(),
         RetrofitInstance.api
     )
+    private val shelfRepository = ShelfRepository(
+        database.shelfDao(),
+        RetrofitInstance.api
+    )
+    private val orderRepository = OrderRepository(
+        RetrofitInstance.api,
+        database.orderDao()
+    )
 
     // UI State
     private val _uiState = MutableStateFlow(CatalogUiState())
     val uiState: StateFlow<CatalogUiState> = _uiState
 
+    private var started = false
+
     init {
         observeData()
+    }
+
+    /** Avvia la sincronizzazione da rete verso Room (una sola volta dopo login customer) */
+    fun startSyncIfNeeded() {
+        if (started) return
+        started = true
         refreshData()
     }
 
@@ -67,9 +88,10 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             combine(
                 productRepository.getAllProducts(),
-                categoryRepository.getAllCategories()
-            ) { products, categories ->
-                Pair(products, categories)
+                categoryRepository.getAllCategories(),
+                shelfRepository.getAll()
+            ) { products, categories, shelves ->
+                Triple(products, categories, shelves)
             }
                 .onStart { mutateState { it.copy(isLoading = true, errorMessage = null) } }
                 .catch { throwable ->
@@ -80,17 +102,42 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
                         )
                     }
                 }
-                .collect { (products, categories) ->
+                .collect { (products, categories, shelves) ->
+                    val mergedProducts = mergeProductsById(products)
                     mutateState {
                         it.copy(
-                            allProducts = products,
+                            allProducts = mergedProducts,
                             allCategories = categories,
+                            shelves = shelves,
                             isLoading = false,
                             errorMessage = null
                         )
                     }
                 }
         }
+    }
+
+    private fun mergeProductsById(products: List<Product>): List<Product> {
+        return products
+            .groupBy { it.id }
+            .map { (_, group) ->
+                val first = group.first()
+                val sumCatalog = group.sumOf { it.catalogQuantity }
+                val sumWarehouse = group.sumOf { it.warehouseQuantity }
+                val sumTotal = group.sumOf { it.totalQuantity }
+                first.copy(
+                    catalogQuantity = sumCatalog,
+                    warehouseQuantity = sumWarehouse,
+                    totalQuantity = sumTotal
+                )
+            }
+    }
+
+    fun setLoggedUser(user: User) = mutateState { it.copy(loggedUser = user) }
+
+    fun clearSession() {
+        started = false
+        mutateState { CatalogUiState() }
     }
 
     private fun refreshData() {
@@ -106,10 +153,20 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
                 .onFailure { error ->
                     mutateState { it.copy(errorMessage = "Errore sincronizzazione prodotti: ${error.message}") }
                 }
+
+            // Sincronizza scaffali
+            shelfRepository.refresh()
+                .onFailure { error ->
+                    mutateState { it.copy(errorMessage = "Errore sincronizzazione scaffali: ${error.message}") }
+                }
         }
     }
 
     fun retry() {
+        refreshData()
+    }
+
+    fun refreshCatalog() {
         refreshData()
     }
 
@@ -126,7 +183,7 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun onAvailabilityFilterChange(filter: AvailabilityFilter) = mutateState {
-        it.copy(availabilityFilter = filter)
+        it // availability filter disabilitato
     }
 
     fun onTagToggle(tag: String) = mutateState { state ->
@@ -141,11 +198,19 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun onAddToCart(productId: String) = mutateState { state ->
-        val updatedCart = state.cart.toMutableMap().apply {
-            val nextQuantity = getOrDefault(productId, 0) + 1
-            put(productId, nextQuantity)
+        val product = state.allProducts.firstOrNull { it.id == productId }
+            ?: return@mutateState state
+        val current = state.cart[productId] ?: 0
+        if (current >= product.catalogQuantity) {
+            return@mutateState state.copy(
+                toastMessage = "Disponibili solo ${product.catalogQuantity} pezzi di ${product.name}",
+                showToast = true
+            )
         }
-        state.copy(cart = updatedCart.toMap())
+        val updatedCart = state.cart.toMutableMap().apply {
+            put(productId, current + 1)
+        }
+        state.copy(cart = updatedCart.toMap(), showToast = false, toastMessage = null)
     }
 
     fun onDecreaseCartItem(productId: String) = mutateState { state ->
@@ -162,6 +227,8 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         state.copy(cart = updatedCart.toMap())
     }
 
+    fun consumeToast() = mutateState { it.copy(showToast = false, toastMessage = null) }
+
     private fun filterProducts(state: CatalogUiState): List<Product> {
         return state.allProducts
             .filter { product ->
@@ -169,15 +236,6 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
             }
             .filter { product ->
                 if (state.onlyOffers) product.oldPrice != null else true
-            }
-            .filter { product ->
-                when (state.availabilityFilter) {
-                    AvailabilityFilter.ALL -> true
-                    AvailabilityFilter.ONLY_AVAILABLE -> product.availability == "Disponibile"
-                    AvailabilityFilter.INCLUDING_LOW_STOCK ->
-                        product.availability == "Disponibile" ||
-                            product.availability == "Quasi esaurito"
-                }
             }
             .filter { product ->
                 val query = state.searchQuery.trim()
@@ -196,16 +254,7 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
             }
     }
 
-    private fun parseTagsFromJson(tagJson: String?): List<String> {
-        if (tagJson.isNullOrBlank()) return emptyList()
-        return try {
-            val gson = Gson()
-            val type = object : TypeToken<List<String>>() {}.type
-            gson.fromJson(tagJson, type) ?: emptyList()
-        } catch (e: Exception) {
-            emptyList()
-        }
-    }
+    private fun parseTagsFromJson(tags: List<String>?): List<String> = tags ?: emptyList()
 
     private fun mutateState(transform: (CatalogUiState) -> CatalogUiState) {
         _uiState.update { current ->
@@ -224,57 +273,19 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         val total = cartItems.sumOf { (it.product.price * it.quantity).toDouble() }
         val count = cartItems.sumOf { it.quantity }
 
-        // Converte le categorie del DB in SideMenuSection
-        // Le macro-categorie hanno parent_id = null (o "null" come stringa)
-        // Le sottocategorie hanno parent_id = <id_macro>
-        val macroCategories = state.allCategories
-            .filter { it.parentId == null || it.parentId == "null" }
-            .sortedBy { it.ordine }
-
-        // DEBUG: log delle categorie
-        android.util.Log.d("CatalogVM", "Total categories: ${state.allCategories.size}")
-        android.util.Log.d("CatalogVM", "Macro categories: ${macroCategories.size}")
-
-        // DEBUG: mostra TUTTE le categorie con parent_id
-        state.allCategories.forEach { cat ->
-            android.util.Log.d("CatalogVM", "Cat: id='${cat.id}', title='${cat.titolo}', gruppo='${cat.gruppo}', parent_id='${cat.parentId}'")
-        }
-
-        val menuSections = macroCategories.map { macro ->
-            android.util.Log.d("CatalogVM", "=== Cercando sottocategorie per macro.id='${macro.id}' (titolo='${macro.titolo}') ===")
-            android.util.Log.d("CatalogVM", "macro.id type: ${macro.id::class.java.name}, length: ${macro.id.length}")
-
-            // Trova tutte le sottocategorie di questa macro-categoria
-            val subcategories = state.allCategories
-                .filter {
-                    // Trim degli ID per evitare problemi con spazi bianchi
-                    val parentIdTrimmed = it.parentId?.trim()
-                    val macroIdTrimmed = macro.id.trim()
-                    val match = parentIdTrimmed == macroIdTrimmed
-                    if (it.parentId != null) {
-                        android.util.Log.d("CatalogVM", "  Confronto: parentId='${it.parentId}' (trimmed='$parentIdTrimmed', len=${it.parentId.length}) == macro.id='${macro.id}' (trimmed='$macroIdTrimmed', len=${macro.id.length}) ? $match (titolo='${it.titolo}')")
-                    }
-                    match
-                }
-                .sortedBy { it.ordine }
-                .map { it.titolo }
-
-            android.util.Log.d("CatalogVM", "Macro: ${macro.id} (${macro.titolo}) -> ${subcategories.size} sottocategorie")
-            subcategories.forEachIndexed { i, sub ->
-                android.util.Log.d("CatalogVM", "  [$i] $sub")
-            }
-
+        val menuSections = listOf(
             SideMenuSection(
-                id = macro.id,
-                title = macro.titolo,  // Es: "Carne e Pesce", "Frutta e Verdura"
-                entries = subcategories  // Es: ["Pollo e Tacchino", "Manzo e Vitello", ...]
+                id = "categories",
+                title = "Categorie",
+                entries = state.allCategories
+                    .sortedBy { it.nome }
+                    .map { it.nome }
             )
-        }
+        )
 
         // Estrae tutti i tag unici dai prodotti visibili
         val allAvailableTags = visibleProducts
-            .mapNotNull { it.tags }
-            .flatMap { parseTagsFromJson(it) }
+            .flatMap { parseTagsFromJson(it.tags) }
             .distinct()
             .sorted()
 
@@ -287,11 +298,56 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
             allAvailableTags = allAvailableTags
         )
     }
+
+    fun submitOrder() {
+        val snapshot = _uiState.value
+        val user = snapshot.loggedUser
+        if (user == null) {
+            mutateState { it.copy(orderError = "Sessione utente non disponibile") }
+            return
+        }
+        if (snapshot.cart.isEmpty()) {
+            mutateState { it.copy(orderError = "Il carrello è vuoto") }
+            return
+        }
+        val items = snapshot.cart.map { (productId, qty) ->
+            OrderItemRequest(idProdotto = productId, quantita = qty)
+        }
+        viewModelScope.launch {
+            mutateState { it.copy(isSubmittingOrder = true, orderError = null, lastOrderId = null) }
+            val result = orderRepository.createOrder(
+                CreateOrderRequest(
+                    idUtente = user.id,
+                    items = items
+                )
+            )
+            result.onSuccess { created ->
+                // aggiorna ordini per i dipendenti/local cache
+                orderRepository.refreshOrders()
+                // aggiorna catalogo e scaffali per riflettere quantità scalate
+                refreshData()
+                mutateState {
+                    recomputeDerivedState(
+                        it.copy(
+                            cart = emptyMap(),
+                            isSubmittingOrder = false,
+                            orderError = null,
+                            lastOrderId = created.idOrdine
+                        )
+                    )
+                }
+            }.onFailure { error ->
+                mutateState { it.copy(isSubmittingOrder = false, orderError = error.message) }
+            }
+        }
+    }
 }
 
 data class CatalogUiState(
     val allProducts: List<Product> = emptyList(),
     val allCategories: List<Category> = emptyList(),
+    val shelves: List<it.unito.smartshopmobile.data.entity.Shelf> = emptyList(),
+    val loggedUser: User? = null,
     val visibleProducts: List<Product> = emptyList(),
     val sideMenuSections: List<SideMenuSection> = emptyList(), // <-- categorie per menu laterale
     val allAvailableTags: List<String> = emptyList(), // <-- tutti i tag unici disponibili
@@ -302,6 +358,11 @@ data class CatalogUiState(
     val availabilityFilter: AvailabilityFilter = AvailabilityFilter.ALL,
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
+    val isSubmittingOrder: Boolean = false,
+    val orderError: String? = null,
+    val lastOrderId: Int? = null,
+    val showToast: Boolean = false,
+    val toastMessage: String? = null,
     val cart: Map<String, Int> = emptyMap(),
     val cartItems: List<CartItemUi> = emptyList(),
     val cartItemsCount: Int = 0,

@@ -50,6 +50,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -72,7 +73,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -82,17 +83,15 @@ import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -108,7 +107,8 @@ import it.unito.smartshopmobile.viewModel.CatalogUiState
 // Extension properties per Product entity
 val Product.isFavorite: Boolean get() = false // TODO: implementare logica favorites
 val Product.isInCart: Boolean get() = false // TODO: implementare da state
-val Product.tagsList: List<String> get() = tags?.split(",")?.map { it.trim() } ?: emptyList()
+val Product.tagsList: List<String> get() = tags ?: emptyList()
+val Product.isOutOfStock: Boolean get() = catalogQuantity <= 0
 
 /**
  * Schermata MVVM del catalogo cliente con tre colonne principali:
@@ -123,6 +123,7 @@ fun CatalogScreen(
     onSearchQueryChange: (String) -> Unit = {},
     onMenuClick: () -> Unit = {},
     onCartClick: () -> Unit = {},
+    onRefresh: () -> Unit = {},
     onToggleOffers: () -> Unit = {},
     onAvailabilityFilterChange: (AvailabilityFilter) -> Unit = {},
     onTagToggle: (String) -> Unit = {},
@@ -147,7 +148,8 @@ fun CatalogScreen(
             TopActionRow(
                 cartItemsCount = state.cartItemsCount,
                 onMenuClick = onMenuClick,
-                onCartClick = onCartClick
+                onCartClick = onCartClick,
+                onRefresh = onRefresh
             )
             //Spacer(modifier = Modifier.height(12.dp))
             // CategorySection removed (categories already available via chips)
@@ -186,6 +188,7 @@ private fun CatalogContent(
     onDecreaseCartItem: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val listState = rememberLazyListState()
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
@@ -206,7 +209,8 @@ private fun CatalogContent(
                 cartQuantities = cartQuantities,
                 onBookmark = onBookmark,
                 onAddToCart = onAddToCart,
-                onDecreaseFromCart = onDecreaseCartItem
+                onDecreaseFromCart = onDecreaseCartItem,
+                listState = listState
             )
         }
     }
@@ -239,12 +243,13 @@ private fun ProductCard(
                     modifier = Modifier.size(72.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
-                AvailabilityBadge(
-                    product.availability,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp)
-                )
+                if (product.isOutOfStock) {
+                    AvailabilityBadge(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(12.dp))
             Text(
@@ -328,13 +333,13 @@ private fun PriceRow(product: Product) {
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            text = formatPrice(product.price.toDouble()),
+            text = formatPrice(product.price),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
         product.oldPrice?.let {
             Text(
-                text = formatPrice(it.toDouble()),
+                text = formatPrice(it),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Normal
@@ -357,22 +362,13 @@ private fun PriceRow(product: Product) {
 }
 
 @Composable
-private fun AvailabilityBadge(
-    availability: String,
-    modifier: Modifier = Modifier
-) {
-    val (label, color) = when (availability.lowercase()) {
-        "disponibile", "available" -> "Disponibile" to MaterialTheme.colorScheme.primary
-        "quasi finito", "running_low", "low" -> "Quasi finito" to MaterialTheme.colorScheme.tertiary
-        "non disponibile", "out_of_stock", "out" -> "Non disponibile" to MaterialTheme.colorScheme.error
-        else -> availability to MaterialTheme.colorScheme.onSurface
-    }
+private fun AvailabilityBadge(modifier: Modifier = Modifier) {
     Badge(
         modifier = modifier,
-        containerColor = color,
+        containerColor = MaterialTheme.colorScheme.error,
         contentColor = Color.White
     ) {
-        Text(label, style = MaterialTheme.typography.labelSmall)
+        Text("Non disponibile", style = MaterialTheme.typography.labelSmall)
     }
 }
 
@@ -381,9 +377,13 @@ private fun CartPanel(
     cartItems: List<CartItemUi>,
     cartItemsCount: Int,
     total: Double,
+    isSubmittingOrder: Boolean,
+    orderError: String?,
+    lastOrderId: Int?,
     onIncrease: (String) -> Unit,
     onDecrease: (String) -> Unit,
     onRemove: (String) -> Unit,
+    onSubmitOrder: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isDark = isSystemInDarkTheme()
@@ -406,7 +406,7 @@ private fun CartPanel(
                     Text("$cartItemsCount articoli", style = MaterialTheme.typography.bodySmall)
                 }
             }
-            Divider(modifier = Modifier.padding(vertical = 12.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
             if (cartItems.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -428,7 +428,7 @@ private fun CartPanel(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
-                    items(cartItems, key = { it.product.id }) { item ->
+                    items(cartItems, key = { it.product.catalogId }) { item ->
                         CartItemRow(
                             item = item,
                             onIncrease = { onIncrease(item.product.id) },
@@ -439,7 +439,7 @@ private fun CartPanel(
                 }
             }
 
-            Divider()
+            HorizontalDivider()
             Spacer(modifier = Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -450,13 +450,26 @@ private fun CartPanel(
                 Text(formatPrice(total), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(12.dp))
+            orderError?.let {
+                Text(it, color = MaterialTheme.colorScheme.error)
+            }
+            lastOrderId?.let {
+                Text("Ordine #$it inviato", color = MaterialTheme.colorScheme.primary)
+            }
             Button(
-                onClick = { /* CTA da collegare in futuro */ },
-                enabled = cartItems.isNotEmpty(),
+                onClick = onSubmitOrder,
+                enabled = cartItems.isNotEmpty() && !isSubmittingOrder,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Procedi all'ordine")
+                if (isSubmittingOrder) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                Text(if (isSubmittingOrder) "Invio..." else "Procedi all'ordine")
             }
         }
     }
@@ -497,7 +510,7 @@ private fun CartItemRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = formatPrice(item.product.price.toDouble()),
+                    text = formatPrice(item.product.price),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -563,13 +576,15 @@ private fun CatalogList(
     cartQuantities: Map<String, Int>,
     onBookmark: (String) -> Unit,
     onAddToCart: (String) -> Unit,
-    onDecreaseFromCart: (String) -> Unit
+    onDecreaseFromCart: (String) -> Unit,
+    listState: LazyListState
 ) {
     LazyColumn(
+        state = listState,
         contentPadding = PaddingValues(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(products, key = { it.id }) { product ->
+        items(products, key = { it.catalogId }) { product ->
             val quantity = cartQuantities[product.id] ?: 0
             ProductCard(
                 product = product,
@@ -603,21 +618,6 @@ private fun FilterRow(
                 colors = AssistChipDefaults.assistChipColors(
                     containerColor = if (onlyOffers) MaterialTheme.colorScheme.secondaryContainer
                     else MaterialTheme.colorScheme.surface
-                )
-            )
-        }
-        items(AvailabilityFilter.entries) { filter ->
-            SuggestionChip(
-                onClick = { onAvailabilityFilterChange(filter) },
-                label = { Text(filter.label) },
-                icon = {
-                    if (filter == availabilityFilter) {
-                        Icon(Icons.Filled.Check, contentDescription = null)
-                    }
-                },
-                colors = SuggestionChipDefaults.suggestionChipColors(
-                    containerColor = if (filter == availabilityFilter)
-                        MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
                 )
             )
         }
@@ -666,17 +666,23 @@ private fun CatalogHeader(
 private fun TopActionRow(
     cartItemsCount: Int,
     onMenuClick: () -> Unit,
-    onCartClick: () -> Unit
+    onCartClick: () -> Unit,
+    onRefresh: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        TextButton(onClick = onMenuClick, shape = RoundedCornerShape(50)) {
-            Icon(Icons.Filled.Menu, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Categorie")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onMenuClick, shape = RoundedCornerShape(50)) {
+                Icon(Icons.Filled.Menu, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Categorie")
+            }
+            IconButton(onClick = onRefresh) {
+                Icon(Icons.Filled.Refresh, contentDescription = "Aggiorna catalogo")
+            }
         }
         CartActionButton(count = cartItemsCount, onClick = onCartClick)
     }
@@ -706,18 +712,26 @@ private fun CartOverlay(
     cartItems: List<CartItemUi>,
     cartItemsCount: Int,
     total: Double,
+    isSubmittingOrder: Boolean,
+    orderError: String?,
+    lastOrderId: Int?,
     onIncrease: (String) -> Unit,
     onDecrease: (String) -> Unit,
-    onRemove: (String) -> Unit
+    onRemove: (String) -> Unit,
+    onSubmitOrder: () -> Unit
 ) {
     OverlayContainer(onDismiss = onDismiss) {
         CartPanel(
             cartItems = cartItems,
             cartItemsCount = cartItemsCount,
             total = total,
+            isSubmittingOrder = isSubmittingOrder,
+            orderError = orderError,
+            lastOrderId = lastOrderId,
             onIncrease = onIncrease,
             onDecrease = onDecrease,
             onRemove = onRemove,
+            onSubmitOrder = onSubmitOrder,
             modifier = Modifier
                 .align(Alignment.Center) // centra sia orizz. che vert.
                 .padding(16.dp)
@@ -891,9 +905,13 @@ fun AppCartOverlay(
     cartItems: List<CartItemUi>,
     cartItemsCount: Int,
     total: Double,
+    isSubmittingOrder: Boolean,
+    orderError: String?,
+    lastOrderId: Int?,
     onIncrease: (String) -> Unit,
     onDecrease: (String) -> Unit,
-    onRemove: (String) -> Unit
+    onRemove: (String) -> Unit,
+    onSubmitOrder: () -> Unit
 ) {
     OverlayContainer(onDismiss = onDismiss) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -901,9 +919,13 @@ fun AppCartOverlay(
                 cartItems = cartItems,
                 cartItemsCount = cartItemsCount,
                 total = total,
+                isSubmittingOrder = isSubmittingOrder,
+                orderError = orderError,
+                lastOrderId = lastOrderId,
                 onIncrease = onIncrease,
                 onDecrease = onDecrease,
                 onRemove = onRemove,
+                onSubmitOrder = onSubmitOrder,
                 modifier = Modifier
                     .align(Alignment.Center)
                     .padding(16.dp)
@@ -925,7 +947,7 @@ private fun CatalogScreenPreview() {
         cart = mapOf(cartProduct.id to 2),
         cartItems = listOf(CartItemUi(cartProduct, 2)),
         cartItemsCount = 2,
-        cartTotal = cartProduct.price.toDouble() * 2
+        cartTotal = cartProduct.price * 2
     )
     SmartShopMobileTheme {
         CatalogScreen(state = sampleState)
@@ -935,31 +957,34 @@ private fun CatalogScreenPreview() {
 @Suppress("MagicNumber")
 private fun previewProducts(): List<Product> = listOf(
     Product(
+        catalogId = 1001,
         id = "prev-1",
         name = "Succo ACE",
         brand = "Freshly",
         categoryId = "drinks",
-        price = 2.59f,
-        oldPrice = 2.99f,
+        price = 2.59,
+        oldPrice = 2.99,
         availability = "disponibile",
-        tags = "Offerta"
+        tags = listOf("Offerta")
     ),
     Product(
+        catalogId = 1002,
         id = "prev-2",
         name = "Detersivo Piatti",
         brand = "CleanUp",
         categoryId = "cleaning",
-        price = 1.99f,
+        price = 1.99,
         availability = "quasi finito",
-        tags = "Formato max"
+        tags = listOf("Formato max")
     ),
     Product(
+        catalogId = 1003,
         id = "prev-3",
         name = "Pasta Integrale",
         brand = "GranDuro",
         categoryId = "pasta",
-        price = 1.29f,
+        price = 1.29,
         availability = "disponibile",
-        tags = "Dispensa"
+        tags = listOf("Dispensa")
     )
 )

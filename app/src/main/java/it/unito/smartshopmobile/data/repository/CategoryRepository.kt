@@ -43,5 +43,6 @@ class CategoryRepository(
             Result.failure(e)
         }
     }
-}
 
+    private fun Category.toEntity(): Category = this
+}

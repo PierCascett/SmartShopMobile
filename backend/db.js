@@ -5,7 +5,8 @@ require('dotenv').config();
 const pool = new Pool({
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 5432,
-    database: process.env.DB_NAME || 'SmartShopMobile',
+    // DB principale aggiornato al nuovo dump condiviso (SmartShopMobileV2)
+    database: process.env.DB_NAME || 'SmartShopMobileV2',
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || '12345',
     max: 20,

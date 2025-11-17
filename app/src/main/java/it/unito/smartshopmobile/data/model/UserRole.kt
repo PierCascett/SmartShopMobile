@@ -28,5 +28,14 @@ enum class UserRole(val title: String, val description: String) {
     MANAGER(
         title = "Responsabile",
         description = "Controlla magazzino e scaffali, invia richieste ai fornitori."
-    )
+    );
+
+    companion object {
+        fun fromDbRole(role: String?): UserRole? = when (role?.lowercase()) {
+            "cliente" -> CUSTOMER
+            "responsabile" -> MANAGER
+            "dipendente" -> EMPLOYEE
+            else -> null
+        }
+    }
 }

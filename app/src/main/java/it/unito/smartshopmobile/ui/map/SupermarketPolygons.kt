@@ -2,31 +2,20 @@ package it.unito.smartshopmobile.ui.map
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import it.unito.smartshopmobile.data.entity.MapPolygon
 
 /**
  * SupermarketPolygons.kt
  *
- * Definisce i poligoni degli scaffali del supermercato.
- * 
- * COORDINATE: Le coordinate (x, y) dei vertici sono espresse nei pixel dell'immagine
- * originale (supermarket.jpg). Quando l'immagine viene renderizzata, il sistema di
- * coordinate viene scalato automaticamente per adattarsi alla dimensione della canvas,
- * mantenendo la proporzione corretta tra immagine e poligoni.
- * 
- * SCALING: In StoreMapComposable:
- * - scaleX = canvasWidth / imageWidth
- * - scaleY = canvasHeight / imageHeight
- * - Ogni punto (x, y) viene trasformato in (x * scaleX, y * scaleY)
- * 
- * HIT DETECTION: Usa ray-casting algorithm per determinare se un punto tocca il poligono.
+ * Adatta il poligono dell'asset JSON alla UI (Offset) e gestisce hit detection.
  */
 
 // Modello per poligoni scaffali
 data class ShelfPolygon(
     val id: String,
     val points: List<Offset>,
-    val fillColor: Color = Color(0x66FF0000), // rosso semi-trasparente
-    val strokeColor: Color = Color(0xFFFF0000),
+    val fillColor: Color = Color(0x6632CD32), // verde trasparente
+    val strokeColor: Color = Color(0xFF2E8B57),
     val textColor: Color = Color.Black,
     val label: String? = null
 ) {
@@ -54,3 +43,9 @@ data class ShelfPolygon(
         return Offset(sx / n, sy / n)
     }
 }
+
+fun MapPolygon.toShelfPolygon(): ShelfPolygon =
+    ShelfPolygon(
+        id = id.toString(),
+        points = points.map { Offset(it.x, it.y) }
+    )

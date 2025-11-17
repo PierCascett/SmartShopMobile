@@ -79,8 +79,9 @@ router.post('/', async (req, res) => {
                 return res.status(400).json({ error: 'Ogni item deve avere idProdotto e quantita > 0' });
             }
 
+            // Recupera tutte le righe di catalogo per il prodotto e verifica stock aggregato
             const stockRes = await client.query(
-                `SELECT quantita_disponibile, prezzo 
+                `SELECT id_catalogo, quantita_disponibile, prezzo 
                  FROM catalogo 
                  WHERE id_prodotto = $1
                  FOR UPDATE`,
@@ -92,13 +93,15 @@ router.post('/', async (req, res) => {
                 return res.status(404).json({ error: `Prodotto ${idProdotto} non trovato in catalogo` });
             }
 
-            const { quantita_disponibile, prezzo } = stockRes.rows[0];
-            if (quantita_disponibile < quantita) {
+            const totalAvailable = stockRes.rows.reduce((sum, row) => sum + Number(row.quantita_disponibile), 0);
+            if (totalAvailable < quantita) {
                 await client.query('ROLLBACK');
                 return res.status(400).json({ error: `Stock insufficiente per ${idProdotto}` });
             }
 
-            const lineTotal = Number(prezzo) * quantita;
+            // Prezzo: assumiamo coerente tra righe, usiamo il primo
+            const prezzo = Number(stockRes.rows[0].prezzo);
+            const lineTotal = prezzo * quantita;
             total += lineTotal;
             orderLines.push({
                 idProdotto,
@@ -107,12 +110,21 @@ router.post('/', async (req, res) => {
                 prezzoTotale: lineTotal
             });
 
-            await client.query(
-                `UPDATE catalogo
-                 SET quantita_disponibile = quantita_disponibile - $2
-                 WHERE id_prodotto = $1`,
-                [idProdotto, quantita]
-            );
+            // Scarica quantita dalle righe catalogo in ordine fino a esaurimento richiesta
+            let remaining = quantita;
+            for (const row of stockRes.rows) {
+                if (remaining <= 0) break;
+                const take = Math.min(Number(row.quantita_disponibile), remaining);
+                if (take > 0) {
+                    await client.query(
+                        `UPDATE catalogo
+                         SET quantita_disponibile = quantita_disponibile - $2
+                         WHERE id_catalogo = $1`,
+                        [row.id_catalogo, take]
+                    );
+                    remaining -= take;
+                }
+            }
 
             await client.query(
                 `UPDATE magazzino

@@ -31,7 +31,6 @@ package it.unito.smartshopmobile.ui.screens
 import android.content.res.Configuration
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,12 +38,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
@@ -77,7 +73,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -91,6 +86,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import it.unito.smartshopmobile.R
 import it.unito.smartshopmobile.data.model.UserRole
+import it.unito.smartshopmobile.data.entity.User
 import it.unito.smartshopmobile.viewModel.LoginViewModel
 import kotlinx.coroutines.launch
 
@@ -98,15 +94,14 @@ import kotlinx.coroutines.launch
 @Composable
 fun LoginScreenMVVM(
     viewModel: LoginViewModel,
-    onLoginSuccess: (email: String, role: UserRole) -> Unit,
+    onLoginSuccess: (user: User, role: UserRole) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     // stato locale per la visibilità della password e per il ruolo scelto
     val passwordVisible = remember { mutableStateOf(false) }
-    var selectedRole by rememberSaveable { mutableStateOf(UserRole.CUSTOMER) }
+    var isRegister by rememberSaveable { mutableStateOf(false) }
 
     // mostro errorMessage del ViewModel
     LaunchedEffect(viewModel.errorMessage.value) {
@@ -116,10 +111,15 @@ fun LoginScreenMVVM(
         }
     }
 
-    // quando loginSuccessEmail cambia, notifico l'Activity
-    LaunchedEffect(viewModel.loginSuccessEmail.value) {
-        viewModel.loginSuccessEmail.value?.let { email ->
-            onLoginSuccess(email, selectedRole)
+    // quando loginSuccessUser cambia, notifico l'Activity con il ruolo reale
+    LaunchedEffect(viewModel.loginSuccessUser.value) {
+        viewModel.loginSuccessUser.value?.let { user ->
+            val role = when (user.ruolo.lowercase()) {
+                "responsabile" -> UserRole.MANAGER
+                "dipendente" -> UserRole.EMPLOYEE
+                else -> UserRole.CUSTOMER
+            }
+            onLoginSuccess(user, role)
             viewModel.clearLoginSuccess()
         }
     }
@@ -189,6 +189,56 @@ fun LoginScreenMVVM(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
+                    if (isRegister) {
+                        OutlinedTextField(
+                            value = viewModel.nome.value,
+                            onValueChange = { viewModel.nome.value = it },
+                            label = { Text("Nome") },
+                            singleLine = true,
+                            leadingIcon = { Icon(Icons.Filled.Email, contentDescription = "Nome") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                cursorColor = MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = viewModel.cognome.value,
+                            onValueChange = { viewModel.cognome.value = it },
+                            label = { Text("Cognome") },
+                            singleLine = true,
+                            leadingIcon = { Icon(Icons.Filled.Email, contentDescription = "Cognome") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                cursorColor = MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = viewModel.telefono.value,
+                            onValueChange = { viewModel.telefono.value = it },
+                            label = { Text("Telefono (opzionale)") },
+                            singleLine = true,
+                            leadingIcon = { Icon(Icons.Filled.Email, contentDescription = "Telefono") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                cursorColor = MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
                     // password (dal ViewModel) con toggle visibilità locale
                     OutlinedTextField(
                         value = viewModel.password.value,
@@ -216,12 +266,6 @@ fun LoginScreenMVVM(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // rendi scrollabile solo la selezione del ruolo
-                    RoleSelectorSection(
-                        selectedRole = selectedRole,
-                        onRoleSelected = { selectedRole = it }
-                    )
-
                     Spacer(modifier = Modifier.height(12.dp))
 
                     // loader o pulsante
@@ -229,19 +273,21 @@ fun LoginScreenMVVM(
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     } else {
                         Button(
-                            onClick = { viewModel.login() },
+                            onClick = {
+                                if (isRegister) viewModel.register() else viewModel.login()
+                            },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
-                            Text("Accedi come ${selectedRole.title.lowercase()}")
+                            Text(if (isRegister) "Registrati" else "Accedi")
                         }
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
 
                     // azioni secondarie
-                    TextButton(onClick = { scope.launch { snackbarHostState.showSnackbar("Funzionalità registrazione non implementata") } }) {
-                        Text("Registrati")
+                    TextButton(onClick = { isRegister = !isRegister }) {
+                        Text(if (isRegister) "Hai già un account? Accedi" else "Registrati")
                     }
                 }
             }
@@ -258,7 +304,6 @@ fun LoginScreen(
     val email = remember { mutableStateOf("") }
     val password = remember { mutableStateOf("") }
     val passwordVisible = remember { mutableStateOf(false) }
-    val selectedRole = rememberSaveable { mutableStateOf(UserRole.CUSTOMER) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -352,26 +397,18 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // rendi scrollabile solo la selezione del ruolo
-                    RoleSelectorSection(
-                        selectedRole = selectedRole.value,
-                        onRoleSelected = { selectedRole.value = it }
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
                     Button(
                         onClick = {
                             if (email.value.isBlank() || password.value.isBlank()) {
                                 scope.launch { snackbarHostState.showSnackbar("Inserisci email e password") }
                             } else {
-                                onLogin(email.value.trim(), password.value, selectedRole.value)
+                                onLogin(email.value.trim(), password.value, UserRole.CUSTOMER)
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
-                        Text("Accedi come ${selectedRole.value.title.lowercase()}")
+                        Text("Accedi")
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -397,70 +434,3 @@ fun LoginPreviewDark() {
     LoginScreen(onLogin = { _, _, _ -> })
 }
 
-@Composable
-private fun RoleSelectorSection(
-    selectedRole: UserRole,
-    onRoleSelected: (UserRole) -> Unit
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        // titolo fisso
-        Text(
-            text = "Seleziona il ruolo",
-            style = MaterialTheme.typography.titleSmall
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // calcolo dinamico dell'altezza massima in base all'altezza dello schermo
-        val configuration = LocalConfiguration.current
-        val screenHeightDp = configuration.screenHeightDp.dp
-        // vogliamo che le card occupino al massimo il 35% dello schermo o 160.dp
-        val calculatedMax = screenHeightDp * 0.35f
-        val maxRoleHeight = if (calculatedMax < 160.dp) calculatedMax else 160.dp
-
-        // lista scrollabile delle card (solo le card scorrono)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = maxRoleHeight)
-                .verticalScroll(rememberScrollState())
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                UserRole.entries.forEach { role ->
-                    RoleChoiceCard(
-                        role = role,
-                        isSelected = role == selectedRole,
-                        onClick = { onRoleSelected(role) }
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RoleChoiceCard(
-    role: UserRole,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    val containerColor =
-        if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
-    val contentColor =
-        if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(containerColor = containerColor)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(text = role.title, style = MaterialTheme.typography.bodyLarge, color = contentColor)
-            Text(
-                text = role.description,
-                style = MaterialTheme.typography.bodySmall,
-                color = contentColor.copy(alpha = 0.8f)
-            )
-        }
-    }
-}

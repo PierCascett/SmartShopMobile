@@ -31,7 +31,7 @@ class ProductRepository(
         return try {
             val response = apiService.getAllProducts()
             if (response.isSuccessful && response.body() != null) {
-                val products = response.body()!!
+                val products = response.body()!!.map { it.toEntity() }
                 productDao.deleteAll()
                 productDao.insertAll(products)
                 Result.success(Unit)
@@ -49,7 +49,7 @@ class ProductRepository(
         return try {
             val response = apiService.getProductsByCategory(categoryId)
             if (response.isSuccessful && response.body() != null) {
-                val products = response.body()!!
+                val products = response.body()!!.map { it.toEntity() }
                 productDao.insertAll(products)
                 Result.success(Unit)
             } else {
@@ -60,5 +60,6 @@ class ProductRepository(
             Result.failure(e)
         }
     }
-}
 
+    private fun Product.toEntity(): Product = this
+}

@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.delay
 import it.unito.smartshopmobile.ui.map.ShelfPolygon
 import it.unito.smartshopmobile.ui.map.rememberPolygonsFromJson
+import it.unito.smartshopmobile.ui.map.toShelfPolygon
 
 // Helper: point-in-polygon usando vertici trasformati nello spazio schermo
 private fun isPointInPolygonScreen(
@@ -107,7 +108,7 @@ fun StoreMapCanvas(
     var scale by remember { mutableStateOf(1f) }
     var translation by remember { mutableStateOf(Offset.Zero) }
     val ripples = remember { mutableStateListOf<Ripple>() }
-    val polygons = rememberPolygonsFromJson("map/supermarket.json")
+    val polygons = rememberPolygonsFromJson("map/supermarket.json").map { it.toShelfPolygon() }
     // Stato condiviso tra draw e pointerInput per consentire al pointerInput
     // di trasformare immediatamente i tap in coordinate immagine.
     var currentImgWidth by remember { mutableStateOf(0f) }
@@ -280,7 +281,7 @@ fun StoreMapCanvas(
                     isSelected = poly.id == selectedAisle,
                     scaleX = scaleX,
                     scaleY = scaleY,
-                    number = index + 1
+                    number = poly.id.toIntOrNull() ?: (index + 1)
                 )
             }
         }

@@ -11,17 +11,12 @@ data class Category(
     @ColumnInfo(name = "id")
     val id: String,
 
-    @ColumnInfo(name = "titolo")
-    val titolo: String,
+    @ColumnInfo(name = "nome")
+    val nome: String,
 
-    @ColumnInfo(name = "gruppo")
-    val gruppo: String,
+    @ColumnInfo(name = "descrizione")
+    val descrizione: String? = null,
 
-    @ColumnInfo(name = "ordine")
-    val ordine: Int = 0,
-
-    @SerializedName(value = "parentId", alternate = ["parent_id"])
-    @ColumnInfo(name = "parent_id")
-    val parentId: String? = null
+    @ColumnInfo(name = "prodotti_totali")
+    val prodottiTotali: Int = 0
 )
-

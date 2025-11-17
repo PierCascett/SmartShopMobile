@@ -39,27 +39,38 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalContext
 import it.unito.smartshopmobile.data.model.UserRole
+import it.unito.smartshopmobile.data.entity.User
 import it.unito.smartshopmobile.ui.screens.CatalogScreen
 import it.unito.smartshopmobile.ui.screens.LoginScreenMVVM
 import it.unito.smartshopmobile.ui.screens.LoginScreen
@@ -86,18 +97,34 @@ class MainActivity : ComponentActivity() {
                 var showMenu by rememberSaveable { mutableStateOf(false) }
                 var showCart by rememberSaveable { mutableStateOf(false) }
                 val catalogState by catalogViewModel.uiState.collectAsState()
+                val sessionUser by loginViewModel.sessionUser.collectAsState(initial = null)
+                var sessionRestored by rememberSaveable { mutableStateOf(false) }
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                         val contentModifier = Modifier.padding(innerPadding)
                         if (loggedUser == null) {
+                            if (!sessionRestored && sessionUser != null) {
+                                sessionRestored = true
+                                val saved = sessionUser!!
+                                catalogViewModel.setLoggedUser(saved)
+                                loggedUser = saved.email
+                                selectedRole = UserRole.fromDbRole(saved.ruolo)
+                                if (selectedRole == UserRole.CUSTOMER) {
+                                    catalogViewModel.startSyncIfNeeded()
+                                }
+                            }
                             LoginScreenMVVM(
                                 viewModel = loginViewModel,
                                 modifier = contentModifier,
-                                onLoginSuccess = { email, role ->
-                                    loggedUser = email
+                                onLoginSuccess = { user, role ->
+                                    catalogViewModel.setLoggedUser(user)
+                                    loggedUser = user.email
                                     selectedRole = role
-                                    Toast.makeText(this@MainActivity, "Accesso: $email", Toast.LENGTH_SHORT).show()
+                                    if (role == UserRole.CUSTOMER) {
+                                        catalogViewModel.startSyncIfNeeded()
+                                    }
+                                    Toast.makeText(this@MainActivity, "Accesso: ${user.email}", Toast.LENGTH_SHORT).show()
                                 }
                             )
                         } else {
@@ -108,6 +135,8 @@ class MainActivity : ComponentActivity() {
                                 onLogout = {
                                     loggedUser = null
                                     selectedRole = null
+                                    catalogViewModel.clearSession()
+                                    loginViewModel.clearSession()
                                 },
                                 catalogState = catalogState,
                                 catalogViewModel = catalogViewModel,
@@ -134,9 +163,13 @@ class MainActivity : ComponentActivity() {
                             cartItems = catalogState.cartItems,
                             cartItemsCount = catalogState.cartItemsCount,
                             total = catalogState.cartTotal,
+                            isSubmittingOrder = catalogState.isSubmittingOrder,
+                            orderError = catalogState.orderError,
+                            lastOrderId = catalogState.lastOrderId,
                             onIncrease = { id -> catalogViewModel.onAddToCart(id) },
                             onDecrease = { id -> catalogViewModel.onDecreaseCartItem(id) },
-                            onRemove = { id -> catalogViewModel.onRemoveFromCart(id) }
+                            onRemove = { id -> catalogViewModel.onRemoveFromCart(id) },
+                            onSubmitOrder = { catalogViewModel.submitOrder() }
                         )
                     }
                 }
@@ -156,12 +189,17 @@ private fun ContentWithSessionBar(
     onMenuClick: () -> Unit,
     onCartClick: () -> Unit
 ) {
+    val context = LocalContext.current
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        SessionBar(email = email, onLogout = onLogout)
+        SessionBar(
+            email = email,
+            onLogout = onLogout
+        )
         Spacer(modifier = Modifier.height(8.dp))
         Box(modifier = Modifier.fillMaxSize()) {
             when (role) {
@@ -171,6 +209,7 @@ private fun ContentWithSessionBar(
                     onMenuClick = onMenuClick,
                     onCartClick = onCartClick,
                     onSearchQueryChange = catalogViewModel::onSearchQueryChange,
+                    onRefresh = catalogViewModel::refreshCatalog,
                     onToggleOffers = catalogViewModel::onOnlyOffersToggle,
                     onAvailabilityFilterChange = catalogViewModel::onAvailabilityFilterChange,
                     onTagToggle = catalogViewModel::onTagToggle,
@@ -178,7 +217,14 @@ private fun ContentWithSessionBar(
                     onAddToCart = catalogViewModel::onAddToCart,
                     onDecreaseCartItem = catalogViewModel::onDecreaseCartItem,
                     onRemoveFromCart = catalogViewModel::onRemoveFromCart
-                )
+                ).also {
+                    if (catalogState.showToast && catalogState.toastMessage != null) {
+                        LaunchedEffect(catalogState.toastMessage) {
+                            Toast.makeText(context, catalogState.toastMessage, Toast.LENGTH_SHORT).show()
+                            catalogViewModel.consumeToast()
+                        }
+                    }
+                }
 
                 UserRole.EMPLOYEE -> EmployeeScreen(modifier = Modifier.fillMaxSize())
                 UserRole.MANAGER -> ManagerScreen(modifier = Modifier.fillMaxSize())
@@ -192,9 +238,10 @@ private fun ContentWithSessionBar(
 private fun SessionBar(
     email: String,
     onLogout: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -215,4 +262,8 @@ fun MainPreview() {
         // Preview mostra il composable di login
         LoginScreen(onLogin = { _, _, _ -> })
     }
+}
+
+private fun mapRole(user: User?): UserRole? {
+    return UserRole.fromDbRole(user?.ruolo)
 }
