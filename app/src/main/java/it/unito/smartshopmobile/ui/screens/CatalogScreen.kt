@@ -47,6 +47,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -73,6 +74,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -97,6 +99,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import it.unito.smartshopmobile.R
 import it.unito.smartshopmobile.data.entity.Product
 import it.unito.smartshopmobile.ui.theme.SmartShopMobileTheme
@@ -130,7 +133,8 @@ fun CatalogScreen(
     onBookmark: (String) -> Unit = {},
     onAddToCart: (String) -> Unit = {},
     onDecreaseCartItem: (String) -> Unit = {},
-    onRemoveFromCart: (String) -> Unit = {}
+    onRemoveFromCart: (String) -> Unit = {},
+    onProductClick: (String?) -> Unit = {}
 ) {
     Box(
         modifier = modifier
@@ -143,13 +147,28 @@ fun CatalogScreen(
                 .padding(horizontal = 16.dp)
         ) {
             Spacer(modifier = Modifier.height(0.dp))
-            CatalogHeader(state.searchQuery, onSearchQueryChange)
+            val headerTitle = when {
+                !state.selectedCategoryId.isNullOrBlank() -> {
+                    state.allCategories.firstOrNull { it.id == state.selectedCategoryId }?.nome
+                        ?: "Categoria"
+                }
+                !state.selectedParentId.isNullOrBlank() -> {
+                    state.sideMenuSections.firstOrNull { it.parentId == state.selectedParentId }?.title
+                        ?: "Catalogo"
+                }
+                else -> "Catalogo"
+            }
+            CatalogHeader(
+                query = state.searchQuery,
+                onQueryChange = onSearchQueryChange,
+                onRefresh = onRefresh,
+                selectedTitle = headerTitle
+            )
             Spacer(modifier = Modifier.height(2.dp))
             TopActionRow(
                 cartItemsCount = state.cartItemsCount,
                 onMenuClick = onMenuClick,
-                onCartClick = onCartClick,
-                onRefresh = onRefresh
+                onCartClick = onCartClick
             )
             //Spacer(modifier = Modifier.height(12.dp))
             // CategorySection removed (categories already available via chips)
@@ -171,9 +190,18 @@ fun CatalogScreen(
                 onBookmark = onBookmark,
                 onAddToCart = onAddToCart,
                 onDecreaseCartItem = onDecreaseCartItem,
+                onProductClick = onProductClick,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
+            )
+        }
+
+        state.selectedProduct?.let { selected ->
+            ProductDetailDialog(
+                product = selected,
+                onDismiss = { onProductClick(null) },
+                onAddToCart = { onAddToCart(selected.id) }
             )
         }
     }
@@ -186,6 +214,7 @@ private fun CatalogContent(
     onBookmark: (String) -> Unit,
     onAddToCart: (String) -> Unit,
     onDecreaseCartItem: (String) -> Unit,
+    onProductClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -210,6 +239,7 @@ private fun CatalogContent(
                 onBookmark = onBookmark,
                 onAddToCart = onAddToCart,
                 onDecreaseFromCart = onDecreaseCartItem,
+                onProductClick = onProductClick,
                 listState = listState
             )
         }
@@ -222,11 +252,13 @@ private fun ProductCard(
     quantityInCart: Int,
     onBookmark: () -> Unit,
     onAddToCart: () -> Unit,
-    onDecreaseFromCart: () -> Unit
+    onDecreaseFromCart: () -> Unit,
+    onClick: () -> Unit
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        modifier = Modifier.clickable(onClick = onClick)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Box(
@@ -346,19 +378,77 @@ private fun PriceRow(product: Product) {
             )
         }
         if (!product.tags.isNullOrEmpty()) {
-            val firstTag = product.tagsList.firstOrNull() ?: ""
+            val tags = product.tagsList
+            val firstTag = tags.firstOrNull().orEmpty()
+            val extraCount = (tags.size - 1).coerceAtLeast(0)
             if (firstTag.isNotEmpty()) {
-                Text(
-                    text = firstTag,
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.secondaryContainer)
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                )
+                TagChip(firstTag, MaterialTheme.colorScheme.secondaryContainer)
+            }
+            if (extraCount > 0) {
+                TagChip("+$extraCount", MaterialTheme.colorScheme.tertiaryContainer)
             }
         }
     }
+}
+
+@Composable
+private fun TagChip(text: String, background: Color = MaterialTheme.colorScheme.secondaryContainer) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(background)
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+    )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ProductDetailDialog(
+    product: Product,
+    onDismiss: () -> Unit,
+    onAddToCart: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onDismiss) { Text("Chiudi") }
+                TextButton(onClick = {
+                    onAddToCart()
+                    onDismiss()
+                }) { Text("Aggiungi al carrello") }
+            }
+        },
+        title = {
+            Column {
+                Text(product.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(product.brand, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Categoria: ${product.categoryName ?: product.categoryId}", style = MaterialTheme.typography.bodySmall)
+                Text("Prezzo: ${formatPrice(product.price)}", style = MaterialTheme.typography.bodySmall)
+                product.oldPrice?.let { Text("Vecchio prezzo: ${formatPrice(it)}", style = MaterialTheme.typography.bodySmall) }
+                Text("Disponibilità: ${product.availability}", style = MaterialTheme.typography.bodySmall)
+                product.description?.let { desc ->
+                    Text(desc, style = MaterialTheme.typography.bodyMedium)
+                }
+                if (product.tagsList.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Tag", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            product.tagsList.forEach { tag ->
+                                TagChip(tag)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    )
 }
 
 @Composable
@@ -577,6 +667,7 @@ private fun CatalogList(
     onBookmark: (String) -> Unit,
     onAddToCart: (String) -> Unit,
     onDecreaseFromCart: (String) -> Unit,
+    onProductClick: (String) -> Unit,
     listState: LazyListState
 ) {
     LazyColumn(
@@ -591,7 +682,8 @@ private fun CatalogList(
                 quantityInCart = quantity,
                 onBookmark = { onBookmark(product.id) },
                 onAddToCart = { onAddToCart(product.id) },
-                onDecreaseFromCart = { onDecreaseFromCart(product.id) }
+                onDecreaseFromCart = { onDecreaseFromCart(product.id) },
+                onClick = { onProductClick(product.id) }
             )
         }
     }
@@ -642,14 +734,25 @@ private fun FilterRow(
 @Composable
 private fun CatalogHeader(
     query: String,
-    onQueryChange: (String) -> Unit
+    onQueryChange: (String) -> Unit,
+    onRefresh: () -> Unit,
+    selectedTitle: String
 ) {
     Column {
-        Text(
-            text = "Cosa vuoi comprare oggi?",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = selectedTitle,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            IconButton(onClick = onRefresh) {
+                Icon(Icons.Filled.Refresh, contentDescription = "Aggiorna catalogo")
+            }
+        }
         Spacer(modifier = Modifier.height(12.dp))
         OutlinedTextField(
             value = query,
@@ -666,8 +769,7 @@ private fun CatalogHeader(
 private fun TopActionRow(
     cartItemsCount: Int,
     onMenuClick: () -> Unit,
-    onCartClick: () -> Unit,
-    onRefresh: () -> Unit
+    onCartClick: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -679,9 +781,6 @@ private fun TopActionRow(
                 Icon(Icons.Filled.Menu, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Categorie")
-            }
-            IconButton(onClick = onRefresh) {
-                Icon(Icons.Filled.Refresh, contentDescription = "Aggiorna catalogo")
             }
         }
         CartActionButton(count = cartItemsCount, onClick = onCartClick)
@@ -763,7 +862,8 @@ private fun OverlayContainer(
 @Composable
 private fun SideMenu(
     sections: List<SideMenuSection>,
-    onEntrySelected: (String) -> Unit,
+    onParentSelected: (String?) -> Unit,
+    onEntrySelected: (String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val expansionState = remember(sections) {
@@ -789,12 +889,33 @@ private fun SideMenu(
                 color = if (isDark) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+        item {
+            TextButton(
+                onClick = { onEntrySelected(null) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(vertical = 2.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    "Tutte le categorie",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = if (isDark) Color.White else MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
         items(sections) { section ->
             val expanded = expansionState[section.id] == true
             SideAccordion(
                 section = section,
                 expanded = expanded,
-                onToggle = { expansionState[section.id] = !expanded },
+                onToggle = {
+                    expansionState[section.id] = !expanded
+                    onParentSelected(section.parentId)
+                },
                 onEntrySelected = onEntrySelected
             )
         }
@@ -806,7 +927,7 @@ private fun SideAccordion(
     section: SideMenuSection,
     expanded: Boolean,
     onToggle: () -> Unit,
-    onEntrySelected: (String) -> Unit
+    onEntrySelected: (String?) -> Unit
 ) {
     val isDark = isSystemInDarkTheme()
 
@@ -843,14 +964,14 @@ private fun SideAccordion(
             ) {
                 section.entries.forEach { entry ->
                     TextButton(
-                        onClick = { onEntrySelected(entry) },
+                        onClick = { onEntrySelected(entry.id) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .wrapContentHeight(),
                         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            entry,
+                            entry.title,
                             style = MaterialTheme.typography.bodyMedium,
                             color = if (isDark) Color.White else MaterialTheme.colorScheme.onSurface
                         )
@@ -863,8 +984,14 @@ private fun SideAccordion(
 
 data class SideMenuSection(
     val id: String,
+    val parentId: String?,
     val title: String,
-    val entries: List<String>
+    val entries: List<SideMenuEntry>
+)
+
+data class SideMenuEntry(
+    val id: String?,
+    val title: String
 )
 
 // La lista supermarketSideMenu è stata rimossa: ora le categorie vengono caricate dal DB
@@ -879,12 +1006,14 @@ private fun formatPrice(value: Double): String = "\u20AC ${String.format(java.ut
 fun SideMenuOverlay(
     onDismiss: () -> Unit,
     sections: List<SideMenuSection>,
-    onEntrySelected: (String) -> Unit
+    onParentSelected: (String?) -> Unit,
+    onEntrySelected: (String?) -> Unit
 ) {
     OverlayContainer(onDismiss = onDismiss) {
         Box(modifier = Modifier.fillMaxSize()) {
             SideMenu(
                 sections = sections,
+                onParentSelected = onParentSelected,
                 onEntrySelected = onEntrySelected,
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -988,3 +1117,4 @@ private fun previewProducts(): List<Product> = listOf(
         tags = listOf("Dispensa")
     )
 )
+

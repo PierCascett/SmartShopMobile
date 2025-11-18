@@ -150,9 +150,14 @@ class MainActivity : ComponentActivity() {
                         SideMenuOverlay(
                             onDismiss = { showMenu = false },
                             sections = catalogState.sideMenuSections, // <-- usa categorie dal DB
-                            onEntrySelected = { selection: String ->
+                            onParentSelected = { parentId: String? ->
+                                catalogViewModel.onParentCategorySelected(parentId)
+                                catalogViewModel.onSearchQueryChange("")
+                            },
+                            onEntrySelected = { selection: String? ->
                                 showMenu = false
-                                catalogViewModel.onSearchQueryChange(selection)
+                                catalogViewModel.onCategorySelected(selection)
+                                catalogViewModel.onSearchQueryChange("")
                             }
                         )
                     }
@@ -202,26 +207,27 @@ private fun ContentWithSessionBar(
         )
         Spacer(modifier = Modifier.height(8.dp))
         Box(modifier = Modifier.fillMaxSize()) {
-            when (role) {
-                UserRole.CUSTOMER -> CatalogScreen(
-                    state = catalogState,
-                    modifier = Modifier.fillMaxSize(),
-                    onMenuClick = onMenuClick,
-                    onCartClick = onCartClick,
-                    onSearchQueryChange = catalogViewModel::onSearchQueryChange,
-                    onRefresh = catalogViewModel::refreshCatalog,
-                    onToggleOffers = catalogViewModel::onOnlyOffersToggle,
-                    onAvailabilityFilterChange = catalogViewModel::onAvailabilityFilterChange,
-                    onTagToggle = catalogViewModel::onTagToggle,
-                    onBookmark = catalogViewModel::onBookmark,
-                    onAddToCart = catalogViewModel::onAddToCart,
-                    onDecreaseCartItem = catalogViewModel::onDecreaseCartItem,
-                    onRemoveFromCart = catalogViewModel::onRemoveFromCart
-                ).also {
-                    if (catalogState.showToast && catalogState.toastMessage != null) {
-                        LaunchedEffect(catalogState.toastMessage) {
-                            Toast.makeText(context, catalogState.toastMessage, Toast.LENGTH_SHORT).show()
-                            catalogViewModel.consumeToast()
+                    when (role) {
+                        UserRole.CUSTOMER -> CatalogScreen(
+                            state = catalogState,
+                            modifier = Modifier.fillMaxSize(),
+                            onMenuClick = onMenuClick,
+                            onCartClick = onCartClick,
+                            onSearchQueryChange = catalogViewModel::onSearchQueryChange,
+                            onRefresh = catalogViewModel::refreshCatalog,
+                            onToggleOffers = catalogViewModel::onOnlyOffersToggle,
+                            onAvailabilityFilterChange = catalogViewModel::onAvailabilityFilterChange,
+                            onTagToggle = catalogViewModel::onTagToggle,
+                            onBookmark = catalogViewModel::onBookmark,
+                            onAddToCart = catalogViewModel::onAddToCart,
+                            onDecreaseCartItem = catalogViewModel::onDecreaseCartItem,
+                            onRemoveFromCart = catalogViewModel::onRemoveFromCart,
+                            onProductClick = catalogViewModel::onProductSelected
+                        ).also {
+                            if (catalogState.showToast && catalogState.toastMessage != null) {
+                                LaunchedEffect(catalogState.toastMessage) {
+                                    Toast.makeText(context, catalogState.toastMessage, Toast.LENGTH_SHORT).show()
+                                    catalogViewModel.consumeToast()
                         }
                     }
                 }

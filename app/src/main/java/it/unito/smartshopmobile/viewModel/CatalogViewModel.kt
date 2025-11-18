@@ -41,6 +41,7 @@ import it.unito.smartshopmobile.data.repository.CategoryRepository
 import it.unito.smartshopmobile.data.repository.ProductRepository
 import it.unito.smartshopmobile.data.repository.ShelfRepository
 import it.unito.smartshopmobile.data.repository.OrderRepository
+import it.unito.smartshopmobile.ui.screens.SideMenuEntry
 import it.unito.smartshopmobile.ui.screens.SideMenuSection
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -174,8 +175,20 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         it.copy(searchQuery = query)
     }
 
-    fun onCategorySelected(categoryId: String?) = mutateState {
-        it.copy(selectedCategoryId = categoryId)
+    fun onParentCategorySelected(parentId: String?) = mutateState {
+        it.copy(selectedParentId = parentId, selectedCategoryId = null)
+    }
+
+    fun onCategorySelected(categoryId: String?) = mutateState { current ->
+        val parentId = categoryId?.let { id ->
+            current.allCategories.firstOrNull { cat -> cat.id == id }?.parentId
+        }
+        current.copy(selectedCategoryId = categoryId, selectedParentId = parentId)
+    }
+
+    fun onProductSelected(productId: String?) = mutateState { state ->
+        val product = state.allProducts.firstOrNull { it.id == productId }
+        state.copy(selectedProduct = product)
     }
 
     fun onOnlyOffersToggle() = mutateState { current ->
@@ -230,9 +243,14 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
     fun consumeToast() = mutateState { it.copy(showToast = false, toastMessage = null) }
 
     private fun filterProducts(state: CatalogUiState): List<Product> {
+        val categoryMap = state.allCategories.associateBy { it.id }
         return state.allProducts
             .filter { product ->
-                state.selectedCategoryId?.let { product.categoryId == it } ?: true
+                when {
+                    state.selectedCategoryId != null -> product.categoryId == state.selectedCategoryId
+                    state.selectedParentId != null -> categoryMap[product.categoryId]?.parentId == state.selectedParentId
+                    else -> true
+                }
             }
             .filter { product ->
                 if (state.onlyOffers) product.oldPrice != null else true
@@ -245,11 +263,10 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
                 }
             }
             .filter { product ->
-                if (state.selectedTags.isEmpty()) {
-                    true
-                } else {
+                if (state.selectedTags.isEmpty()) true
+                else {
                     val tags = parseTagsFromJson(product.tags)
-                    tags.any { it in state.selectedTags }
+                    state.selectedTags.all { it in tags }
                 }
             }
     }
@@ -273,16 +290,40 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         val total = cartItems.sumOf { (it.product.price * it.quantity).toDouble() }
         val count = cartItems.sumOf { it.quantity }
 
-        val menuSections = listOf(
-            SideMenuSection(
-                id = "categories",
-                title = "Categorie",
-                entries = state.allCategories
-                    .sortedBy { it.nome }
-                    .map { it.nome }
-            )
+        val parentNameFallback = mapOf(
+            "1" to "Casa",
+            "2" to "Cura Personale",
+            "3" to "Carne",
+            "4" to "Pesce",
+            "5" to "Verdura",
+            "6" to "Frutta",
+            "7" to "Bevande"
         )
 
+        val groupedCategories = state.allCategories
+            .groupBy { it.parentId }
+
+        val menuSections = groupedCategories
+            .toSortedMap(Comparator.nullsFirst(String.CASE_INSENSITIVE_ORDER))
+            .map { (parentId, categories) ->
+                val title = categories.firstOrNull { !it.parentName.isNullOrBlank() }?.parentName
+                    ?: parentNameFallback[parentId]
+                    ?: "Altro"
+                SideMenuSection(
+                    id = parentId ?: "parent-none",
+                    parentId = parentId,
+                    title = title,
+                    entries = categories
+                        .sortedBy { it.nome }
+                        .map { category ->
+                            SideMenuEntry(
+                                id = category.id,
+                                title = category.nome
+                            )
+                        }
+                )
+            }
+        
         // Estrae tutti i tag unici dai prodotti visibili
         val allAvailableTags = visibleProducts
             .flatMap { parseTagsFromJson(it.tags) }
@@ -352,6 +393,7 @@ data class CatalogUiState(
     val sideMenuSections: List<SideMenuSection> = emptyList(), // <-- categorie per menu laterale
     val allAvailableTags: List<String> = emptyList(), // <-- tutti i tag unici disponibili
     val searchQuery: String = "",
+    val selectedParentId: String? = null,
     val selectedCategoryId: String? = null,
     val onlyOffers: Boolean = false,
     val selectedTags: Set<String> = emptySet(),
@@ -366,7 +408,8 @@ data class CatalogUiState(
     val cart: Map<String, Int> = emptyMap(),
     val cartItems: List<CartItemUi> = emptyList(),
     val cartItemsCount: Int = 0,
-    val cartTotal: Double = 0.0
+    val cartTotal: Double = 0.0,
+    val selectedProduct: Product? = null
 )
 
 enum class AvailabilityFilter(val label: String) {
@@ -379,9 +422,6 @@ data class CartItemUi(
     val product: Product,
     val quantity: Int
 )
-
-
-
 
 
 

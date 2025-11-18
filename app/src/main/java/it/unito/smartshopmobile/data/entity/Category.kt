@@ -17,6 +17,13 @@ data class Category(
     @ColumnInfo(name = "descrizione")
     val descrizione: String? = null,
 
+    // Sovracategoria
+    @ColumnInfo(name = "parent_id")
+    val parentId: String? = null,
+
+    @ColumnInfo(name = "parent_name")
+    val parentName: String? = null,
+
     @ColumnInfo(name = "prodotti_totali")
     val prodottiTotali: Int = 0
 )

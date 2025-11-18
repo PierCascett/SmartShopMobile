@@ -13,12 +13,22 @@ interface CategoryDao {
     @Query("SELECT * FROM categorie_catalogo ORDER BY nome ASC")
     fun getAllCategories(): Flow<List<Category>>
 
-    // Nel nuovo schema non ci sono macro/sotto categorie: ritorniamo tutte
-    @Query("SELECT * FROM categorie_catalogo ORDER BY nome ASC")
+    // Sovracategorie distinte derivate dal campo parent
+    @Query("""
+        SELECT 
+            DISTINCT parent_id AS id,
+            COALESCE(parent_name, 'Altro') AS nome,
+            NULL AS descrizione,
+            NULL AS parent_id,
+            NULL AS parent_name,
+            0 AS prodotti_totali
+        FROM categorie_catalogo
+        WHERE parent_id IS NOT NULL
+        ORDER BY nome
+    """)
     fun getMacroCategories(): Flow<List<Category>>
 
-    // Compat: al momento non esistono sottocategorie, uso il parametro per evitare warning KSP
-    @Query("SELECT * FROM categorie_catalogo WHERE 1 = 0 AND :parentId IS NOT NULL")
+    @Query("SELECT * FROM categorie_catalogo WHERE parent_id = :parentId ORDER BY nome ASC")
     fun getSubcategories(parentId: String): Flow<List<Category>>
 
     @Query("SELECT * FROM categorie_catalogo WHERE id = :id")
