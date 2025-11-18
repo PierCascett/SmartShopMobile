@@ -1,8 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
-const { exec } = require('child_process');
+const path = require('path');
 const { promisify } = require('util');
+const { exec } = require('child_process');
 const execPromise = promisify(exec);
 require('dotenv').config();
 
@@ -23,10 +24,13 @@ app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
+// Serve static images
+app.use('/images', express.static(path.join(__dirname, 'images')));
+
 // Health check
 app.get('/health', async (req, res) => {
     try {
-        if (db && typeof db.query === 'function') await db.query('SELECT 1');
+        await db.query('SELECT 1');
         res.json({
             status: 'healthy',
             database: 'connected',

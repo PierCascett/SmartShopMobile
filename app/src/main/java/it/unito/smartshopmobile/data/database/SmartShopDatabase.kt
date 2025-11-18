@@ -20,7 +20,7 @@ import it.unito.smartshopmobile.data.database.Converters
 
 @Database(
     entities = [Category::class, Product::class, Order::class, OrderLine::class, Restock::class, Shelf::class],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

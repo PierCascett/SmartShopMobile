@@ -70,6 +70,9 @@ data class Product(
     @ColumnInfo(name = "descrizione")
     val description: String? = null,
 
+    @ColumnInfo(name = "image_url")
+    val imageUrl: String? = null,
+
     // id scaffale da catalogo (se disponibile nel payload)
     @ColumnInfo(name = "id_scaffale")
     val shelfId: Int? = null

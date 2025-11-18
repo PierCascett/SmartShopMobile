@@ -95,17 +95,22 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import it.unito.smartshopmobile.R
 import it.unito.smartshopmobile.data.entity.Product
 import it.unito.smartshopmobile.ui.theme.SmartShopMobileTheme
 import it.unito.smartshopmobile.viewModel.AvailabilityFilter
 import it.unito.smartshopmobile.viewModel.CartItemUi
 import it.unito.smartshopmobile.viewModel.CatalogUiState
+import it.unito.smartshopmobile.data.remote.RetrofitInstance
+import androidx.compose.ui.platform.LocalContext
 
 // Extension properties per Product entity
 val Product.isFavorite: Boolean get() = false // TODO: implementare logica favorites
@@ -261,6 +266,10 @@ private fun ProductCard(
         modifier = Modifier.clickable(onClick = onClick)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Costruisce URL immagine PNG basato sull'ID prodotto
+            val imageUrl = "${RetrofitInstance.assetBaseUrl}images/products/${product.id}.png"
+            val context = LocalContext.current
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -269,11 +278,18 @@ private fun ProductCard(
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                    contentDescription = null,
-                    modifier = Modifier.size(72.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(imageUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = product.name,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(12.dp),
+                    contentScale = ContentScale.Fit,
+                    placeholder = painterResource(id = R.drawable.ic_launcher_foreground),
+                    error = painterResource(id = R.drawable.ic_launcher_foreground)
                 )
                 if (product.isOutOfStock) {
                     AvailabilityBadge(

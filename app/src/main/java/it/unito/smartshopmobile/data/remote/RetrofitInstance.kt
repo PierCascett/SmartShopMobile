@@ -14,9 +14,19 @@ object RetrofitInstance {
 
     // Rileva automaticamente se è emulatore o dispositivo fisico
     private val BASE_URL = if (isEmulator()) {
-        "http://10.0.2.2:3000/api/" // Emulatore → localhost del PC
+        "http://10.0.2.2:3000/api/" // Emulatore -> localhost del PC
     } else {
-        "http://$PC_LOCAL_IP:3000/api/" // Dispositivo fisico → IP sulla rete
+        "http://$PC_LOCAL_IP:3000/api/" // Dispositivo fisico -> IP sulla rete
+    }
+
+    // Base host per asset statici (senza /api/)
+    val assetBaseUrl: String
+        get() = BASE_URL.removeSuffix("api/")
+
+    fun buildAssetUrl(relativePath: String?): String? {
+        if (relativePath.isNullOrBlank()) return null
+        val path = relativePath.removePrefix("/")
+        return assetBaseUrl + path
     }
 
     private fun isEmulator(): Boolean {

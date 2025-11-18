@@ -29,6 +29,7 @@ router.get('/', async (req, res) => {
                     ELSE 'Disponibile'
                 END AS availability,
                 COALESCE(\n                json_agg(DISTINCT t.nome) FILTER (WHERE t.nome IS NOT NULL),\n                '[]'::json\n                ) AS tags,
+                CONCAT('/images/products/', p.id_prodotto, '.svg') AS "imageUrl",
                 p.descrizione AS description
             FROM prodotti p
             JOIN catalogo cat ON cat.id_prodotto = p.id_prodotto
@@ -71,11 +72,12 @@ router.get('/categoria/:categoryId', async (req, res) => {
                 COALESCE(SUM(mg.quantita_disponibile), 0) AS "warehouseQuantity",
                 COALESCE(SUM(mg.quantita_disponibile), 0) + cat.quantita_disponibile AS "totalQuantity",
                 CASE
-                    WHEN cat.quantita_disponibile <= 0 THEN 'Non disponibile'
-                    WHEN cat.quantita_disponibile <= 5 THEN 'Quasi esaurito'
-                    ELSE 'Disponibile'
+                 WHEN cat.quantita_disponibile <= 0 THEN 'Non disponibile'
+                 WHEN cat.quantita_disponibile <= 5 THEN 'Quasi esaurito'
+                 ELSE 'Disponibile'
                 END AS availability,
                 COALESCE(\n                json_agg(DISTINCT t.nome) FILTER (WHERE t.nome IS NOT NULL),\n                '[]'::json\n                ) AS tags,
+                CONCAT('/images/products/', p.id_prodotto, '.svg') AS "imageUrl",
                 p.descrizione AS description
             FROM prodotti p
             JOIN catalogo cat ON cat.id_prodotto = p.id_prodotto
@@ -130,6 +132,7 @@ router.get('/search', async (req, res) => {
                     ELSE 'Disponibile'
                 END AS availability,
                 COALESCE(\n                json_agg(DISTINCT t.nome) FILTER (WHERE t.nome IS NOT NULL),\n                '[]'::json\n                ) AS tags,
+                CONCAT('/images/products/', p.id_prodotto, '.svg') AS "imageUrl",
                 p.descrizione AS description
             FROM prodotti p
             JOIN catalogo cat ON cat.id_prodotto = p.id_prodotto
