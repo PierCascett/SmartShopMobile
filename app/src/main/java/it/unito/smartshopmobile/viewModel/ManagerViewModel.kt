@@ -37,34 +37,66 @@ import it.unito.smartshopmobile.data.remote.RetrofitInstance
 import it.unito.smartshopmobile.data.entity.Restock
 import it.unito.smartshopmobile.data.entity.CreateRestockRequest
 import it.unito.smartshopmobile.data.repository.RestockRepository
+import it.unito.smartshopmobile.data.repository.ProductRepository
+import it.unito.smartshopmobile.data.repository.CategoryRepository
+import it.unito.smartshopmobile.data.repository.SupplierRepository
+import it.unito.smartshopmobile.data.entity.Category
+import it.unito.smartshopmobile.data.entity.Product
+import it.unito.smartshopmobile.data.entity.Supplier
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 data class ManagerUiState(
     val restocks: List<Restock> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
-    val prodottoId: String = "",
-    val fornitoreId: String = "",
-    val quantita: String = "",
-    val dataArrivoPrevista: String = "",
-    val successMessage: String? = null
+    val quantity: String = "",
+    val successMessage: String? = null,
+    val categories: List<Category> = emptyList(),
+    val selectedCategoryId: String? = null,
+    val availableProducts: List<Product> = emptyList(),
+    val selectedProductId: String? = null,
+    val suppliers: List<Supplier> = emptyList(),
+    val selectedSupplierId: Int? = null,
+    val showProductDetail: Product? = null
 )
 
 class ManagerViewModel(application: Application) : AndroidViewModel(application) {
+    private val database = SmartShopDatabase.getDatabase(application)
     private val repository = RestockRepository(
         RetrofitInstance.api,
-        SmartShopDatabase.getDatabase(application).restockDao()
+        database.restockDao()
     )
+    private val productRepository = ProductRepository(
+        database.productDao(),
+        RetrofitInstance.api
+    )
+    private val categoryRepository = CategoryRepository(
+        database.categoryDao(),
+        RetrofitInstance.api
+    )
+    private val supplierRepository = SupplierRepository(
+        RetrofitInstance.api,
+        database.supplierDao()
+    )
+    private val etaFormatter: DateTimeFormatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME
+    private var cachedProducts: List<Product> = emptyList()
     private val _uiState = MutableStateFlow(ManagerUiState())
     val uiState: StateFlow<ManagerUiState> = _uiState.asStateFlow()
 
     init {
         observeRestocks()
+        observeProductsAndCategories()
+        observeSuppliers()
         refreshRestocks()
+        refreshCatalogData()
     }
 
     private fun observeRestocks() {
@@ -73,6 +105,72 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
                 _uiState.update { it.copy(restocks = list) }
             }
         }
+    }
+
+    private fun observeProductsAndCategories() {
+        viewModelScope.launch {
+            combine(
+                categoryRepository.getAllCategories(),
+                productRepository.getAllProducts()
+            ) { categories, products ->
+                categories to products
+            }.collect { (categories, products) ->
+                cachedProducts = products
+                _uiState.update { state ->
+                    val selectedCategory = state.selectedCategoryId ?: categories.firstOrNull()?.id
+                    val filtered = filterProductsByCategory(selectedCategory)
+                    val selectedProduct = state.selectedProductId?.takeIf { id ->
+                        filtered.any { it.id == id }
+                    } ?: filtered.firstOrNull()?.id
+                    state.copy(
+                        categories = categories,
+                        selectedCategoryId = selectedCategory,
+                        availableProducts = filtered,
+                        selectedProductId = selectedProduct
+                    )
+                }
+            }
+        }
+    }
+
+    private fun observeSuppliers() {
+        viewModelScope.launch {
+            supplierRepository.observeSuppliers().collect { suppliers ->
+                _uiState.update { state ->
+                    val selectedSupplier = state.selectedSupplierId?.takeIf { id ->
+                        suppliers.any { it.id == id }
+                    } ?: suppliers.firstOrNull()?.id
+                    state.copy(suppliers = suppliers, selectedSupplierId = selectedSupplier)
+                }
+            }
+        }
+    }
+
+    private fun filterProductsByCategory(categoryId: String?): List<Product> {
+        val filtered = if (categoryId.isNullOrBlank()) {
+            cachedProducts
+        } else {
+            cachedProducts.filter { it.categoryId == categoryId }
+        }
+        return mergeProductVariants(filtered)
+    }
+
+    private fun mergeProductVariants(products: List<Product>): List<Product> {
+        return products
+            .groupBy { it.id }
+            .map { (_, variants) ->
+                val first = variants.first()
+                if (variants.size == 1) {
+                    first
+                } else {
+                    first.copy(
+                        catalogQuantity = variants.sumOf { it.catalogQuantity },
+                        warehouseQuantity = variants.sumOf { it.warehouseQuantity },
+                        totalQuantity = variants.sumOf { it.totalQuantity }
+                    )
+                }
+            }
+            .sortedBy { it.name }
     }
 
     fun refreshRestocks() {
@@ -84,33 +182,32 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun updateForm(productId: String? = null, supplierId: String? = null, quantity: String? = null, eta: String? = null) {
-        _uiState.update {
-            it.copy(
-                prodottoId = productId ?: it.prodottoId,
-                fornitoreId = supplierId ?: it.fornitoreId,
-                quantita = quantity ?: it.quantita,
-                dataArrivoPrevista = eta ?: it.dataArrivoPrevista
-            )
+    private fun refreshCatalogData() {
+        viewModelScope.launch {
+            categoryRepository.refreshCategories()
+            productRepository.refreshProducts()
+            supplierRepository.refreshSuppliers()
         }
     }
 
     fun submitRestock(responsabileId: Int? = null) {
         val state = _uiState.value
-        val qty = state.quantita.toIntOrNull()
-        val supplier = state.fornitoreId.toIntOrNull()
-        if (state.prodottoId.isBlank() || supplier == null || qty == null) {
-            _uiState.update { it.copy(error = "Compila id prodotto, fornitore e quantit\u00e0") }
+        val qty = state.quantity.toIntOrNull()
+        val productId = state.selectedProductId
+        val supplierId = state.selectedSupplierId
+        if (productId.isNullOrBlank() || supplierId == null || qty == null || qty <= 0) {
+            _uiState.update { it.copy(error = "Seleziona prodotto, fornitore e quantita valide") }
             return
         }
+        val eta = Instant.now().plusSeconds(30).atZone(ZoneId.systemDefault()).format(etaFormatter)
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, successMessage = null) }
             val request = CreateRestockRequest(
-                idProdotto = state.prodottoId.trim(),
-                idFornitore = supplier,
+                idProdotto = productId,
+                idFornitore = supplierId,
                 quantitaOrdinata = qty,
-                dataArrivoPrevista = state.dataArrivoPrevista.ifBlank { null },
+                dataArrivoPrevista = eta,
                 idResponsabile = responsabileId
             )
             repository.createRestock(request)
@@ -118,11 +215,8 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            successMessage = "Riordino creato (id ${it.prodottoId})",
-                            prodottoId = "",
-                            fornitoreId = "",
-                            quantita = "",
-                            dataArrivoPrevista = ""
+                            successMessage = "Riordino creato per $productId",
+                            quantity = ""
                         )
                     }
                     refreshRestocks()
@@ -132,4 +226,37 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
                 }
         }
     }
-}
+
+    fun onQuantityChanged(value: String) {
+        _uiState.update { it.copy(quantity = value.filter { ch -> ch.isDigit() }) }
+    }
+
+    fun onCategorySelected(categoryId: String?) {
+        _uiState.update { state ->
+            val filtered = filterProductsByCategory(categoryId)
+            state.copy(
+                selectedCategoryId = categoryId,
+                availableProducts = filtered,
+                selectedProductId = filtered.firstOrNull()?.id
+            )
+        }
+    }
+
+    fun onProductSelected(productId: String?) {
+        _uiState.update { it.copy(selectedProductId = productId) }
+    }
+
+    fun onSupplierSelected(supplierId: Int?) {
+        _uiState.update { it.copy(selectedSupplierId = supplierId) }
+    }
+
+    fun showProductDetail(productId: String) {
+        val product = cachedProducts.firstOrNull { it.id == productId }
+        _uiState.update { it.copy(showProductDetail = product) }
+    }
+
+    fun dismissProductDetail() {
+        _uiState.update { it.copy(showProductDetail = null) }
+    }
+} 
+

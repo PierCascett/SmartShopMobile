@@ -36,6 +36,7 @@ import it.unito.smartshopmobile.data.entity.Product
 import it.unito.smartshopmobile.data.entity.User
 import it.unito.smartshopmobile.data.entity.CreateOrderRequest
 import it.unito.smartshopmobile.data.entity.OrderItemRequest
+import it.unito.smartshopmobile.data.entity.Order
 import it.unito.smartshopmobile.data.remote.RetrofitInstance
 import it.unito.smartshopmobile.data.repository.CategoryRepository
 import it.unito.smartshopmobile.data.repository.ProductRepository
@@ -45,6 +46,11 @@ import it.unito.smartshopmobile.ui.screens.SideMenuEntry
 import it.unito.smartshopmobile.ui.screens.SideMenuSection
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 class CatalogViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -72,9 +78,11 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
     val uiState: StateFlow<CatalogUiState> = _uiState
 
     private var started = false
+    private val fallbackOrderFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ROOT)
 
     init {
         observeData()
+        observeOrderHistory()
     }
 
     /** Avvia la sincronizzazione da rete verso Room (una sola volta dopo login customer) */
@@ -115,6 +123,26 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
                         )
                     }
                 }
+        }
+    }
+
+    private fun observeOrderHistory() {
+        viewModelScope.launch {
+            orderRepository.observeOrders().collect { ordersWithLines ->
+                val userId = _uiState.value.loggedUser?.id
+                if (userId == null) {
+                    mutateState { it.copy(orderHistory = emptyList()) }
+                } else {
+                    val normalized = ordersWithLines
+                        .map { it.order.copy(righe = it.lines) }
+                        .filter { it.idUtente == userId }
+                    val ascending = normalized.sortedBy { orderTimestamp(it.dataOrdine) }
+                    val numbered = ascending.mapIndexed { index, order ->
+                        CustomerOrderHistoryEntry(order, index + 1)
+                    }
+                    mutateState { it.copy(orderHistory = numbered) }
+                }
+            }
         }
     }
 
@@ -240,7 +268,34 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         state.copy(cart = updatedCart.toMap())
     }
 
+    fun onDeliveryMethodSelected(method: DeliveryMethod) = mutateState { state ->
+        state.copy(deliveryMethod = method)
+    }
+
     fun consumeToast() = mutateState { it.copy(showToast = false, toastMessage = null) }
+
+    fun clearOrderFeedback() = mutateState { it.copy(lastOrderId = null) }
+
+    fun refreshOrderHistory() {
+        if (_uiState.value.loggedUser == null) {
+            mutateState { it.copy(orderHistoryError = "Accedi per visualizzare lo storico ordini") }
+            return
+        }
+        viewModelScope.launch {
+            mutateState { it.copy(isOrderHistoryLoading = true, orderHistoryError = null) }
+            val result = orderRepository.refreshOrders()
+            result.onSuccess {
+                mutateState { it.copy(isOrderHistoryLoading = false) }
+            }.onFailure { error ->
+                mutateState {
+                    it.copy(
+                        isOrderHistoryLoading = false,
+                        orderHistoryError = error.message ?: "Errore nel recupero dello storico"
+                    )
+                }
+            }
+        }
+    }
 
     private fun filterProducts(state: CatalogUiState): List<Product> {
         val categoryMap = state.allCategories.associateBy { it.id }
@@ -272,6 +327,22 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private fun parseTagsFromJson(tags: List<String>?): List<String> = tags ?: emptyList()
+
+    private fun orderTimestamp(raw: String?): Long {
+        if (raw.isNullOrBlank()) return 0L
+        return try {
+            Instant.parse(raw).toEpochMilli()
+        } catch (_: Exception) {
+            try {
+                LocalDateTime.parse(
+                    raw.replace("T", " ").replace("Z", ""),
+                    fallbackOrderFormatter
+                ).toInstant(ZoneOffset.UTC).toEpochMilli()
+            } catch (_: Exception) {
+                0L
+            }
+        }
+    }
 
     private fun mutateState(transform: (CatalogUiState) -> CatalogUiState) {
         _uiState.update { current ->
@@ -359,6 +430,7 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
             val result = orderRepository.createOrder(
                 CreateOrderRequest(
                     idUtente = user.id,
+                    metodoConsegna = snapshot.deliveryMethod.apiValue,
                     items = items
                 )
             )
@@ -403,13 +475,17 @@ data class CatalogUiState(
     val isSubmittingOrder: Boolean = false,
     val orderError: String? = null,
     val lastOrderId: Int? = null,
+    val orderHistory: List<CustomerOrderHistoryEntry> = emptyList(),
+    val isOrderHistoryLoading: Boolean = false,
+    val orderHistoryError: String? = null,
     val showToast: Boolean = false,
     val toastMessage: String? = null,
     val cart: Map<String, Int> = emptyMap(),
     val cartItems: List<CartItemUi> = emptyList(),
     val cartItemsCount: Int = 0,
     val cartTotal: Double = 0.0,
-    val selectedProduct: Product? = null
+    val selectedProduct: Product? = null,
+    val deliveryMethod: DeliveryMethod = DeliveryMethod.LOCKER
 )
 
 enum class AvailabilityFilter(val label: String) {
@@ -418,9 +494,24 @@ enum class AvailabilityFilter(val label: String) {
     INCLUDING_LOW_STOCK("Disponibili + in esaurimento")
 }
 
+enum class DeliveryMethod(val label: String, val apiValue: String) {
+    LOCKER("Ritiro nel locker", "LOCKER"),
+    DOMICILIO("Spesa a domicilio", "DOMICILIO");
+
+    companion object {
+        fun fromApi(value: String?): DeliveryMethod =
+            values().firstOrNull { it.apiValue.equals(value, ignoreCase = true) } ?: LOCKER
+    }
+}
+
 data class CartItemUi(
     val product: Product,
     val quantity: Int
+)
+
+data class CustomerOrderHistoryEntry(
+    val order: Order,
+    val sequenceNumber: Int
 )
 
 

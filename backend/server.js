@@ -12,6 +12,7 @@ const productsRoutes = require('./routes/products');
 const authRoutes = require('./routes/auth');
 const ordersRoutes = require('./routes/orders');
 const restockRoutes = require('./routes/restock');
+const suppliersRoutes = require('./routes/suppliers');
 const db = require('./db');
 const shelvesRoutes = require('./routes/shelves');
 
@@ -51,6 +52,7 @@ app.use('/api/prodotti', productsRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/ordini', ordersRoutes);
 app.use('/api/riordini', restockRoutes);
+app.use('/api/fornitori', suppliersRoutes);
 app.use('/api/scaffali', shelvesRoutes);
 
 // 404 handler

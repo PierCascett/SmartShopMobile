@@ -33,9 +33,13 @@ data class StoreAisle(
 )
 
 data class AisleProduct(
+    val id: String,
     val name: String,
     val price: Double,
-    val tags: List<String>
+    val tags: List<String>,
+    val brand: String,
+    val description: String?,
+    val imageUrl: String?
 )
 
 data class EmployeeUiState(
@@ -45,11 +49,18 @@ data class EmployeeUiState(
     val isLoadingOrders: Boolean = false,
     val ordersError: String? = null,
     val isLoadingAisles: Boolean = true,
-    val aislesError: String? = null
+    val aislesError: String? = null,
+    val expandedOrderId: Int? = null,
+    val updatingOrderId: Int? = null,
+    val orderActionError: String? = null,
+    val orderFilter: OrderFilter = OrderFilter.ACTIVE,
+    val selectedProduct: AisleProduct? = null
 ) {
     val selectedAisle: StoreAisle?
         get() = selectedAisleId?.let { aisles[it] }
 }
+
+enum class OrderFilter { ACTIVE, COMPLETED }
 
 class EmployeeViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -108,9 +119,13 @@ class EmployeeViewModel(application: Application) : AndroidViewModel(application
                         .filter { it.shelfId == shelf.id }
                         .map { product ->
                             AisleProduct(
+                                id = product.id,
                                 name = product.name,
                                 price = product.price,
-                                tags = product.tags ?: emptyList()
+                                tags = product.tags ?: emptyList(),
+                                brand = product.brand,
+                                description = product.description,
+                                imageUrl = product.imageUrl
                             )
                         }
                     shelf.id.toString() to StoreAisle(
@@ -139,9 +154,48 @@ class EmployeeViewModel(application: Application) : AndroidViewModel(application
         _uiState.update { it.copy(selectedAisleId = aisleId) }
     }
 
+    fun toggleOrder(orderId: Int) {
+        _uiState.update { state ->
+            state.copy(
+                expandedOrderId = if (state.expandedOrderId == orderId) null else orderId,
+                orderActionError = null
+            )
+        }
+    }
+
+    fun setOrderFilter(filter: OrderFilter) {
+        _uiState.update { it.copy(orderFilter = filter, expandedOrderId = null, orderActionError = null) }
+    }
+
+    fun markOrderShipped(orderId: Int) = updateOrderStatus(orderId, "SPEDITO")
+
+    fun markOrderCompleted(orderId: Int) = updateOrderStatus(orderId, "CONCLUSO")
+
+    fun markOrderCanceled(orderId: Int) = updateOrderStatus(orderId, "ANNULLATO")
+
+    fun showProductDetail(product: AisleProduct) {
+        _uiState.update { it.copy(selectedProduct = product) }
+    }
+
+    fun dismissProductDetail() {
+        _uiState.update { it.copy(selectedProduct = null) }
+    }
+
+    private fun updateOrderStatus(orderId: Int, newStatus: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(updatingOrderId = orderId, orderActionError = null) }
+            val result = orderRepository.updateOrderStatus(orderId, newStatus)
+            result.onSuccess {
+                _uiState.update { it.copy(updatingOrderId = null, orderActionError = null) }
+            }.onFailure { error ->
+                _uiState.update { it.copy(updatingOrderId = null, orderActionError = error.message) }
+            }
+        }
+    }
+
     fun refreshOrders() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingOrders = true, ordersError = null) }
+            _uiState.update { it.copy(isLoadingOrders = true, ordersError = null, orderActionError = null) }
             val result = orderRepository.refreshOrders()
             result.onSuccess {
                 _uiState.update { it.copy(isLoadingOrders = false) }

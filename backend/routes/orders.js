@@ -15,11 +15,21 @@ router.get('/', async (_req, res) => {
                 o.data_ordine,
                 o.stato,
                 o.totale,
+                o.metodo_consegna,
+                o.id_locker,
+                o.codice_ritiro,
                 u.nome,
                 u.cognome,
-                u.email
+                u.email,
+                l.codice AS locker_codice,
+                l.occupato AS locker_occupato,
+                cd.id_rider,
+                cd.data_assegnazione,
+                cd.data_consegna
              FROM ordini o
              JOIN utenti u ON u.id_utente = o.id_utente
+             LEFT JOIN locker l ON l.id_locker = o.id_locker
+             LEFT JOIN consegna_domicilio cd ON cd.id_ordine = o.id_ordine
              ORDER BY o.data_ordine DESC`
         );
 
@@ -43,10 +53,32 @@ router.get('/', async (_req, res) => {
             return acc;
         }, {});
 
-        const orders = ordersResult.rows.map((order) => ({
-            ...order,
-            righe: linesByOrder[order.id_ordine] || []
-        }));
+        const orders = ordersResult.rows.map((order) => {
+            const locker =
+                order.id_locker != null
+                    ? {
+                          id: order.id_locker,
+                          codice: order.locker_codice,
+                          occupato: order.locker_occupato
+                      }
+                    : null;
+            const consegnaDomicilio =
+                order.id_rider != null ||
+                order.data_assegnazione != null ||
+                order.data_consegna != null
+                    ? {
+                          idRider: order.id_rider,
+                          dataAssegnazione: order.data_assegnazione,
+                          dataConsegna: order.data_consegna
+                      }
+                    : null;
+            return {
+                ...order,
+                locker,
+                consegnaDomicilio,
+                righe: linesByOrder[order.id_ordine] || []
+            };
+        });
 
         res.json(orders);
     } catch (error) {
@@ -63,9 +95,15 @@ router.get('/', async (_req, res) => {
 router.post('/', async (req, res) => {
     const client = await db.pool.connect();
     try {
-        const { idUtente, items } = req.body;
+        const { idUtente, items, metodoConsegna } = req.body;
         if (!idUtente || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ error: 'idUtente e items sono obbligatori' });
+        }
+
+        const normalizedDelivery =
+            (metodoConsegna || 'LOCKER').toString().trim().toUpperCase();
+        if (!['LOCKER', 'DOMICILIO'].includes(normalizedDelivery)) {
+            return res.status(400).json({ error: 'metodoConsegna deve essere LOCKER o DOMICILIO' });
         }
 
         await client.query('BEGIN');
@@ -90,27 +128,19 @@ router.post('/', async (req, res) => {
 
             if (stockRes.rowCount === 0) {
                 await client.query('ROLLBACK');
-                return res.status(404).json({ error: `Prodotto ${idProdotto} non trovato in catalogo` });
+                return res.status(404).json({ error: `Prodotto ${idProdotto} non trovato` });
             }
 
             const totalAvailable = stockRes.rows.reduce((sum, row) => sum + Number(row.quantita_disponibile), 0);
             if (totalAvailable < quantita) {
                 await client.query('ROLLBACK');
-                return res.status(400).json({ error: `Stock insufficiente per ${idProdotto}` });
+                return res.status(409).json({ error: `Stock insufficiente per ${idProdotto}` });
             }
 
-            // Prezzo: assumiamo coerente tra righe, usiamo il primo
-            const prezzo = Number(stockRes.rows[0].prezzo);
-            const lineTotal = prezzo * quantita;
-            total += lineTotal;
-            orderLines.push({
-                idProdotto,
-                quantita,
-                prezzoUnitario: prezzo,
-                prezzoTotale: lineTotal
-            });
+            const price = Number(stockRes.rows[0].prezzo);
+            total += price * quantita;
+            orderLines.push({ idProdotto, quantita, prezzoUnitario: price, prezzoTotale: price * quantita });
 
-            // Scarica quantita dalle righe catalogo in ordine fino a esaurimento richiesta
             let remaining = quantita;
             for (const row of stockRes.rows) {
                 if (remaining <= 0) break;
@@ -135,10 +165,10 @@ router.post('/', async (req, res) => {
         }
 
         const orderRes = await client.query(
-            `INSERT INTO ordini (id_utente, data_ordine, stato, totale)
-             VALUES ($1, NOW(), 'CREATO', $2)
-             RETURNING id_ordine, data_ordine, stato, totale`,
-            [idUtente, total]
+            `INSERT INTO ordini (id_utente, data_ordine, stato, totale, metodo_consegna)
+             VALUES ($1, NOW(), 'CREATO', $2, $3)
+             RETURNING id_ordine, data_ordine, stato, totale, metodo_consegna`,
+            [idUtente, total, normalizedDelivery]
         );
 
         const orderId = orderRes.rows[0].id_ordine;
@@ -151,7 +181,12 @@ router.post('/', async (req, res) => {
         }
 
         await client.query('COMMIT');
-        res.status(201).json({ idOrdine: orderId, totale: total, righe: orderLines });
+        res.status(201).json({
+            idOrdine: orderId,
+            totale: total,
+            metodoConsegna: normalizedDelivery,
+            righe: orderLines
+        });
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Errore creazione ordine:', error);
@@ -161,5 +196,100 @@ router.post('/', async (req, res) => {
     }
 });
 
-module.exports = router;
+/**
+ * PATCH /api/ordini/:id
+ * Aggiorna lo stato di un ordine (es. IN_PREPARAZIONE, CONCLUSO) e gestisce locker/consegna domicilio.
+ * body: { stato }
+ */
+router.patch('/:orderId', async (req, res) => {
+    const client = await db.pool.connect();
+    try {
+        const orderId = Number(req.params.orderId);
+        const { stato } = req.body;
+        if (!orderId || !stato) {
+            return res.status(400).json({ error: 'orderId e stato sono obbligatori' });
+        }
 
+        const newStatus = stato.toString().trim().toUpperCase();
+        const allowedStatuses = ['CREATO', 'SPEDITO', 'CONSEGNATO', 'ANNULLATO', 'CONCLUSO'];
+        if (!allowedStatuses.includes(newStatus)) {
+            return res.status(400).json({ error: 'Stato non valido' });
+        }
+
+        await client.query('BEGIN');
+        const currentRes = await client.query(
+            `SELECT id_ordine, stato, metodo_consegna, id_locker, codice_ritiro
+             FROM ordini
+             WHERE id_ordine = $1
+             FOR UPDATE`,
+            [orderId]
+        );
+        if (currentRes.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Ordine non trovato' });
+        }
+        const current = currentRes.rows[0];
+
+        let lockerRow = null;
+        let codiceRitiro = current.codice_ritiro;
+
+        if (newStatus === 'CONCLUSO' && current.metodo_consegna === 'LOCKER') {
+            if (current.id_locker) {
+                const lockerRes = await client.query(
+                    `SELECT * FROM locker WHERE id_locker = $1 FOR UPDATE`,
+                    [current.id_locker]
+                );
+                lockerRow = lockerRes.rows[0] || null;
+            }
+            if (!lockerRow) {
+                const lockerRes = await client.query(
+                    `SELECT * FROM locker WHERE occupato = false LIMIT 1 FOR UPDATE`
+                );
+                if (lockerRes.rowCount === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(409).json({ error: 'Nessun locker disponibile' });
+                }
+                lockerRow = lockerRes.rows[0];
+            }
+            codiceRitiro =
+                codiceRitiro ||
+                Math.random().toString(36).slice(2, 8).toUpperCase();
+            await client.query(
+                `UPDATE locker SET occupato = true WHERE id_locker = $1`,
+                [lockerRow.id_locker]
+            );
+        }
+
+        const updateRes = await client.query(
+            `UPDATE ordini
+             SET stato = $2,
+                 id_locker = COALESCE($3, id_locker),
+                 codice_ritiro = COALESCE($4, codice_ritiro)
+             WHERE id_ordine = $1
+             RETURNING *`,
+            [orderId, newStatus, lockerRow?.id_locker ?? null, codiceRitiro ?? null]
+        );
+
+        await client.query('COMMIT');
+
+        return res.json({
+            ...updateRes.rows[0],
+            locker: lockerRow
+                ? {
+                      id: lockerRow.id_locker,
+                      codice: lockerRow.codice,
+                      posizione: lockerRow.posizione,
+                      occupato: true
+                  }
+                : null
+        });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Errore aggiornamento ordine:', error);
+        res.status(500).json({ error: 'Errore durante l\'aggiornamento dell\'ordine' });
+    } finally {
+        client.release();
+    }
+});
+
+module.exports = router;
