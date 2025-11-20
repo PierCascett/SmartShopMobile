@@ -1,13 +1,10 @@
 --
 -- PostgreSQL database dump
 --
+-- Dumped from database version 18.1
+-- Dumped by pg_dump version 18.1
 
-\restrict uZJsxyMedFLhLQzbBEfYQnAQVMJTtdCPWWhHNM2leXiDZJTuSKuJwB6dAL06EoI
-
--- Dumped from database version 18.0
--- Dumped by pg_dump version 18.0
-
--- Started on 2025-11-18 12:51:48
+-- Started on 2025-11-20 18:26:11
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -59,7 +56,7 @@ CREATE SEQUENCE public.catalogo_id_catalogo_seq
 ALTER SEQUENCE public.catalogo_id_catalogo_seq OWNER TO postgres;
 
 --
--- TOC entry 5149 (class 0 OID 0)
+-- TOC entry 5174 (class 0 OID 0)
 -- Dependencies: 234
 -- Name: catalogo_id_catalogo_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -99,13 +96,28 @@ CREATE SEQUENCE public.categorie_prodotti_id_categoria_seq
 ALTER SEQUENCE public.categorie_prodotti_id_categoria_seq OWNER TO postgres;
 
 --
--- TOC entry 5150 (class 0 OID 0)
+-- TOC entry 5175 (class 0 OID 0)
 -- Dependencies: 221
 -- Name: categorie_prodotti_id_categoria_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
 ALTER SEQUENCE public.categorie_prodotti_id_categoria_seq OWNED BY public.categorie_prodotti.id_categoria;
 
+
+--
+-- TOC entry 245 (class 1259 OID 32837)
+-- Name: consegna_domicilio; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.consegna_domicilio (
+    id_ordine integer NOT NULL,
+    id_rider integer,
+    data_assegnazione timestamp without time zone DEFAULT now(),
+    data_consegna timestamp without time zone
+);
+
+
+ALTER TABLE public.consegna_domicilio OWNER TO postgres;
 
 --
 -- TOC entry 226 (class 1259 OID 24613)
@@ -140,12 +152,51 @@ CREATE SEQUENCE public.fornitori_id_fornitore_seq
 ALTER SEQUENCE public.fornitori_id_fornitore_seq OWNER TO postgres;
 
 --
--- TOC entry 5151 (class 0 OID 0)
+-- TOC entry 5176 (class 0 OID 0)
 -- Dependencies: 225
 -- Name: fornitori_id_fornitore_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
 ALTER SEQUENCE public.fornitori_id_fornitore_seq OWNED BY public.fornitori.id_fornitore;
+
+
+--
+-- TOC entry 244 (class 1259 OID 32820)
+-- Name: locker; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.locker (
+    id_locker integer NOT NULL,
+    codice character varying(20) NOT NULL,
+    occupato boolean DEFAULT false NOT NULL
+);
+
+
+ALTER TABLE public.locker OWNER TO postgres;
+
+--
+-- TOC entry 243 (class 1259 OID 32819)
+-- Name: locker_id_locker_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.locker_id_locker_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.locker_id_locker_seq OWNER TO postgres;
+
+--
+-- TOC entry 5177 (class 0 OID 0)
+-- Dependencies: 243
+-- Name: locker_id_locker_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.locker_id_locker_seq OWNED BY public.locker.id_locker;
 
 
 --
@@ -180,7 +231,7 @@ CREATE SEQUENCE public.magazzino_id_magazzino_seq
 ALTER SEQUENCE public.magazzino_id_magazzino_seq OWNER TO postgres;
 
 --
--- TOC entry 5152 (class 0 OID 0)
+-- TOC entry 5178 (class 0 OID 0)
 -- Dependencies: 232
 -- Name: magazzino_id_magazzino_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -199,7 +250,10 @@ CREATE TABLE public.ordini (
     data_ordine timestamp without time zone DEFAULT now() NOT NULL,
     stato character varying(20) NOT NULL,
     totale numeric(10,2) NOT NULL,
-    CONSTRAINT ordini_stato_chk CHECK (((stato)::text = ANY ((ARRAY['CREATO'::character varying, 'PAGATO'::character varying, 'SPEDITO'::character varying, 'CONSEGNATO'::character varying, 'ANNULLATO'::character varying])::text[])))
+    metodo_consegna text DEFAULT 'LOCKER'::text,
+    id_locker integer,
+    codice_ritiro character varying(20),
+    CONSTRAINT ordini_stato_chk CHECK (((stato)::text = ANY ((ARRAY['CREATO'::character varying, 'SPEDITO'::character varying, 'CONSEGNATO'::character varying, 'ANNULLATO'::character varying, 'CONCLUSO'::character varying])::text[])))
 );
 
 
@@ -222,7 +276,7 @@ CREATE SEQUENCE public.ordini_id_ordine_seq
 ALTER SEQUENCE public.ordini_id_ordine_seq OWNER TO postgres;
 
 --
--- TOC entry 5153 (class 0 OID 0)
+-- TOC entry 5179 (class 0 OID 0)
 -- Dependencies: 228
 -- Name: ordini_id_ordine_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -293,7 +347,7 @@ CREATE SEQUENCE public.righe_ordine_id_riga_seq
 ALTER SEQUENCE public.righe_ordine_id_riga_seq OWNER TO postgres;
 
 --
--- TOC entry 5154 (class 0 OID 0)
+-- TOC entry 5180 (class 0 OID 0)
 -- Dependencies: 237
 -- Name: righe_ordine_id_riga_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -338,7 +392,7 @@ CREATE SEQUENCE public.riordini_magazzino_id_riordino_seq
 ALTER SEQUENCE public.riordini_magazzino_id_riordino_seq OWNER TO postgres;
 
 --
--- TOC entry 5155 (class 0 OID 0)
+-- TOC entry 5181 (class 0 OID 0)
 -- Dependencies: 230
 -- Name: riordini_magazzino_id_riordino_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -377,7 +431,7 @@ CREATE SEQUENCE public.scaffali_id_scaffale_seq
 ALTER SEQUENCE public.scaffali_id_scaffale_seq OWNER TO postgres;
 
 --
--- TOC entry 5156 (class 0 OID 0)
+-- TOC entry 5182 (class 0 OID 0)
 -- Dependencies: 239
 -- Name: scaffali_id_scaffale_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -415,7 +469,7 @@ CREATE SEQUENCE public.sovracategorie_id_sovracategoria_seq
 ALTER SEQUENCE public.sovracategorie_id_sovracategoria_seq OWNER TO postgres;
 
 --
--- TOC entry 5157 (class 0 OID 0)
+-- TOC entry 5183 (class 0 OID 0)
 -- Dependencies: 241
 -- Name: sovracategorie_id_sovracategoria_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -453,7 +507,7 @@ CREATE SEQUENCE public.tag_id_tag_seq
 ALTER SEQUENCE public.tag_id_tag_seq OWNER TO postgres;
 
 --
--- TOC entry 5158 (class 0 OID 0)
+-- TOC entry 5184 (class 0 OID 0)
 -- Dependencies: 223
 -- Name: tag_id_tag_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -497,7 +551,7 @@ CREATE SEQUENCE public.utenti_id_utente_seq
 ALTER SEQUENCE public.utenti_id_utente_seq OWNER TO postgres;
 
 --
--- TOC entry 5159 (class 0 OID 0)
+-- TOC entry 5185 (class 0 OID 0)
 -- Dependencies: 219
 -- Name: utenti_id_utente_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -506,7 +560,7 @@ ALTER SEQUENCE public.utenti_id_utente_seq OWNED BY public.utenti.id_utente;
 
 
 --
--- TOC entry 4925 (class 2604 OID 24706)
+-- TOC entry 4935 (class 2604 OID 24706)
 -- Name: catalogo id_catalogo; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -514,7 +568,7 @@ ALTER TABLE ONLY public.catalogo ALTER COLUMN id_catalogo SET DEFAULT nextval('p
 
 
 --
--- TOC entry 4916 (class 2604 OID 24596)
+-- TOC entry 4925 (class 2604 OID 24596)
 -- Name: categorie_prodotti id_categoria; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -522,7 +576,7 @@ ALTER TABLE ONLY public.categorie_prodotti ALTER COLUMN id_categoria SET DEFAULT
 
 
 --
--- TOC entry 4918 (class 2604 OID 24616)
+-- TOC entry 4927 (class 2604 OID 24616)
 -- Name: fornitori id_fornitore; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -530,7 +584,15 @@ ALTER TABLE ONLY public.fornitori ALTER COLUMN id_fornitore SET DEFAULT nextval(
 
 
 --
--- TOC entry 4924 (class 2604 OID 24686)
+-- TOC entry 4939 (class 2604 OID 32823)
+-- Name: locker id_locker; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.locker ALTER COLUMN id_locker SET DEFAULT nextval('public.locker_id_locker_seq'::regclass);
+
+
+--
+-- TOC entry 4934 (class 2604 OID 24686)
 -- Name: magazzino id_magazzino; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -538,7 +600,7 @@ ALTER TABLE ONLY public.magazzino ALTER COLUMN id_magazzino SET DEFAULT nextval(
 
 
 --
--- TOC entry 4919 (class 2604 OID 24642)
+-- TOC entry 4928 (class 2604 OID 24642)
 -- Name: ordini id_ordine; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -546,7 +608,7 @@ ALTER TABLE ONLY public.ordini ALTER COLUMN id_ordine SET DEFAULT nextval('publi
 
 
 --
--- TOC entry 4926 (class 2604 OID 24739)
+-- TOC entry 4936 (class 2604 OID 24739)
 -- Name: righe_ordine id_riga; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -554,7 +616,7 @@ ALTER TABLE ONLY public.righe_ordine ALTER COLUMN id_riga SET DEFAULT nextval('p
 
 
 --
--- TOC entry 4921 (class 2604 OID 24661)
+-- TOC entry 4931 (class 2604 OID 24661)
 -- Name: riordini_magazzino id_riordino; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -562,7 +624,7 @@ ALTER TABLE ONLY public.riordini_magazzino ALTER COLUMN id_riordino SET DEFAULT 
 
 
 --
--- TOC entry 4927 (class 2604 OID 32772)
+-- TOC entry 4937 (class 2604 OID 32772)
 -- Name: scaffali id_scaffale; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -570,7 +632,7 @@ ALTER TABLE ONLY public.scaffali ALTER COLUMN id_scaffale SET DEFAULT nextval('p
 
 
 --
--- TOC entry 4928 (class 2604 OID 32789)
+-- TOC entry 4938 (class 2604 OID 32789)
 -- Name: sovracategorie id_sovracategoria; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -578,7 +640,7 @@ ALTER TABLE ONLY public.sovracategorie ALTER COLUMN id_sovracategoria SET DEFAUL
 
 
 --
--- TOC entry 4917 (class 2604 OID 24607)
+-- TOC entry 4926 (class 2604 OID 24607)
 -- Name: tag id_tag; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -586,7 +648,7 @@ ALTER TABLE ONLY public.tag ALTER COLUMN id_tag SET DEFAULT nextval('public.tag_
 
 
 --
--- TOC entry 4914 (class 2604 OID 24581)
+-- TOC entry 4923 (class 2604 OID 24581)
 -- Name: utenti id_utente; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -594,37 +656,37 @@ ALTER TABLE ONLY public.utenti ALTER COLUMN id_utente SET DEFAULT nextval('publi
 
 
 --
--- TOC entry 5136 (class 0 OID 24703)
+-- TOC entry 5158 (class 0 OID 24703)
 -- Dependencies: 235
 -- Data for Name: catalogo; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.catalogo (id_catalogo, id_prodotto, quantita_disponibile, prezzo, vecchio_prezzo, id_scaffale) FROM stdin;
-4	prd-01	1	2.49	2.99	2
 3	prd-03	8	1.99	2.20	3
-2	prd-02	18	3.10	3.49	1
 5	prd-04	20	1.99	2.29	4
-6	prd-05	30	3.49	3.99	5
 7	prd-06	25	2.79	3.19	6
 8	prd-07	25	2.49	2.89	6
-9	prd-08	15	5.99	6.49	7
 10	prd-09	18	4.99	5.49	7
 11	prd-10	12	4.79	5.29	7
 13	prd-12	10	7.99	8.49	9
 14	prd-13	8	9.99	10.49	9
-15	prd-14	18	1.59	1.89	3
 16	prd-15	16	1.79	2.09	3
 17	prd-16	14	1.99	2.29	2
 18	prd-17	24	1.49	1.79	10
 19	prd-18	30	1.39	1.69	10
-20	prd-19	22	1.29	1.59	10
 12	prd-11	19	4.49	4.99	8
-1	prd-01	1	2.49	2.99	1
+9	prd-08	14	5.99	6.49	7
+4	prd-01	0	2.49	2.99	2
+15	prd-14	16	1.59	1.89	3
+1	prd-01	0	2.49	2.99	1
+6	prd-05	29	3.49	3.99	5
+2	prd-02	12	3.10	3.49	1
+20	prd-19	21	1.29	1.59	10
 \.
 
 
 --
--- TOC entry 5123 (class 0 OID 24593)
+-- TOC entry 5145 (class 0 OID 24593)
 -- Dependencies: 222
 -- Data for Name: categorie_prodotti; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -652,7 +714,20 @@ COPY public.categorie_prodotti (id_categoria, nome, descrizione, id_sovracategor
 
 
 --
--- TOC entry 5127 (class 0 OID 24613)
+-- TOC entry 5168 (class 0 OID 32837)
+-- Dependencies: 245
+-- Data for Name: consegna_domicilio; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.consegna_domicilio (id_ordine, id_rider, data_assegnazione, data_consegna) FROM stdin;
+21	\N	2025-11-18 20:45:35.546761	\N
+19	\N	2025-11-18 20:45:35.546761	\N
+18	\N	2025-11-18 20:45:35.546761	2025-11-18 20:45:50.546761
+\.
+
+
+--
+-- TOC entry 5149 (class 0 OID 24613)
 -- Dependencies: 226
 -- Data for Name: fornitori; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -665,48 +740,74 @@ COPY public.fornitori (id_fornitore, nome, telefono, email, indirizzo) FROM stdi
 
 
 --
--- TOC entry 5134 (class 0 OID 24683)
+-- TOC entry 5167 (class 0 OID 32820)
+-- Dependencies: 244
+-- Data for Name: locker; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+COPY public.locker (id_locker, codice, occupato) FROM stdin;
+11	LCK-001	t
+12	LCK-002	t
+13	LCK-003	t
+14	LCK-004	t
+15	LCK-005	t
+16	LCK-006	t
+\.
+
+
+--
+-- TOC entry 5156 (class 0 OID 24683)
 -- Dependencies: 233
 -- Data for Name: magazzino; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
 COPY public.magazzino (id_magazzino, id_prodotto, quantita_disponibile, id_ultimo_riordino_arrivato) FROM stdin;
-2	prd-02	38	\N
 3	prd-03	38	3
-1	prd-01	79	1
+1	prd-01	77	1
+2	prd-02	32	\N
 \.
 
 
 --
--- TOC entry 5130 (class 0 OID 24639)
+-- TOC entry 5152 (class 0 OID 24639)
 -- Dependencies: 229
 -- Data for Name: ordini; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-COPY public.ordini (id_ordine, id_utente, data_ordine, stato, totale) FROM stdin;
-3	3	2025-11-14 18:10:00	PAGATO	32.40
-1	1	2025-11-13 10:30:00	CREATO	31.10
-2	2	2025-11-14 15:45:00	CONSEGNATO	5.97
-4	4	2025-11-17 11:52:42.91752	CREATO	2.49
-5	4	2025-11-17 12:01:59.904219	CREATO	7.58
-6	4	2025-11-17 12:02:19.427122	CREATO	1.99
-7	5	2025-11-17 12:20:43.633427	CREATO	5.09
-8	5	2025-11-17 13:10:08.016807	CREATO	1.99
-9	4	2025-11-17 13:43:32.190967	CREATO	2.49
-10	4	2025-11-17 14:42:33.832698	CREATO	2.49
-11	4	2025-11-17 14:56:36.267859	CREATO	3.98
-12	4	2025-11-17 15:10:25.877123	CREATO	4.98
-13	4	2025-11-17 15:12:31.825531	CREATO	4.98
-14	5	2025-11-17 15:18:17.896057	CREATO	2.49
-15	5	2025-11-17 15:18:25.293239	CREATO	2.49
-16	5	2025-11-17 17:42:58.703412	CREATO	1.99
-17	5	2025-11-17 18:53:38.263927	CREATO	4.49
-18	5	2025-11-17 19:17:54.613428	CREATO	2.49
+COPY public.ordini (id_ordine, id_utente, data_ordine, stato, totale, metodo_consegna, id_locker, codice_ritiro) FROM stdin;
+1	1	2025-11-13 10:30:00	CREATO	31.10	LOCKER	\N	\N
+2	2	2025-11-14 15:45:00	CONSEGNATO	5.97	LOCKER	\N	\N
+4	4	2025-11-17 11:52:42.91752	CREATO	2.49	LOCKER	\N	\N
+5	4	2025-11-17 12:01:59.904219	CREATO	7.58	LOCKER	\N	\N
+6	4	2025-11-17 12:02:19.427122	CREATO	1.99	LOCKER	\N	\N
+7	5	2025-11-17 12:20:43.633427	CREATO	5.09	LOCKER	\N	\N
+8	5	2025-11-17 13:10:08.016807	CREATO	1.99	LOCKER	\N	\N
+9	4	2025-11-17 13:43:32.190967	CREATO	2.49	LOCKER	\N	\N
+10	4	2025-11-17 14:42:33.832698	CREATO	2.49	LOCKER	\N	\N
+12	4	2025-11-17 15:10:25.877123	CREATO	4.98	LOCKER	\N	\N
+13	4	2025-11-17 15:12:31.825531	CREATO	4.98	LOCKER	\N	\N
+14	5	2025-11-17 15:18:17.896057	CREATO	2.49	LOCKER	\N	\N
+16	5	2025-11-17 17:42:58.703412	CREATO	1.99	LOCKER	\N	\N
+18	5	2025-11-17 19:17:54.613428	CREATO	2.49	LOCKER	\N	\N
+21	4	2025-11-18 18:48:20.462345	CREATO	3.18	DOMICILIO	\N	\N
+11	4	2025-11-17 14:56:36.267859	CONCLUSO	3.98	LOCKER	11	4OI5VD
+3	3	2025-11-14 18:10:00	CONCLUSO	32.40	LOCKER	12	7BFSHR
+22	4	2025-11-18 20:46:39.498526	CONCLUSO	3.10	LOCKER	13	ATPWXN
+20	5	2025-11-18 17:25:55.107614	CONCLUSO	2.49	LOCKER	14	4RF1H0
+17	5	2025-11-17 18:53:38.263927	CONCLUSO	4.49	LOCKER	15	PE8O3E
+15	5	2025-11-17 15:18:25.293239	CONCLUSO	2.49	LOCKER	16	RSWVBQ
+19	4	2025-11-18 17:10:56.194375	ANNULLATO	5.99	LOCKER	\N	\N
+24	4	2025-11-19 00:53:23.951762	CREATO	3.49	LOCKER	\N	\N
+25	4	2025-11-19 00:53:44.490005	CREATO	3.10	LOCKER	\N	\N
+28	4	2025-11-19 21:06:21.625929	ANNULLATO	1.29	LOCKER	\N	\N
+27	4	2025-11-19 19:10:40.013501	ANNULLATO	6.20	LOCKER	\N	\N
+26	4	2025-11-19 18:32:06.589632	CONCLUSO	6.20	DOMICILIO	\N	\N
+23	4	2025-11-19 00:52:57.431981	SPEDITO	2.49	DOMICILIO	\N	\N
 \.
 
 
 --
--- TOC entry 5128 (class 0 OID 24623)
+-- TOC entry 5150 (class 0 OID 24623)
 -- Dependencies: 227
 -- Data for Name: prodotti; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -735,7 +836,7 @@ prd-19	Tè freddo limone 1.5L	FreshTea	18	Tè freddo al limone 1.5L
 
 
 --
--- TOC entry 5137 (class 0 OID 24718)
+-- TOC entry 5159 (class 0 OID 24718)
 -- Dependencies: 236
 -- Data for Name: prodotti_tag; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -766,7 +867,7 @@ prd-18	5
 
 
 --
--- TOC entry 5139 (class 0 OID 24736)
+-- TOC entry 5161 (class 0 OID 24736)
 -- Dependencies: 238
 -- Data for Name: righe_ordine; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -793,11 +894,21 @@ COPY public.righe_ordine (id_riga, id_ordine, id_prodotto, quantita, prezzo_unit
 19	16	prd-03	1	1.99	1.99
 20	17	prd-11	1	4.49	4.49
 21	18	prd-01	1	2.49	2.49
+22	19	prd-08	1	5.99	5.99
+23	20	prd-01	1	2.49	2.49
+24	21	prd-14	2	1.59	3.18
+25	22	prd-02	1	3.10	3.10
+26	23	prd-01	1	2.49	2.49
+27	24	prd-05	1	3.49	3.49
+28	25	prd-02	1	3.10	3.10
+29	26	prd-02	2	3.10	6.20
+30	27	prd-02	2	3.10	6.20
+31	28	prd-19	1	1.29	1.29
 \.
 
 
 --
--- TOC entry 5132 (class 0 OID 24658)
+-- TOC entry 5154 (class 0 OID 24658)
 -- Dependencies: 231
 -- Data for Name: riordini_magazzino; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -809,11 +920,13 @@ COPY public.riordini_magazzino (id_riordino, id_prodotto, id_fornitore, quantita
 4	prd-01	1	2	2025-11-16 23:30:22.205855	2026-01-01	\N	f	\N
 5	prd-02	2	2	2025-11-17 01:13:50.891229	\N	\N	f	\N
 6	prd-02	1	2	2025-11-17 11:15:31.808906	\N	\N	f	\N
+7	prd-09	3	5	2025-11-19 22:00:13.97219	2025-11-19	\N	f	\N
+8	prd-01	1	4	2025-11-19 23:24:46.115003	2025-11-19	\N	f	\N
 \.
 
 
 --
--- TOC entry 5141 (class 0 OID 32769)
+-- TOC entry 5163 (class 0 OID 32769)
 -- Dependencies: 240
 -- Data for Name: scaffali; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -841,7 +954,7 @@ COPY public.scaffali (id_scaffale, nome, descrizione) FROM stdin;
 
 
 --
--- TOC entry 5143 (class 0 OID 32786)
+-- TOC entry 5165 (class 0 OID 32786)
 -- Dependencies: 242
 -- Data for Name: sovracategorie; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -858,7 +971,7 @@ COPY public.sovracategorie (id_sovracategoria, nome) FROM stdin;
 
 
 --
--- TOC entry 5125 (class 0 OID 24604)
+-- TOC entry 5147 (class 0 OID 24604)
 -- Dependencies: 224
 -- Data for Name: tag; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -877,7 +990,7 @@ COPY public.tag (id_tag, nome) FROM stdin;
 
 
 --
--- TOC entry 5121 (class 0 OID 24578)
+-- TOC entry 5143 (class 0 OID 24578)
 -- Dependencies: 220
 -- Data for Name: utenti; Type: TABLE DATA; Schema: public; Owner: postgres
 --
@@ -892,7 +1005,7 @@ COPY public.utenti (id_utente, nome, cognome, email, telefono, data_creazione, r
 
 
 --
--- TOC entry 5160 (class 0 OID 0)
+-- TOC entry 5186 (class 0 OID 0)
 -- Dependencies: 234
 -- Name: catalogo_id_catalogo_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
@@ -901,7 +1014,7 @@ SELECT pg_catalog.setval('public.catalogo_id_catalogo_seq', 20, true);
 
 
 --
--- TOC entry 5161 (class 0 OID 0)
+-- TOC entry 5187 (class 0 OID 0)
 -- Dependencies: 221
 -- Name: categorie_prodotti_id_categoria_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
@@ -910,7 +1023,7 @@ SELECT pg_catalog.setval('public.categorie_prodotti_id_categoria_seq', 21, true)
 
 
 --
--- TOC entry 5162 (class 0 OID 0)
+-- TOC entry 5188 (class 0 OID 0)
 -- Dependencies: 225
 -- Name: fornitori_id_fornitore_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
@@ -919,7 +1032,16 @@ SELECT pg_catalog.setval('public.fornitori_id_fornitore_seq', 3, true);
 
 
 --
--- TOC entry 5163 (class 0 OID 0)
+-- TOC entry 5189 (class 0 OID 0)
+-- Dependencies: 243
+-- Name: locker_id_locker_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.locker_id_locker_seq', 6, true);
+
+
+--
+-- TOC entry 5190 (class 0 OID 0)
 -- Dependencies: 232
 -- Name: magazzino_id_magazzino_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
@@ -928,34 +1050,34 @@ SELECT pg_catalog.setval('public.magazzino_id_magazzino_seq', 3, true);
 
 
 --
--- TOC entry 5164 (class 0 OID 0)
+-- TOC entry 5191 (class 0 OID 0)
 -- Dependencies: 228
 -- Name: ordini_id_ordine_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.ordini_id_ordine_seq', 18, true);
+SELECT pg_catalog.setval('public.ordini_id_ordine_seq', 28, true);
 
 
 --
--- TOC entry 5165 (class 0 OID 0)
+-- TOC entry 5192 (class 0 OID 0)
 -- Dependencies: 237
 -- Name: righe_ordine_id_riga_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.righe_ordine_id_riga_seq', 21, true);
+SELECT pg_catalog.setval('public.righe_ordine_id_riga_seq', 31, true);
 
 
 --
--- TOC entry 5166 (class 0 OID 0)
+-- TOC entry 5193 (class 0 OID 0)
 -- Dependencies: 230
 -- Name: riordini_magazzino_id_riordino_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.riordini_magazzino_id_riordino_seq', 6, true);
+SELECT pg_catalog.setval('public.riordini_magazzino_id_riordino_seq', 8, true);
 
 
 --
--- TOC entry 5167 (class 0 OID 0)
+-- TOC entry 5194 (class 0 OID 0)
 -- Dependencies: 239
 -- Name: scaffali_id_scaffale_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
@@ -964,7 +1086,7 @@ SELECT pg_catalog.setval('public.scaffali_id_scaffale_seq', 3, true);
 
 
 --
--- TOC entry 5168 (class 0 OID 0)
+-- TOC entry 5195 (class 0 OID 0)
 -- Dependencies: 241
 -- Name: sovracategorie_id_sovracategoria_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
@@ -973,7 +1095,7 @@ SELECT pg_catalog.setval('public.sovracategorie_id_sovracategoria_seq', 7, true)
 
 
 --
--- TOC entry 5169 (class 0 OID 0)
+-- TOC entry 5196 (class 0 OID 0)
 -- Dependencies: 223
 -- Name: tag_id_tag_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
@@ -982,7 +1104,7 @@ SELECT pg_catalog.setval('public.tag_id_tag_seq', 9, true);
 
 
 --
--- TOC entry 5170 (class 0 OID 0)
+-- TOC entry 5197 (class 0 OID 0)
 -- Dependencies: 219
 -- Name: utenti_id_utente_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
@@ -991,7 +1113,7 @@ SELECT pg_catalog.setval('public.utenti_id_utente_seq', 5, true);
 
 
 --
--- TOC entry 4949 (class 2606 OID 24712)
+-- TOC entry 4962 (class 2606 OID 24712)
 -- Name: catalogo catalogo_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1000,7 +1122,7 @@ ALTER TABLE ONLY public.catalogo
 
 
 --
--- TOC entry 4935 (class 2606 OID 24602)
+-- TOC entry 4948 (class 2606 OID 24602)
 -- Name: categorie_prodotti categorie_prodotti_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1009,7 +1131,16 @@ ALTER TABLE ONLY public.categorie_prodotti
 
 
 --
--- TOC entry 4939 (class 2606 OID 24622)
+-- TOC entry 4978 (class 2606 OID 32843)
+-- Name: consegna_domicilio consegna_domicilio_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.consegna_domicilio
+    ADD CONSTRAINT consegna_domicilio_pkey PRIMARY KEY (id_ordine);
+
+
+--
+-- TOC entry 4952 (class 2606 OID 24622)
 -- Name: fornitori fornitori_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1018,7 +1149,25 @@ ALTER TABLE ONLY public.fornitori
 
 
 --
--- TOC entry 4947 (class 2606 OID 24691)
+-- TOC entry 4974 (class 2606 OID 32856)
+-- Name: locker locker_codice_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.locker
+    ADD CONSTRAINT locker_codice_key UNIQUE (codice);
+
+
+--
+-- TOC entry 4976 (class 2606 OID 32829)
+-- Name: locker locker_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.locker
+    ADD CONSTRAINT locker_pkey PRIMARY KEY (id_locker);
+
+
+--
+-- TOC entry 4960 (class 2606 OID 24691)
 -- Name: magazzino magazzino_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1027,7 +1176,7 @@ ALTER TABLE ONLY public.magazzino
 
 
 --
--- TOC entry 4943 (class 2606 OID 24651)
+-- TOC entry 4956 (class 2606 OID 24651)
 -- Name: ordini ordini_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1036,7 +1185,7 @@ ALTER TABLE ONLY public.ordini
 
 
 --
--- TOC entry 4941 (class 2606 OID 24632)
+-- TOC entry 4954 (class 2606 OID 24632)
 -- Name: prodotti prodotti_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1045,7 +1194,7 @@ ALTER TABLE ONLY public.prodotti
 
 
 --
--- TOC entry 4951 (class 2606 OID 24724)
+-- TOC entry 4964 (class 2606 OID 24724)
 -- Name: prodotti_tag prodotti_tag_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1054,7 +1203,7 @@ ALTER TABLE ONLY public.prodotti_tag
 
 
 --
--- TOC entry 4953 (class 2606 OID 24747)
+-- TOC entry 4966 (class 2606 OID 24747)
 -- Name: righe_ordine righe_ordine_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1063,7 +1212,7 @@ ALTER TABLE ONLY public.righe_ordine
 
 
 --
--- TOC entry 4945 (class 2606 OID 24671)
+-- TOC entry 4958 (class 2606 OID 24671)
 -- Name: riordini_magazzino riordini_magazzino_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1072,7 +1221,7 @@ ALTER TABLE ONLY public.riordini_magazzino
 
 
 --
--- TOC entry 4955 (class 2606 OID 32778)
+-- TOC entry 4968 (class 2606 OID 32778)
 -- Name: scaffali scaffali_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1081,7 +1230,7 @@ ALTER TABLE ONLY public.scaffali
 
 
 --
--- TOC entry 4957 (class 2606 OID 32795)
+-- TOC entry 4970 (class 2606 OID 32795)
 -- Name: sovracategorie sovracategorie_nome_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1090,7 +1239,7 @@ ALTER TABLE ONLY public.sovracategorie
 
 
 --
--- TOC entry 4959 (class 2606 OID 32793)
+-- TOC entry 4972 (class 2606 OID 32793)
 -- Name: sovracategorie sovracategorie_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1099,7 +1248,7 @@ ALTER TABLE ONLY public.sovracategorie
 
 
 --
--- TOC entry 4937 (class 2606 OID 24611)
+-- TOC entry 4950 (class 2606 OID 24611)
 -- Name: tag tag_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1108,7 +1257,7 @@ ALTER TABLE ONLY public.tag
 
 
 --
--- TOC entry 4931 (class 2606 OID 24591)
+-- TOC entry 4944 (class 2606 OID 24591)
 -- Name: utenti utenti_email_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1117,7 +1266,7 @@ ALTER TABLE ONLY public.utenti
 
 
 --
--- TOC entry 4933 (class 2606 OID 24589)
+-- TOC entry 4946 (class 2606 OID 24589)
 -- Name: utenti utenti_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1126,7 +1275,7 @@ ALTER TABLE ONLY public.utenti
 
 
 --
--- TOC entry 4967 (class 2606 OID 24713)
+-- TOC entry 4987 (class 2606 OID 24713)
 -- Name: catalogo catalogo_id_prodotto_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1135,7 +1284,7 @@ ALTER TABLE ONLY public.catalogo
 
 
 --
--- TOC entry 4968 (class 2606 OID 32779)
+-- TOC entry 4988 (class 2606 OID 32779)
 -- Name: catalogo catalogo_id_scaffale_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1144,7 +1293,25 @@ ALTER TABLE ONLY public.catalogo
 
 
 --
--- TOC entry 4965 (class 2606 OID 24692)
+-- TOC entry 4993 (class 2606 OID 32844)
+-- Name: consegna_domicilio consegna_domicilio_id_ordine_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.consegna_domicilio
+    ADD CONSTRAINT consegna_domicilio_id_ordine_fkey FOREIGN KEY (id_ordine) REFERENCES public.ordini(id_ordine) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 4994 (class 2606 OID 32849)
+-- Name: consegna_domicilio consegna_domicilio_id_rider_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.consegna_domicilio
+    ADD CONSTRAINT consegna_domicilio_id_rider_fkey FOREIGN KEY (id_rider) REFERENCES public.utenti(id_utente);
+
+
+--
+-- TOC entry 4985 (class 2606 OID 24692)
 -- Name: magazzino magazzino_id_prodotto_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1153,7 +1320,7 @@ ALTER TABLE ONLY public.magazzino
 
 
 --
--- TOC entry 4966 (class 2606 OID 24697)
+-- TOC entry 4986 (class 2606 OID 24697)
 -- Name: magazzino magazzino_id_ultimo_riordino_arrivato_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1162,7 +1329,16 @@ ALTER TABLE ONLY public.magazzino
 
 
 --
--- TOC entry 4961 (class 2606 OID 24652)
+-- TOC entry 4980 (class 2606 OID 32832)
+-- Name: ordini ordini_id_locker_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.ordini
+    ADD CONSTRAINT ordini_id_locker_fkey FOREIGN KEY (id_locker) REFERENCES public.locker(id_locker);
+
+
+--
+-- TOC entry 4981 (class 2606 OID 24652)
 -- Name: ordini ordini_id_utente_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1171,7 +1347,7 @@ ALTER TABLE ONLY public.ordini
 
 
 --
--- TOC entry 4960 (class 2606 OID 32798)
+-- TOC entry 4979 (class 2606 OID 32798)
 -- Name: prodotti prodotti_id_categoria_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1180,7 +1356,7 @@ ALTER TABLE ONLY public.prodotti
 
 
 --
--- TOC entry 4969 (class 2606 OID 24725)
+-- TOC entry 4989 (class 2606 OID 24725)
 -- Name: prodotti_tag prodotti_tag_id_prodotto_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1189,7 +1365,7 @@ ALTER TABLE ONLY public.prodotti_tag
 
 
 --
--- TOC entry 4970 (class 2606 OID 24730)
+-- TOC entry 4990 (class 2606 OID 24730)
 -- Name: prodotti_tag prodotti_tag_id_tag_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1198,7 +1374,7 @@ ALTER TABLE ONLY public.prodotti_tag
 
 
 --
--- TOC entry 4971 (class 2606 OID 24748)
+-- TOC entry 4991 (class 2606 OID 24748)
 -- Name: righe_ordine righe_ordine_id_ordine_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1207,7 +1383,7 @@ ALTER TABLE ONLY public.righe_ordine
 
 
 --
--- TOC entry 4972 (class 2606 OID 24753)
+-- TOC entry 4992 (class 2606 OID 24753)
 -- Name: righe_ordine righe_ordine_id_prodotto_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1216,7 +1392,7 @@ ALTER TABLE ONLY public.righe_ordine
 
 
 --
--- TOC entry 4962 (class 2606 OID 24677)
+-- TOC entry 4982 (class 2606 OID 24677)
 -- Name: riordini_magazzino riordini_magazzino_id_fornitore_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1225,7 +1401,7 @@ ALTER TABLE ONLY public.riordini_magazzino
 
 
 --
--- TOC entry 4963 (class 2606 OID 24672)
+-- TOC entry 4983 (class 2606 OID 24672)
 -- Name: riordini_magazzino riordini_magazzino_id_prodotto_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1234,7 +1410,7 @@ ALTER TABLE ONLY public.riordini_magazzino
 
 
 --
--- TOC entry 4964 (class 2606 OID 24758)
+-- TOC entry 4984 (class 2606 OID 24758)
 -- Name: riordini_magazzino riordini_magazzino_id_responsabile_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1242,11 +1418,10 @@ ALTER TABLE ONLY public.riordini_magazzino
     ADD CONSTRAINT riordini_magazzino_id_responsabile_fkey FOREIGN KEY (id_responsabile) REFERENCES public.utenti(id_utente);
 
 
--- Completed on 2025-11-18 12:51:48
+-- Completed on 2025-11-20 18:26:12
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict uZJsxyMedFLhLQzbBEfYQnAQVMJTtdCPWWhHNM2leXiDZJTuSKuJwB6dAL06EoI
 
