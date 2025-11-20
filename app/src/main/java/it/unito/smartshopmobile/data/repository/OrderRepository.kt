@@ -5,6 +5,7 @@ import it.unito.smartshopmobile.data.dao.OrderDao
 import it.unito.smartshopmobile.data.entity.CreateOrderRequest
 import it.unito.smartshopmobile.data.entity.OrderCreated
 import it.unito.smartshopmobile.data.entity.OrderWithLines
+import it.unito.smartshopmobile.data.entity.UpdateOrderStatusRequest
 import it.unito.smartshopmobile.data.remote.SmartShopApiService
 import kotlinx.coroutines.flow.Flow
 
@@ -48,6 +49,31 @@ class OrderRepository(
             }
         } catch (e: Exception) {
             Log.e("OrderRepository", "Errore fetch ordini", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateOrderStatus(orderId: Int, stato: String): Result<Unit> {
+        return try {
+            val response = apiService.updateOrderStatus(
+                orderId = orderId,
+                request = UpdateOrderStatusRequest(stato = stato)
+            )
+            if (response.isSuccessful) {
+                // Risincronizza la cache locale per riflettere il nuovo stato
+                refreshOrders()
+                Result.success(Unit)
+            } else {
+                val errorMsg = response.errorBody()?.string()
+                Result.failure(
+                    Exception(
+                        errorMsg?.takeIf { it.isNotBlank() }
+                            ?: "Errore aggiornamento ordine (${response.code()})"
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Log.e("OrderRepository", "Errore update order", e)
             Result.failure(e)
         }
     }

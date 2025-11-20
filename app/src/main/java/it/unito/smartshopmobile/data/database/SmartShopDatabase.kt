@@ -9,18 +9,20 @@ import it.unito.smartshopmobile.data.dao.OrderDao
 import it.unito.smartshopmobile.data.dao.ProductDao
 import it.unito.smartshopmobile.data.dao.RestockDao
 import it.unito.smartshopmobile.data.dao.ShelfDao
+import it.unito.smartshopmobile.data.dao.SupplierDao
 import it.unito.smartshopmobile.data.entity.Category
 import it.unito.smartshopmobile.data.entity.Order
 import it.unito.smartshopmobile.data.entity.OrderLine
 import it.unito.smartshopmobile.data.entity.Product
 import it.unito.smartshopmobile.data.entity.Restock
 import it.unito.smartshopmobile.data.entity.Shelf
+import it.unito.smartshopmobile.data.entity.Supplier
 import androidx.room.TypeConverters
 import it.unito.smartshopmobile.data.database.Converters
 
 @Database(
-    entities = [Category::class, Product::class, Order::class, OrderLine::class, Restock::class, Shelf::class],
-    version = 7,
+    entities = [Category::class, Product::class, Order::class, OrderLine::class, Restock::class, Shelf::class, Supplier::class],
+    version = 12, // include supplier cache e ultime evoluzioni schema locale
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -31,6 +33,7 @@ abstract class SmartShopDatabase : RoomDatabase() {
     abstract fun orderDao(): OrderDao
     abstract fun restockDao(): RestockDao
     abstract fun shelfDao(): ShelfDao
+    abstract fun supplierDao(): SupplierDao
 
     companion object {
         @Volatile

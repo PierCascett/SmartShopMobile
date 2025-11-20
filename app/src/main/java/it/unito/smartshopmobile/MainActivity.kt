@@ -78,6 +78,7 @@ import it.unito.smartshopmobile.ui.screens.EmployeeScreen
 import it.unito.smartshopmobile.ui.screens.ManagerScreen
 import it.unito.smartshopmobile.ui.screens.SideMenuOverlay
 import it.unito.smartshopmobile.ui.screens.AppCartOverlay
+import it.unito.smartshopmobile.ui.screens.AppOrderHistoryOverlay
 import it.unito.smartshopmobile.ui.theme.SmartShopMobileTheme
 import it.unito.smartshopmobile.viewModel.CatalogViewModel
 import it.unito.smartshopmobile.viewModel.CatalogUiState
@@ -96,6 +97,7 @@ class MainActivity : ComponentActivity() {
                 var selectedRole by rememberSaveable { mutableStateOf<UserRole?>(null) }
                 var showMenu by rememberSaveable { mutableStateOf(false) }
                 var showCart by rememberSaveable { mutableStateOf(false) }
+                var showOrderHistory by rememberSaveable { mutableStateOf(false) }
                 val catalogState by catalogViewModel.uiState.collectAsState()
                 val sessionUser by loginViewModel.sessionUser.collectAsState(initial = null)
                 var sessionRestored by rememberSaveable { mutableStateOf(false) }
@@ -135,13 +137,16 @@ class MainActivity : ComponentActivity() {
                                 onLogout = {
                                     loggedUser = null
                                     selectedRole = null
+                                    showCart = false
+                                    showOrderHistory = false
                                     catalogViewModel.clearSession()
                                     loginViewModel.clearSession()
                                 },
                                 catalogState = catalogState,
                                 catalogViewModel = catalogViewModel,
                                 onMenuClick = { showMenu = true },
-                                onCartClick = { showCart = true }
+                                onCartClick = { showCart = true },
+                                onHistoryClick = { showOrderHistory = true }
                             )
                         }
                     }
@@ -164,19 +169,41 @@ class MainActivity : ComponentActivity() {
 
                     if (showCart) {
                         AppCartOverlay(
-                            onDismiss = { showCart = false },
+                            onDismiss = {
+                                showCart = false
+                                catalogViewModel.clearOrderFeedback()
+                            },
                             cartItems = catalogState.cartItems,
                             cartItemsCount = catalogState.cartItemsCount,
                             total = catalogState.cartTotal,
                             isSubmittingOrder = catalogState.isSubmittingOrder,
                             orderError = catalogState.orderError,
                             lastOrderId = catalogState.lastOrderId,
+                            deliveryMethod = catalogState.deliveryMethod,
                             onIncrease = { id -> catalogViewModel.onAddToCart(id) },
                             onDecrease = { id -> catalogViewModel.onDecreaseCartItem(id) },
                             onRemove = { id -> catalogViewModel.onRemoveFromCart(id) },
-                            onSubmitOrder = { catalogViewModel.submitOrder() }
+                            onSubmitOrder = { catalogViewModel.submitOrder() },
+                            onDeliveryMethodChange = { catalogViewModel.onDeliveryMethodSelected(it) }
                         )
                     }
+
+                    LaunchedEffect(showOrderHistory) {
+                        if (showOrderHistory) {
+                            catalogViewModel.refreshOrderHistory()
+                        }
+                    }
+
+                    if (showOrderHistory) {
+                        AppOrderHistoryOverlay(
+                            onDismiss = { showOrderHistory = false },
+                            orders = catalogState.orderHistory,
+                            isLoading = catalogState.isOrderHistoryLoading,
+                            error = catalogState.orderHistoryError,
+                            onRefresh = { catalogViewModel.refreshOrderHistory() }
+                        )
+                    }
+
                 }
             }
         }
@@ -192,7 +219,8 @@ private fun ContentWithSessionBar(
     catalogState: CatalogUiState,
     catalogViewModel: CatalogViewModel,
     onMenuClick: () -> Unit,
-    onCartClick: () -> Unit
+    onCartClick: () -> Unit,
+    onHistoryClick: () -> Unit
 ) {
     val context = LocalContext.current
 
@@ -213,6 +241,7 @@ private fun ContentWithSessionBar(
                             modifier = Modifier.fillMaxSize(),
                             onMenuClick = onMenuClick,
                             onCartClick = onCartClick,
+                            onHistoryClick = onHistoryClick,
                             onSearchQueryChange = catalogViewModel::onSearchQueryChange,
                             onRefresh = catalogViewModel::refreshCatalog,
                             onToggleOffers = catalogViewModel::onOnlyOffersToggle,

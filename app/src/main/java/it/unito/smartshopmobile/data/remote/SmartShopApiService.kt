@@ -6,15 +6,18 @@ import it.unito.smartshopmobile.data.entity.User
 import it.unito.smartshopmobile.data.entity.Order
 import it.unito.smartshopmobile.data.entity.CreateOrderRequest
 import it.unito.smartshopmobile.data.entity.OrderCreated
+import it.unito.smartshopmobile.data.entity.UpdateOrderStatusRequest
 import it.unito.smartshopmobile.data.entity.Restock
 import it.unito.smartshopmobile.data.entity.CreateRestockRequest
 import it.unito.smartshopmobile.data.entity.Shelf
+import it.unito.smartshopmobile.data.entity.Supplier
 import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
 import retrofit2.http.Body
 import retrofit2.http.POST
+import retrofit2.http.PATCH
 
 interface SmartShopApiService {
 
@@ -48,6 +51,12 @@ interface SmartShopApiService {
     @POST("ordini")
     suspend fun createOrder(@Body request: CreateOrderRequest): Response<OrderCreated>
 
+    @PATCH("ordini/{orderId}")
+    suspend fun updateOrderStatus(
+        @Path("orderId") orderId: Int,
+        @Body request: UpdateOrderStatusRequest
+    ): Response<Order>
+
     @GET("riordini")
     suspend fun getRestocks(): Response<List<Restock>>
 
@@ -56,4 +65,7 @@ interface SmartShopApiService {
 
     @GET("scaffali")
     suspend fun getAllShelves(): Response<List<Shelf>>
+
+    @GET("fornitori")
+    suspend fun getSuppliers(): Response<List<Supplier>>
 }

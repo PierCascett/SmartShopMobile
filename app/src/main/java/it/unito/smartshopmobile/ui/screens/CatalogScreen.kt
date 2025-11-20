@@ -65,12 +65,14 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -79,11 +81,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
@@ -101,6 +105,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import it.unito.smartshopmobile.R
@@ -109,8 +114,10 @@ import it.unito.smartshopmobile.ui.theme.SmartShopMobileTheme
 import it.unito.smartshopmobile.viewModel.AvailabilityFilter
 import it.unito.smartshopmobile.viewModel.CartItemUi
 import it.unito.smartshopmobile.viewModel.CatalogUiState
+import it.unito.smartshopmobile.viewModel.DeliveryMethod
+import it.unito.smartshopmobile.viewModel.CustomerOrderHistoryEntry
 import it.unito.smartshopmobile.data.remote.RetrofitInstance
-import androidx.compose.ui.platform.LocalContext
+import java.util.concurrent.Executors
 
 // Extension properties per Product entity
 val Product.isFavorite: Boolean get() = false // TODO: implementare logica favorites
@@ -131,6 +138,7 @@ fun CatalogScreen(
     onSearchQueryChange: (String) -> Unit = {},
     onMenuClick: () -> Unit = {},
     onCartClick: () -> Unit = {},
+    onHistoryClick: () -> Unit = {},
     onRefresh: () -> Unit = {},
     onToggleOffers: () -> Unit = {},
     onAvailabilityFilterChange: (AvailabilityFilter) -> Unit = {},
@@ -173,7 +181,8 @@ fun CatalogScreen(
             TopActionRow(
                 cartItemsCount = state.cartItemsCount,
                 onMenuClick = onMenuClick,
-                onCartClick = onCartClick
+                onCartClick = onCartClick,
+                onHistoryClick = onHistoryClick
             )
             //Spacer(modifier = Modifier.height(12.dp))
             // CategorySection removed (categories already available via chips)
@@ -486,10 +495,12 @@ private fun CartPanel(
     isSubmittingOrder: Boolean,
     orderError: String?,
     lastOrderId: Int?,
+    deliveryMethod: DeliveryMethod,
     onIncrease: (String) -> Unit,
     onDecrease: (String) -> Unit,
     onRemove: (String) -> Unit,
     onSubmitOrder: () -> Unit,
+    onDeliveryMethodChange: (DeliveryMethod) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val isDark = isSystemInDarkTheme()
@@ -545,6 +556,31 @@ private fun CartPanel(
                 }
             }
 
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "Metodo di consegna",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                DeliveryMethod.values().forEach { method ->
+                    val selected = method == deliveryMethod
+                    OutlinedButton(
+                        onClick = { onDeliveryMethodChange(method) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else Color.Transparent
+                        )
+                    ) {
+                        Text(
+                            method.label,
+                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+
             HorizontalDivider()
             Spacer(modifier = Modifier.height(12.dp))
             Row(
@@ -580,6 +616,8 @@ private fun CartPanel(
         }
     }
 }
+
+
 
 @Composable
 private fun CartItemRow(
@@ -785,7 +823,8 @@ private fun CatalogHeader(
 private fun TopActionRow(
     cartItemsCount: Int,
     onMenuClick: () -> Unit,
-    onCartClick: () -> Unit
+    onCartClick: () -> Unit,
+    onHistoryClick: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -797,6 +836,11 @@ private fun TopActionRow(
                 Icon(Icons.Filled.Menu, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Categorie")
+            }
+            TextButton(onClick = onHistoryClick, shape = RoundedCornerShape(50)) {
+                Icon(Icons.Filled.History, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Storico ordini")
             }
         }
         CartActionButton(count = cartItemsCount, onClick = onCartClick)
@@ -830,10 +874,12 @@ private fun CartOverlay(
     isSubmittingOrder: Boolean,
     orderError: String?,
     lastOrderId: Int?,
+    deliveryMethod: DeliveryMethod,
     onIncrease: (String) -> Unit,
     onDecrease: (String) -> Unit,
     onRemove: (String) -> Unit,
-    onSubmitOrder: () -> Unit
+    onSubmitOrder: () -> Unit,
+    onDeliveryMethodChange: (DeliveryMethod) -> Unit
 ) {
     OverlayContainer(onDismiss = onDismiss) {
         CartPanel(
@@ -843,10 +889,12 @@ private fun CartOverlay(
             isSubmittingOrder = isSubmittingOrder,
             orderError = orderError,
             lastOrderId = lastOrderId,
+            deliveryMethod = deliveryMethod,
             onIncrease = onIncrease,
             onDecrease = onDecrease,
             onRemove = onRemove,
             onSubmitOrder = onSubmitOrder,
+            onDeliveryMethodChange = onDeliveryMethodChange,
             modifier = Modifier
                 .align(Alignment.Center) // centra sia orizz. che vert.
                 .padding(16.dp)
@@ -855,6 +903,7 @@ private fun CartOverlay(
         )
     }
 }
+
 
 @Composable
 private fun OverlayContainer(
@@ -1015,6 +1064,26 @@ data class SideMenuEntry(
 
 private fun formatPrice(value: Double): String = "\u20AC ${String.format(java.util.Locale.ROOT, "%.2f", value)}"
 
+private fun orderStatusLabel(status: String): String = when (status.uppercase()) {
+    "IN_PREPARAZIONE" -> "In preparazione"
+    "CONCLUSO" -> "Concluso"
+    "CREATO" -> "Creato"
+    "SPEDITO" -> "Spedito"
+    "ANNULLATO" -> "Annullato"
+    else -> status.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+}
+
+private fun deliveryMethodLabel(method: String): String =
+    if (method.equals("DOMICILIO", ignoreCase = true)) "Spesa a domicilio" else "Ritiro nel locker"
+
+private fun formatOrderDate(raw: String?): String {
+    if (raw.isNullOrBlank()) return "-"
+    return raw
+        .replace('T', ' ')
+        .replace("Z", "")
+        .trim()
+}
+
 /**
  * Public overlay wrapper so other parts (e.g. MainActivity) can open the side menu above the whole UI.
  */
@@ -1053,10 +1122,12 @@ fun AppCartOverlay(
     isSubmittingOrder: Boolean,
     orderError: String?,
     lastOrderId: Int?,
+    deliveryMethod: DeliveryMethod,
     onIncrease: (String) -> Unit,
     onDecrease: (String) -> Unit,
     onRemove: (String) -> Unit,
-    onSubmitOrder: () -> Unit
+    onSubmitOrder: () -> Unit,
+    onDeliveryMethodChange: (DeliveryMethod) -> Unit
 ) {
     OverlayContainer(onDismiss = onDismiss) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -1067,10 +1138,12 @@ fun AppCartOverlay(
                 isSubmittingOrder = isSubmittingOrder,
                 orderError = orderError,
                 lastOrderId = lastOrderId,
+                deliveryMethod = deliveryMethod,
                 onIncrease = onIncrease,
                 onDecrease = onDecrease,
                 onRemove = onRemove,
                 onSubmitOrder = onSubmitOrder,
+                onDeliveryMethodChange = onDeliveryMethodChange,
                 modifier = Modifier
                     .align(Alignment.Center)
                     .padding(16.dp)
@@ -1080,6 +1153,146 @@ fun AppCartOverlay(
         }
     }
 }
+
+
+@Composable
+private fun OrderHistoryPanel(
+    orders: List<CustomerOrderHistoryEntry>,
+    isLoading: Boolean,
+    error: String?,
+    onRefresh: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Storico ordini", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                TextButton(onClick = onRefresh, enabled = !isLoading) {
+                    Text("Aggiorna")
+                }
+            }
+            if (isLoading) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+            error?.let {
+                Text(it, color = MaterialTheme.colorScheme.error)
+            }
+            if (orders.isEmpty() && error == null && !isLoading) {
+                Text(
+                    "Nessun ordine effettuato finora",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(orders, key = { it.order.idOrdine }) { entry ->
+                        OrderHistoryCard(entry)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OrderHistoryCard(entry: CustomerOrderHistoryEntry) {
+    val order = entry.order
+    val statusLabel = orderStatusLabel(order.stato)
+    val deliveryLabel = deliveryMethodLabel(order.metodoConsegna)
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Ordine #${entry.sequenceNumber}", fontWeight = FontWeight.SemiBold)
+                Text(statusLabel, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
+            }
+            Text("ID backend #${order.idOrdine}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Data: ${formatOrderDate(order.dataOrdine)}", style = MaterialTheme.typography.bodySmall)
+            Text("Totale: ${formatPrice(order.totale)}", fontWeight = FontWeight.SemiBold)
+            Text("Consegna: $deliveryLabel", style = MaterialTheme.typography.bodySmall)
+            if (order.metodoConsegna.equals("LOCKER", ignoreCase = true)) {
+                order.idLocker?.let {
+                    Text("Locker: $it", style = MaterialTheme.typography.bodySmall)
+                }
+                order.codiceRitiro?.let {
+                    Text("Codice ritiro: $it", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                }
+            } else {
+                Text("Consegna a domicilio in gestione", style = MaterialTheme.typography.bodySmall)
+            }
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+            if (order.righe.isEmpty()) {
+                Text(
+                    "Dettaglio prodotti non disponibile",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                order.righe.forEach { line ->
+                    Text(
+                        "${line.nomeProdotto} x${line.quantita} - ${formatPrice(line.prezzoTotale)}",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AppOrderHistoryOverlay(
+    onDismiss: () -> Unit,
+    orders: List<CustomerOrderHistoryEntry>,
+    isLoading: Boolean,
+    error: String?,
+    onRefresh: () -> Unit
+) {
+    OverlayContainer(onDismiss = onDismiss) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            OrderHistoryPanel(
+                orders = orders,
+                isLoading = isLoading,
+                error = error,
+                onRefresh = onRefresh,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(16.dp)
+                    .heightIn(max = 580.dp)
+                    .widthIn(max = 400.dp)
+            )
+        }
+    }
+}
+
 
 @Preview(showBackground = true, widthDp = 1200)
 @Composable

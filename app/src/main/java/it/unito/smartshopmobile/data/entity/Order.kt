@@ -29,6 +29,15 @@ data class Order(
     @SerializedName("totale")
     @ColumnInfo(name = "totale")
     val totale: Double,
+    @SerializedName("metodo_consegna")
+    @ColumnInfo(name = "metodo_consegna")
+    val metodoConsegna: String,
+    @SerializedName("id_locker")
+    @ColumnInfo(name = "id_locker")
+    val idLocker: Int?,
+    @SerializedName("codice_ritiro")
+    @ColumnInfo(name = "codice_ritiro")
+    val codiceRitiro: String?,
     @SerializedName("nome")
     @ColumnInfo(name = "nome_cliente")
     val nomeCliente: String,
@@ -38,6 +47,12 @@ data class Order(
     @SerializedName("email")
     @ColumnInfo(name = "email_cliente")
     val emailCliente: String,
+    @SerializedName("locker")
+    @Ignore
+    val locker: LockerInfo? = null,
+    @SerializedName("consegnaDomicilio")
+    @Ignore
+    val consegnaDomicilio: HomeDeliveryInfo? = null,
     @SerializedName("righe")
     @Ignore
     val righe: List<OrderLine> = emptyList()
@@ -48,6 +63,9 @@ data class Order(
         dataOrdine: String,
         stato: String,
         totale: Double,
+        metodoConsegna: String,
+        idLocker: Int?,
+        codiceRitiro: String?,
         nomeCliente: String,
         cognomeCliente: String,
         emailCliente: String
@@ -57,9 +75,14 @@ data class Order(
         dataOrdine = dataOrdine,
         stato = stato,
         totale = totale,
+        metodoConsegna = metodoConsegna,
+        idLocker = idLocker,
+        codiceRitiro = codiceRitiro,
         nomeCliente = nomeCliente,
         cognomeCliente = cognomeCliente,
         emailCliente = emailCliente,
+        locker = null,
+        consegnaDomicilio = null,
         righe = emptyList()
     )
 }
@@ -105,6 +128,8 @@ data class OrderWithLines(
 data class CreateOrderRequest(
     @SerializedName("idUtente")
     val idUtente: Int,
+    @SerializedName("metodoConsegna")
+    val metodoConsegna: String,
     @SerializedName("items")
     val items: List<OrderItemRequest>
 )
@@ -121,4 +146,31 @@ data class OrderCreated(
     val idOrdine: Int,
     @SerializedName("totale")
     val totale: Double
+)
+
+data class UpdateOrderStatusRequest(
+    @SerializedName("stato")
+    val stato: String
+)
+
+data class LockerInfo(
+    @SerializedName("id")
+    val id: Int,
+    @SerializedName("codice")
+    val codice: String?,
+    @SerializedName("posizione")
+    val posizione: String?,
+    @SerializedName("occupato")
+    val occupato: Boolean,
+    @SerializedName("codiceRitiro")
+    val codiceRitiro: String? = null
+)
+
+data class HomeDeliveryInfo(
+    @SerializedName("idRider")
+    val idRider: Int?,
+    @SerializedName("dataAssegnazione")
+    val dataAssegnazione: String?,
+    @SerializedName("dataConsegna")
+    val dataConsegna: String?
 )
