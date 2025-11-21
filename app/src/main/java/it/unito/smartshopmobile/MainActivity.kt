@@ -157,11 +157,6 @@ class MainActivity : ComponentActivity() {
                                 onCartClick = { showCart = true },
                                 accountPrefs = accountPrefs,
                                 onSaveProfile = accountPreferencesViewModel::updateProfile,
-                                onSaveBackend = { host, port ->
-                                    accountPreferencesViewModel.updateBackend(host, port)
-                                    catalogViewModel.refreshCatalog()
-                                    catalogViewModel.refreshOrderHistory()
-                                },
                                 customerTab = customerTab,
                                 onCustomerTabChange = { customerTab = it }
                             )
@@ -223,7 +218,6 @@ private fun ContentWithSessionBar(
     onCartClick: () -> Unit,
     accountPrefs: AccountPreferences,
     onSaveProfile: (String, String, String) -> Unit,
-    onSaveBackend: (String, String) -> Unit,
     customerTab: CustomerTab,
     onCustomerTabChange: (CustomerTab) -> Unit
 ) {
@@ -249,8 +243,7 @@ private fun ContentWithSessionBar(
                     onTabChange = onCustomerTabChange,
                     onMenuClick = onMenuClick,
                     onCartClick = onCartClick,
-                    onSaveProfile = onSaveProfile,
-                    onSaveBackend = onSaveBackend
+                    onSaveProfile = onSaveProfile
                 ).also {
                     if (catalogState.showToast && catalogState.toastMessage != null) {
                         LaunchedEffect(catalogState.toastMessage) {
@@ -277,8 +270,7 @@ private fun CustomerHome(
     onTabChange: (CustomerTab) -> Unit,
     onMenuClick: () -> Unit,
     onCartClick: () -> Unit,
-    onSaveProfile: (String, String, String) -> Unit,
-    onSaveBackend: (String, String) -> Unit
+    onSaveProfile: (String, String, String) -> Unit
 ) {
     LaunchedEffect(selectedTab) {
         if (selectedTab == CustomerTab.ORDERS) {
@@ -353,7 +345,6 @@ private fun CustomerHome(
             CustomerTab.ACCOUNT -> AccountSettingsScreen(
                 preferences = resolvedPrefs,
                 onSaveProfile = onSaveProfile,
-                onSaveBackend = onSaveBackend,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)

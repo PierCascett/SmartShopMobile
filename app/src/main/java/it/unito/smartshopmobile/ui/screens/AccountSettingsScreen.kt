@@ -28,14 +28,11 @@ import it.unito.smartshopmobile.data.datastore.AccountPreferences
 fun AccountSettingsScreen(
     preferences: AccountPreferences,
     onSaveProfile: (String, String, String) -> Unit,
-    onSaveBackend: (String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var nome by rememberSaveable(preferences.nome) { mutableStateOf(preferences.nome) }
     var cognome by rememberSaveable(preferences.cognome) { mutableStateOf(preferences.cognome) }
     var indirizzo by rememberSaveable(preferences.indirizzoSpedizione) { mutableStateOf(preferences.indirizzoSpedizione) }
-    var host by rememberSaveable(preferences.backendHost) { mutableStateOf(preferences.backendHost) }
-    var port by rememberSaveable(preferences.backendPort) { mutableStateOf(preferences.backendPort) }
 
     Column(
         modifier = modifier
@@ -52,13 +49,6 @@ fun AccountSettingsScreen(
             onCognomeChange = { cognome = it },
             onIndirizzoChange = { indirizzo = it },
             onSave = { onSaveProfile(nome, cognome, indirizzo) }
-        )
-        BackendCard(
-            host = host,
-            port = port,
-            onHostChange = { host = it },
-            onPortChange = { port = it },
-            onSave = { onSaveBackend(host.trim(), port.trim().ifBlank { "3000" }) }
         )
     }
 }
@@ -108,53 +98,6 @@ private fun ProfileCard(
                 horizontalArrangement = Arrangement.End
             ) {
                 TextButton(onClick = onSave) { Text("Salva dati") }
-            }
-        }
-    }
-}
-
-@Composable
-private fun BackendCard(
-    host: String,
-    port: String,
-    onHostChange: (String) -> Unit,
-    onPortChange: (String) -> Unit,
-    onSave: () -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text("Rete backend", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Text(
-                "Il server viene rilevato automaticamente tramite broadcast UDP. Modifica solo se la connessione fallisce.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            OutlinedTextField(
-                value = host,
-                onValueChange = onHostChange,
-                label = { Text("Host backend (auto-rilevato)") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                value = port,
-                onValueChange = onPortChange,
-                label = { Text("Porta") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onSave) { Text("Applica server") }
             }
         }
     }

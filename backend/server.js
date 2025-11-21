@@ -3,7 +3,6 @@ const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
 const os = require('os');
-const dgram = require('dgram');
 const { promisify } = require('util');
 const { exec } = require('child_process');
 const execPromise = promisify(exec);
@@ -20,35 +19,8 @@ const shelvesRoutes = require('./routes/shelves');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const BROADCAST_PORT = 45678;
 const FIREWALL_RULE_NAME = 'SmartShop Backend Temp';
 const LAN_IP = process.env.HOST || getLocalIp() || 'localhost';
-
-// UDP Broadcast per auto-discovery
-const broadcastSocket = dgram.createSocket('udp4');
-broadcastSocket.bind(() => {
-    broadcastSocket.setBroadcast(true);
-});
-
-// Invia broadcast ogni 3 secondi con l'IP del server
-function startBroadcast() {
-    setInterval(() => {
-        const message = JSON.stringify({
-            service: 'smartshop-backend',
-            host: LAN_IP,
-            port: PORT,
-            timestamp: Date.now()
-        });
-
-        broadcastSocket.send(message, 0, message.length, BROADCAST_PORT, '255.255.255.255', (err) => {
-            if (err && err.code !== 'EACCES') {
-                // Ignora EACCES (permessi), ma logga altri errori
-                console.warn('⚠️ Errore broadcast:', err.message);
-            }
-        });
-    }, 3000);
-    console.log(`📡 Broadcasting su porta ${BROADCAST_PORT}`);
-}
 
 // Middleware
 app.use(cors());
@@ -122,7 +94,6 @@ async function tryAddFirewallRule() {
 // Avvio server (salviamo il riferimento per poter chiudere)
 (async () => {
     await tryAddFirewallRule();
-    startBroadcast();
 
     const server = app.listen(PORT, '0.0.0.0', () => {
         console.log(`\n╔═════════════════════════════════════════╗\n║   SmartShop Backend Server              ║\n║   Port: ${PORT}                         ║\n║   Local: http://localhost:${PORT}       ║\n║   Network: http://${LAN_IP}:${PORT}  ║\n╚═════════════════════════════════════════╝\n    `);
@@ -170,15 +141,7 @@ async function tryAddFirewallRule() {
             console.warn('Errore durante la chiusura del DB:', err);
         }
 
-        // 3) Chiudi il socket UDP
-        try {
-            broadcastSocket.close();
-            console.log('Socket UDP chiuso');
-        } catch (err) {
-            console.warn('Errore chiusura socket UDP:', err);
-        }
-
-        // 4) Rimuovi la regola firewall aggiunta (se possibile)
+        // 3) Rimuovi la regola firewall aggiunta (se possibile)
         try {
             await execPromise(`netsh advfirewall firewall delete rule name="${FIREWALL_RULE_NAME}"`);
             console.log('Regola firewall rimossa (se esistente)');

@@ -5,7 +5,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import it.unito.smartshopmobile.data.datastore.AccountPreferences
 import it.unito.smartshopmobile.data.datastore.AccountPreferencesDataStore
-import it.unito.smartshopmobile.data.remote.RetrofitInstance
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -17,27 +16,9 @@ class AccountPreferencesViewModel(application: Application) : AndroidViewModel(a
     val preferences: StateFlow<AccountPreferences> = dataStore.data
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountPreferences())
 
-    init {
-        // Osserva le preferenze e aggiorna RetrofitInstance quando cambiano
-        viewModelScope.launch {
-            dataStore.data.collect { prefs ->
-                if (prefs.backendHost.isNotBlank() && prefs.backendPort.isNotBlank()) {
-                    RetrofitInstance.overrideBackend(prefs.backendHost, prefs.backendPort)
-                }
-            }
-        }
-    }
-
     fun updateProfile(nome: String, cognome: String, indirizzo: String) {
         viewModelScope.launch {
             dataStore.updateProfile(nome, cognome, indirizzo)
-        }
-    }
-
-    fun updateBackend(host: String, port: String) {
-        viewModelScope.launch {
-            dataStore.updateBackend(host, port)
-            RetrofitInstance.overrideBackend(host, port)
         }
     }
 }

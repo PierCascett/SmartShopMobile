@@ -129,6 +129,10 @@ fun EmployeeScreen(modifier: Modifier = Modifier, viewModel: EmployeeViewModel =
                 onProductClick = viewModel::showProductDetail,
                 onOpenSelection = { selectedTab = EmployeeTab.CLAIM },
                 onRefreshOrders = viewModel::refreshOrders,
+                onReleaseOrder = {
+                    viewModel.dropActiveOrder()
+                    selectedTab = EmployeeTab.CLAIM
+                },
                 modifier = contentModifier
             )
             EmployeeTab.ORDERS -> OrdersTab(
@@ -167,6 +171,7 @@ private fun PickingTab(
     onProductClick: (AisleProduct) -> Unit,
     onOpenSelection: () -> Unit,
     onRefreshOrders: () -> Unit,
+    onReleaseOrder: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -233,7 +238,8 @@ private fun PickingTab(
                 onMarkCompleted = onMarkCompleted,
                 onMarkShipped = onMarkShipped,
                 onMarkCanceled = onMarkCanceled,
-                onSetInPreparation = null
+                onSetInPreparation = null,
+                onReleaseActive = onReleaseOrder
             )
         }
     }
@@ -562,7 +568,8 @@ private fun OrderPickingPanel(
     onMarkCompleted: (Int) -> Unit,
     onMarkShipped: (Int) -> Unit,
     onMarkCanceled: (Int) -> Unit,
-    onSetInPreparation: ((Int) -> Unit)?
+    onSetInPreparation: ((Int) -> Unit)?,
+    onReleaseActive: (() -> Unit)?
 ) {
     val statusLabel = orderStatusLabel(order.stato)
     val allPicked = order.righe.isNotEmpty() && order.righe.all { pickedLines.contains(it.idRiga) }
@@ -607,10 +614,17 @@ private fun OrderPickingPanel(
                         enabled = updatingOrderId != order.idOrdine && !orderIsFinal(order.stato) && !order.stato.equals("SPEDITO", true)
                     ) { Text("Segna spedito") }
                 }
-                OutlinedButton(
-                    onClick = { onMarkCanceled(order.idOrdine) },
-                    enabled = updatingOrderId != order.idOrdine && !orderIsFinal(order.stato)
-                ) { Text("Annulla") }
+                  if (onReleaseActive != null) {
+                      OutlinedButton(
+                          onClick = onReleaseActive,
+                          enabled = updatingOrderId != order.idOrdine
+                      ) { Text("Annulla assegnazione") }
+                  } else {
+                      OutlinedButton(
+                          onClick = { onMarkCanceled(order.idOrdine) },
+                          enabled = updatingOrderId != order.idOrdine && !orderIsFinal(order.stato)
+                      ) { Text("Annulla") }
+                  }
                 Button(
                     onClick = { onMarkCompleted(order.idOrdine) },
                     enabled = updatingOrderId != order.idOrdine && !order.stato.equals("CONCLUSO", true) && !orderIsFinal(order.stato) && allPicked
