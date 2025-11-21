@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
+const os = require('os');
 const { promisify } = require('util');
 const { exec } = require('child_process');
 const execPromise = promisify(exec);
@@ -19,6 +20,7 @@ const shelvesRoutes = require('./routes/shelves');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const FIREWALL_RULE_NAME = 'SmartShop Backend Temp';
+const LAN_IP = process.env.HOST || getLocalIp() || 'localhost';
 
 // Middleware
 app.use(cors());
@@ -66,6 +68,18 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Errore interno del server' });
 });
 
+function getLocalIp() {
+    const nets = os.networkInterfaces();
+    for (const name of Object.keys(nets)) {
+        for (const net of nets[name] || []) {
+            if (net.family === 'IPv4' && !net.internal) {
+                return net.address;
+            }
+        }
+    }
+    return null;
+}
+
 // Prova ad aprire la porta nel firewall (se siamo in ambiente Windows e abbiamo privilegi)
 async function tryAddFirewallRule() {
     try {
@@ -82,7 +96,7 @@ async function tryAddFirewallRule() {
     await tryAddFirewallRule();
 
     const server = app.listen(PORT, '0.0.0.0', () => {
-        console.log(`\n╔═════════════════════════════════════════╗\n║   SmartShop Backend Server              ║\n║   Port: ${PORT}                         ║\n║   Local: http://localhost:${PORT}       ║\n║   Network: http://192.168.1.51:${PORT}  ║\n╚═════════════════════════════════════════╝\n    `);
+        console.log(`\n╔═════════════════════════════════════════╗\n║   SmartShop Backend Server              ║\n║   Port: ${PORT}                         ║\n║   Local: http://localhost:${PORT}       ║\n║   Network: http://${LAN_IP}:${PORT}  ║\n╚═════════════════════════════════════════╝\n    `);
     });
 
     // Prevent double shutdown

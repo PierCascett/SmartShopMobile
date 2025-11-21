@@ -1,3 +1,11 @@
+import com.android.build.gradle.internal.cxx.configure.gradleLocalProperties
+
+// gradleLocalProperties requires a ProviderFactory parameter in newer Gradle/AGP versions
+// pass the script's `providers` to maintain compatibility
+val localProps = gradleLocalProperties(rootDir, providers)
+val backendHost = localProps.getProperty("backend.host") ?: System.getenv("SMARTSHOP_HOST") ?: "10.0.2.2"
+val backendPort = localProps.getProperty("backend.port") ?: System.getenv("SMARTSHOP_PORT") ?: "3000"
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -17,6 +25,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        android.buildFeatures.buildConfig = true
+        buildConfigField("String", "BACKEND_HOST", "\"$backendHost\"")
+        buildConfigField("String", "BACKEND_PORT", "\"$backendPort\"")
     }
 
     buildTypes {
