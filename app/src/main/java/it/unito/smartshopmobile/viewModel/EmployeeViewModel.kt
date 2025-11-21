@@ -39,7 +39,8 @@ data class AisleProduct(
     val tags: List<String>,
     val brand: String,
     val description: String?,
-    val imageUrl: String?
+    val imageUrl: String?,
+    val shelfId: String
 )
 
 data class EmployeeUiState(
@@ -54,10 +55,15 @@ data class EmployeeUiState(
     val updatingOrderId: Int? = null,
     val orderActionError: String? = null,
     val orderFilter: OrderFilter = OrderFilter.ACTIVE,
-    val selectedProduct: AisleProduct? = null
+    val selectedProduct: AisleProduct? = null,
+    val activeOrderId: Int? = null,
+    val pickedLines: Set<Int> = emptySet(),
+    val productShelfMap: Map<String, String> = emptyMap()
 ) {
     val selectedAisle: StoreAisle?
         get() = selectedAisleId?.let { aisles[it] }
+    val activeOrder: Order?
+        get() = activeOrderId?.let { id -> orders.firstOrNull { it.idOrdine == id } }
 }
 
 enum class OrderFilter { ACTIVE, COMPLETED }
@@ -96,10 +102,16 @@ class EmployeeViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             orderRepository.observeOrders().collect { ordersWithLines ->
                 _uiState.update { state ->
+                    val mappedOrders = ordersWithLines.map { it.order.copy(righe = it.lines) }
+                    val active = state.activeOrderId?.takeIf { id -> mappedOrders.any { it.idOrdine == id } }
+                    val picked = state.pickedLines.filter { lineId ->
+                        val activeOrder = mappedOrders.firstOrNull { it.idOrdine == active }
+                        activeOrder?.righe?.any { it.idRiga == lineId } == true
+                    }.toSet()
                     state.copy(
-                        orders = ordersWithLines.map {
-                            it.order.copy(righe = it.lines)
-                        }
+                        orders = mappedOrders,
+                        activeOrderId = active,
+                        pickedLines = picked
                     )
                 }
             }
@@ -114,10 +126,12 @@ class EmployeeViewModel(application: Application) : AndroidViewModel(application
             ) { shelves, products ->
                 shelves to products
             }.collect { (shelves, products) ->
+                val productShelfMap = mutableMapOf<String, String>()
                 val aisles = shelves.associate { shelf ->
                     val aisleProducts = products
                         .filter { it.shelfId == shelf.id }
                         .map { product ->
+                            productShelfMap[product.id] = shelf.id.toString()
                             AisleProduct(
                                 id = product.id,
                                 name = product.name,
@@ -125,7 +139,8 @@ class EmployeeViewModel(application: Application) : AndroidViewModel(application
                                 tags = product.tags ?: emptyList(),
                                 brand = product.brand,
                                 description = product.description,
-                                imageUrl = product.imageUrl
+                                imageUrl = product.imageUrl,
+                                shelfId = shelf.id.toString()
                             )
                         }
                     shelf.id.toString() to StoreAisle(
@@ -142,7 +157,8 @@ class EmployeeViewModel(application: Application) : AndroidViewModel(application
                         aisles = aisles,
                         selectedAisleId = selected,
                         isLoadingAisles = false,
-                        aislesError = null
+                        aislesError = null,
+                        productShelfMap = productShelfMap
                     )
                 }
             }
@@ -152,6 +168,23 @@ class EmployeeViewModel(application: Application) : AndroidViewModel(application
     fun selectAisle(aisleId: String) {
         Log.d("EmployeeVM", "selectAisle -> $aisleId")
         _uiState.update { it.copy(selectedAisleId = aisleId) }
+    }
+
+    fun startOrder(orderId: Int) {
+        _uiState.update { it.copy(activeOrderId = orderId, pickedLines = emptySet()) }
+    }
+
+    fun dropActiveOrder() {
+        _uiState.update { it.copy(activeOrderId = null, pickedLines = emptySet()) }
+    }
+
+    fun togglePicked(lineId: Int) {
+        _uiState.update { state ->
+            val updated = state.pickedLines.toMutableSet().apply {
+                if (contains(lineId)) remove(lineId) else add(lineId)
+            }
+            state.copy(pickedLines = updated)
+        }
     }
 
     fun toggleOrder(orderId: Int) {

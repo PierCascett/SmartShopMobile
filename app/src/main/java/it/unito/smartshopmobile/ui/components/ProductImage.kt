@@ -21,6 +21,7 @@ import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import coil.request.ImageRequest
+import it.unito.smartshopmobile.data.remote.RetrofitInstance
 
 /**
  * Componente per visualizzare l'immagine di un prodotto dal server backend.
@@ -46,7 +47,7 @@ fun ProductImage(
 ) {
     // Ottieni l'host e la porta dal BuildConfig o da una configurazione
     // Modifica questi valori in base al tuo ambiente
-    val baseUrl = "http://192.168.1.51:3000"
+    val baseUrl = RetrofitInstance.assetBaseUrl.removeSuffix("/")
     val imageUrl = "$baseUrl/images/products/$productId.png"
 
     SubcomposeAsyncImage(
@@ -103,7 +104,7 @@ fun ProductImageSimple(
     modifier: Modifier = Modifier,
     contentDescription: String? = "Immagine prodotto"
 ) {
-    val baseUrl = "http://192.168.1.51:3000"
+    val baseUrl = RetrofitInstance.assetBaseUrl.removeSuffix("/")
     val imageUrl = "$baseUrl/images/products/$productId.png"
 
     coil.compose.AsyncImage(

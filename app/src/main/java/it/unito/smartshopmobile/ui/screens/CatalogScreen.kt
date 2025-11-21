@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -626,6 +627,9 @@ private fun CartItemRow(
     onDecrease: () -> Unit,
     onRemove: () -> Unit
 ) {
+    val context = LocalContext.current
+    val imageUrl = "${RetrofitInstance.assetBaseUrl}images/products/${item.product.id}.png"
+
     Column {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -638,11 +642,16 @@ private fun CartItemRow(
                     .clip(RoundedCornerShape(12.dp))
                     .background(MaterialTheme.colorScheme.surface)
             ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                    contentDescription = null,
-                    modifier = Modifier.align(Alignment.Center),
-                    tint = MaterialTheme.colorScheme.primary
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(imageUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = item.product.name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit,
+                    placeholder = painterResource(id = R.drawable.ic_launcher_foreground),
+                    error = painterResource(id = R.drawable.ic_launcher_foreground)
                 )
             }
             Column(modifier = Modifier.weight(1f)) {
@@ -803,8 +812,14 @@ private fun CatalogHeader(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold
             )
-            IconButton(onClick = onRefresh) {
-                Icon(Icons.Filled.Refresh, contentDescription = "Aggiorna catalogo")
+            OutlinedButton(
+                onClick = onRefresh,
+                modifier = Modifier.defaultMinSize(minHeight = 30.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Icon(Icons.Filled.Refresh, contentDescription = "Aggiorna catalogo", modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Aggiorna")
             }
         }
         Spacer(modifier = Modifier.height(12.dp))
@@ -1156,7 +1171,7 @@ fun AppCartOverlay(
 
 
 @Composable
-private fun OrderHistoryPanel(
+fun OrderHistoryPanel(
     orders: List<CustomerOrderHistoryEntry>,
     isLoading: Boolean,
     error: String?,

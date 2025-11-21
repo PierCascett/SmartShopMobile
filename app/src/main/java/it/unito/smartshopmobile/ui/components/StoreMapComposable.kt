@@ -29,7 +29,6 @@ package it.unito.smartshopmobile.ui.components
 import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,6 +46,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.unit.IntSize
@@ -105,8 +105,9 @@ fun StoreMapCanvas(
     // Non manteniamo uno stato locale separato per la selezione: usiamo direttamente
     // il parametro `selectedAisleId` così che la selezione nel ViewModel ricomponi la mappa.
     val selectedAisle = selectedAisleId
-    var scale by remember { mutableStateOf(1f) }
-    var translation by remember { mutableStateOf(Offset.Zero) }
+    // Panning/zoom disabilitati: manteniamo la mappa fissa per evitare che gli scaffali “si muovano”.
+    val scale = 1f
+    val translation = Offset.Zero
     val ripples = remember { mutableStateListOf<Ripple>() }
     val polygons = rememberPolygonsFromJson("map/supermarket.json").map { it.toShelfPolygon() }
     // Stato condiviso tra draw e pointerInput per consentire al pointerInput
@@ -137,19 +138,10 @@ fun StoreMapCanvas(
         modifier = modifier
             .fillMaxSize()
             .pointerInput(Unit) {
-                // Combined gesture detection: transform gestures handled first
-                detectTransformGestures { _, pan, zoom, _ ->
-                    scale = (scale * zoom).coerceIn(0.6f, 2.5f)
-                    translation += pan
-                }
-            }
-            .pointerInput(Unit) {
                 // Tap detection after transform to reduce conflicts
                 detectTapGestures(
                     onDoubleTap = {
                         // reset view on double tap
-                        scale = 1f
-                        translation = Offset.Zero
                     },
                     onTap = { tapOffset ->
                         // Add ripple on any tap (visual feedback)
@@ -310,6 +302,7 @@ private fun DrawScope.drawPolygonShelf(
     scaleY: Float,
     number: Int
 ) {
+    val scaleAvg = (scaleX + scaleY) / 2f
     // Ombra semplice
     val shadowPath = Path().apply {
         polygon.points.forEachIndexed { index, p ->
@@ -330,38 +323,43 @@ private fun DrawScope.drawPolygonShelf(
         }
         close()
     }
-    val fillBrush = if (isSelected) Brush.verticalGradient(
-        listOf(polygon.fillColor.lighten(0.12f), polygon.fillColor)
-    ) else Brush.verticalGradient(listOf(polygon.fillColor, polygon.fillColor.darken(0.08f)))
+    val fillBrush = if (isSelected) {
+        SolidColor(Color(0xFFFFD54F).copy(alpha = 0.68f)) // giallo leggermente più scuro, semi-trasparente
+    } else {
+        Brush.verticalGradient(listOf(polygon.fillColor, polygon.fillColor.darken(0.08f)))
+    }
     drawPath(path = path, brush = fillBrush)
     // Bordo
-    val borderColor = if (isSelected) Color(0xFF1976D2) else polygon.strokeColor
+    val borderColor = if (isSelected) Color(0xFFF57F17) else polygon.strokeColor
     val borderWidth = if (isSelected) 5f * scaleX else 2f * scaleX
     drawPath(path = path, color = borderColor, style = Stroke(width = borderWidth))
     // Draw numeric badge at centroid (small circle with number)
     val c = polygon.centroid()
     val cx = c.x * scaleX
     val cy = c.y * scaleY
-    val badgeRadius = 20f * ((scaleX + scaleY) / 2f)
+    val badgeRadius = 42f * scaleAvg
+    val badgeColor = if (isSelected) Color(0xFFFFC107) else Color(0xFFFFD54F)
+    val badgeBorder = Color.Black.copy(alpha = 0.35f)
     drawCircle(
-        color = if (isSelected) Color(0xFF1976D2) else Color.White,
+        color = badgeColor,
         radius = badgeRadius,
         center = Offset(cx, cy)
     )
     drawCircle(
-        color = Color.Black.copy(alpha = 0.12f),
+        color = badgeBorder,
         radius = badgeRadius,
         center = Offset(cx, cy),
-        style = Stroke(width = 2f * ((scaleX + scaleY) / 2f))
+        style = Stroke(width = 3.5f * scaleAvg)
     )
     // Number text: use native canvas via drawContext.canvas.nativeCanvas to avoid extension issues
-    val textSizePx = (14f * ((scaleX + scaleY) / 2f)).coerceIn(10f, 24f)
+    val textSizePx = (30f * scaleAvg).coerceIn(16f, 42f)
     val paint = android.graphics.Paint().apply {
         isAntiAlias = true
-        color = if (isSelected) android.graphics.Color.WHITE else android.graphics.Color.BLACK
+        color = android.graphics.Color.BLACK
         textAlign = android.graphics.Paint.Align.CENTER
         textSize = textSizePx
         typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+        setShadowLayer(6f * scaleAvg, 0f, 0f, android.graphics.Color.argb(160, 0, 0, 0))
     }
     // vertically center text using paint metrics
     val baseline = cy - (paint.descent() + paint.ascent()) / 2f

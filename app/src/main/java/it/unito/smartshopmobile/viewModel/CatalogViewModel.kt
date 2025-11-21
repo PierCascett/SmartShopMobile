@@ -136,8 +136,8 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
                     val normalized = ordersWithLines
                         .map { it.order.copy(righe = it.lines) }
                         .filter { it.idUtente == userId }
-                    val ascending = normalized.sortedBy { orderTimestamp(it.dataOrdine) }
-                    val numbered = ascending.mapIndexed { index, order ->
+                    val ordered = normalized.sortedByDescending { orderTimestamp(it.dataOrdine) }
+                    val numbered = ordered.mapIndexed { index, order ->
                         CustomerOrderHistoryEntry(order, index + 1)
                     }
                     mutateState { it.copy(orderHistory = numbered) }
