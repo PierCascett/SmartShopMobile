@@ -50,13 +50,14 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -69,6 +70,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.platform.LocalContext
+import it.unito.smartshopmobile.data.datastore.AccountPreferences
 import it.unito.smartshopmobile.data.model.UserRole
 import it.unito.smartshopmobile.data.entity.User
 import it.unito.smartshopmobile.ui.screens.CatalogScreen
@@ -78,15 +80,20 @@ import it.unito.smartshopmobile.ui.screens.EmployeeScreen
 import it.unito.smartshopmobile.ui.screens.ManagerScreen
 import it.unito.smartshopmobile.ui.screens.SideMenuOverlay
 import it.unito.smartshopmobile.ui.screens.AppCartOverlay
-import it.unito.smartshopmobile.ui.screens.AppOrderHistoryOverlay
+import it.unito.smartshopmobile.ui.screens.OrderHistoryPanel
+import it.unito.smartshopmobile.ui.screens.AccountSettingsScreen
 import it.unito.smartshopmobile.ui.theme.SmartShopMobileTheme
+import it.unito.smartshopmobile.viewModel.AccountPreferencesViewModel
 import it.unito.smartshopmobile.viewModel.CatalogViewModel
 import it.unito.smartshopmobile.viewModel.CatalogUiState
 import it.unito.smartshopmobile.viewModel.LoginViewModel
 
+private enum class CustomerTab { SHOP, ORDERS, ACCOUNT }
+
 class MainActivity : ComponentActivity() {
     private val loginViewModel: LoginViewModel by viewModels()
     private val catalogViewModel: CatalogViewModel by viewModels()
+    private val accountPreferencesViewModel: AccountPreferencesViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -97,9 +104,10 @@ class MainActivity : ComponentActivity() {
                 var selectedRole by rememberSaveable { mutableStateOf<UserRole?>(null) }
                 var showMenu by rememberSaveable { mutableStateOf(false) }
                 var showCart by rememberSaveable { mutableStateOf(false) }
-                var showOrderHistory by rememberSaveable { mutableStateOf(false) }
+                var customerTab by rememberSaveable { mutableStateOf(CustomerTab.SHOP) }
                 val catalogState by catalogViewModel.uiState.collectAsState()
                 val sessionUser by loginViewModel.sessionUser.collectAsState(initial = null)
+                val accountPrefs by accountPreferencesViewModel.preferences.collectAsState()
                 var sessionRestored by rememberSaveable { mutableStateOf(false) }
 
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -138,7 +146,7 @@ class MainActivity : ComponentActivity() {
                                     loggedUser = null
                                     selectedRole = null
                                     showCart = false
-                                    showOrderHistory = false
+                                    customerTab = CustomerTab.SHOP
                                     catalogViewModel.clearSession()
                                     loginViewModel.clearSession()
                                 },
@@ -146,7 +154,15 @@ class MainActivity : ComponentActivity() {
                                 catalogViewModel = catalogViewModel,
                                 onMenuClick = { showMenu = true },
                                 onCartClick = { showCart = true },
-                                onHistoryClick = { showOrderHistory = true }
+                                accountPrefs = accountPrefs,
+                                onSaveProfile = accountPreferencesViewModel::updateProfile,
+                                onSaveBackend = { host, port ->
+                                    accountPreferencesViewModel.updateBackend(host, port)
+                                    catalogViewModel.refreshCatalog()
+                                    catalogViewModel.refreshOrderHistory()
+                                },
+                                customerTab = customerTab,
+                                onCustomerTabChange = { customerTab = it }
                             )
                         }
                     }
@@ -188,22 +204,6 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    LaunchedEffect(showOrderHistory) {
-                        if (showOrderHistory) {
-                            catalogViewModel.refreshOrderHistory()
-                        }
-                    }
-
-                    if (showOrderHistory) {
-                        AppOrderHistoryOverlay(
-                            onDismiss = { showOrderHistory = false },
-                            orders = catalogState.orderHistory,
-                            isLoading = catalogState.isOrderHistoryLoading,
-                            error = catalogState.orderHistoryError,
-                            onRefresh = { catalogViewModel.refreshOrderHistory() }
-                        )
-                    }
-
                 }
             }
         }
@@ -220,7 +220,11 @@ private fun ContentWithSessionBar(
     catalogViewModel: CatalogViewModel,
     onMenuClick: () -> Unit,
     onCartClick: () -> Unit,
-    onHistoryClick: () -> Unit
+    accountPrefs: AccountPreferences,
+    onSaveProfile: (String, String, String) -> Unit,
+    onSaveBackend: (String, String) -> Unit,
+    customerTab: CustomerTab,
+    onCustomerTabChange: (CustomerTab) -> Unit
 ) {
     val context = LocalContext.current
 
@@ -233,30 +237,24 @@ private fun ContentWithSessionBar(
             email = email,
             onLogout = onLogout
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
         Box(modifier = Modifier.fillMaxSize()) {
-                    when (role) {
-                        UserRole.CUSTOMER -> CatalogScreen(
-                            state = catalogState,
-                            modifier = Modifier.fillMaxSize(),
-                            onMenuClick = onMenuClick,
-                            onCartClick = onCartClick,
-                            onHistoryClick = onHistoryClick,
-                            onSearchQueryChange = catalogViewModel::onSearchQueryChange,
-                            onRefresh = catalogViewModel::refreshCatalog,
-                            onToggleOffers = catalogViewModel::onOnlyOffersToggle,
-                            onAvailabilityFilterChange = catalogViewModel::onAvailabilityFilterChange,
-                            onTagToggle = catalogViewModel::onTagToggle,
-                            onBookmark = catalogViewModel::onBookmark,
-                            onAddToCart = catalogViewModel::onAddToCart,
-                            onDecreaseCartItem = catalogViewModel::onDecreaseCartItem,
-                            onRemoveFromCart = catalogViewModel::onRemoveFromCart,
-                            onProductClick = catalogViewModel::onProductSelected
-                        ).also {
-                            if (catalogState.showToast && catalogState.toastMessage != null) {
-                                LaunchedEffect(catalogState.toastMessage) {
-                                    Toast.makeText(context, catalogState.toastMessage, Toast.LENGTH_SHORT).show()
-                                    catalogViewModel.consumeToast()
+            when (role) {
+                UserRole.CUSTOMER -> CustomerHome(
+                    state = catalogState,
+                    accountPrefs = accountPrefs,
+                    catalogViewModel = catalogViewModel,
+                    selectedTab = customerTab,
+                    onTabChange = onCustomerTabChange,
+                    onMenuClick = onMenuClick,
+                    onCartClick = onCartClick,
+                    onSaveProfile = onSaveProfile,
+                    onSaveBackend = onSaveBackend
+                ).also {
+                    if (catalogState.showToast && catalogState.toastMessage != null) {
+                        LaunchedEffect(catalogState.toastMessage) {
+                            Toast.makeText(context, catalogState.toastMessage, Toast.LENGTH_SHORT).show()
+                            catalogViewModel.consumeToast()
                         }
                     }
                 }
@@ -265,6 +263,100 @@ private fun ContentWithSessionBar(
                 UserRole.MANAGER -> ManagerScreen(modifier = Modifier.fillMaxSize())
                 null -> Unit
             }
+        }
+    }
+}
+
+@Composable
+private fun CustomerHome(
+    state: CatalogUiState,
+    accountPrefs: AccountPreferences,
+    catalogViewModel: CatalogViewModel,
+    selectedTab: CustomerTab,
+    onTabChange: (CustomerTab) -> Unit,
+    onMenuClick: () -> Unit,
+    onCartClick: () -> Unit,
+    onSaveProfile: (String, String, String) -> Unit,
+    onSaveBackend: (String, String) -> Unit
+) {
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == CustomerTab.ORDERS) {
+            catalogViewModel.refreshOrderHistory()
+        }
+    }
+
+    val resolvedPrefs = accountPrefs.copy(
+        nome = accountPrefs.nome.ifBlank { state.loggedUser?.nome.orEmpty() },
+        cognome = accountPrefs.cognome.ifBlank { state.loggedUser?.cognome.orEmpty() }
+    )
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = selectedTab == CustomerTab.SHOP,
+                    onClick = { onTabChange(CustomerTab.SHOP) },
+                    icon = { Icon(Icons.Filled.Home, contentDescription = "Catalogo") },
+                    label = { Text("Ordina") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == CustomerTab.ORDERS,
+                    onClick = { onTabChange(CustomerTab.ORDERS) },
+                    icon = { Icon(Icons.Filled.List, contentDescription = "Ordini") },
+                    label = { Text("Ordini") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == CustomerTab.ACCOUNT,
+                    onClick = { onTabChange(CustomerTab.ACCOUNT) },
+                    icon = { Icon(Icons.Filled.Settings, contentDescription = "Account") },
+                    label = { Text("Account") }
+                )
+            }
+        }
+    ) { innerPadding ->
+        when (selectedTab) {
+            CustomerTab.SHOP -> CatalogScreen(
+                state = state,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                onMenuClick = onMenuClick,
+                onCartClick = onCartClick,
+                onHistoryClick = {
+                    onTabChange(CustomerTab.ORDERS)
+                    catalogViewModel.refreshOrderHistory()
+                },
+                onSearchQueryChange = catalogViewModel::onSearchQueryChange,
+                onRefresh = catalogViewModel::refreshCatalog,
+                onToggleOffers = catalogViewModel::onOnlyOffersToggle,
+                onAvailabilityFilterChange = catalogViewModel::onAvailabilityFilterChange,
+                onTagToggle = catalogViewModel::onTagToggle,
+                onBookmark = catalogViewModel::onBookmark,
+                onAddToCart = catalogViewModel::onAddToCart,
+                onDecreaseCartItem = catalogViewModel::onDecreaseCartItem,
+                onRemoveFromCart = catalogViewModel::onRemoveFromCart,
+                onProductClick = catalogViewModel::onProductSelected
+            )
+
+            CustomerTab.ORDERS -> OrderHistoryPanel(
+                orders = state.orderHistory,
+                isLoading = state.isOrderHistoryLoading,
+                error = state.orderHistoryError,
+                onRefresh = { catalogViewModel.refreshOrderHistory() },
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+
+            CustomerTab.ACCOUNT -> AccountSettingsScreen(
+                preferences = resolvedPrefs,
+                onSaveProfile = onSaveProfile,
+                onSaveBackend = onSaveBackend,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            )
         }
     }
 }

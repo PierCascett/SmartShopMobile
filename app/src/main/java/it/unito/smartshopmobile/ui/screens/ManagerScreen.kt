@@ -3,7 +3,6 @@ package it.unito.smartshopmobile.ui.screens
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,13 +15,11 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -32,12 +29,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,34 +51,64 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import it.unito.smartshopmobile.viewModel.ManagerUiState
 import it.unito.smartshopmobile.viewModel.ManagerViewModel
 
+private enum class ManagerTab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    RESTOCK("Effettua riordine", Icons.Filled.Assignment),
+    LIST("Storico", Icons.Filled.List)
+}
+
 @Composable
 fun ManagerScreen(
     modifier: Modifier = Modifier,
     viewModel: ManagerViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    var selectedTab by rememberSaveable { mutableStateOf(ManagerTab.RESTOCK) }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        RestockForm(
-            state = state,
-            onCategorySelected = viewModel::onCategorySelected,
-            onProductSelected = viewModel::onProductSelected,
-            onSupplierSelected = viewModel::onSupplierSelected,
-            onQuantityChange = viewModel::onQuantityChanged,
-            onShowProduct = { viewModel.showProductDetail(it) },
-            onSubmit = { viewModel.submitRestock() }
-        )
-        RestockList(
-            state = state,
-            onRefresh = viewModel::refreshRestocks,
-            onShowProduct = { viewModel.showProductDetail(it) }
-        )
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        bottomBar = {
+            NavigationBar {
+                ManagerTab.values().forEach { tab ->
+                    NavigationBarItem(
+                        selected = tab == selectedTab,
+                        onClick = { selectedTab = tab },
+                        icon = { Icon(tab.icon, contentDescription = tab.label) },
+                        label = { Text(tab.label) }
+                    )
+                }
+            }
+        }
+    ) { innerPadding ->
+        when (selectedTab) {
+            ManagerTab.RESTOCK -> LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    RestockForm(
+                        state = state,
+                        onCategorySelected = viewModel::onCategorySelected,
+                        onProductSelected = viewModel::onProductSelected,
+                        onSupplierSelected = viewModel::onSupplierSelected,
+                        onQuantityChange = viewModel::onQuantityChanged,
+                        onShowProduct = { viewModel.showProductDetail(it) },
+                        onSubmit = { viewModel.submitRestock() }
+                    )
+                }
+            }
+            ManagerTab.LIST -> RestockList(
+                state = state,
+                onRefresh = viewModel::refreshRestocks,
+                onShowProduct = { viewModel.showProductDetail(it) },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(16.dp)
+            )
+        }
     }
 
     state.showProductDetail?.let { product ->
@@ -211,10 +244,11 @@ private fun RestockForm(
 private fun RestockList(
     state: ManagerUiState,
     onRefresh: () -> Unit,
-    onShowProduct: (String) -> Unit
+    onShowProduct: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -223,7 +257,7 @@ private fun RestockList(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Riordini magazzino", style = MaterialTheme.typography.titleMedium)
+                Text("Riordini magazzino", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 IconButton(onClick = onRefresh, enabled = !state.isLoading) {
                     Icon(Icons.Filled.Refresh, contentDescription = "Aggiorna")
                 }
@@ -231,29 +265,14 @@ private fun RestockList(
             if (state.restocks.isEmpty()) {
                 Text("Nessun riordino registrato", color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
-                val chunks = state.restocks.chunked(5)
-                val listState = rememberLazyListState()
-                val flingBehavior = rememberSnapFlingBehavior(listState)
-                LazyRow(
-                    state = listState,
-                    flingBehavior = flingBehavior,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 600.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    itemsIndexed(
-                        chunks,
-                        key = { index, cluster -> cluster.firstOrNull()?.idRiordino ?: index }
-                    ) { _, cluster ->
-                        Card(
-                            modifier = Modifier.widthIn(min = 280.dp, max = 340.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                cluster.forEach { restock ->
-                                    RestockEntry(restock, onShowProduct)
-                                }
-                            }
-                        }
+                    items(state.restocks, key = { it.idRiordino }) { restock ->
+                        RestockEntry(restock, onShowProduct)
                     }
                 }
             }
@@ -281,4 +300,5 @@ private fun RestockEntry(restock: it.unito.smartshopmobile.data.entity.Restock, 
             Text("Dettagli prodotto")
         }
     }
-}
+}
+
