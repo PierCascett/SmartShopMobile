@@ -18,9 +18,12 @@ class AccountPreferencesViewModel(application: Application) : AndroidViewModel(a
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountPreferences())
 
     init {
+        // Osserva le preferenze e aggiorna RetrofitInstance quando cambiano
         viewModelScope.launch {
             dataStore.data.collect { prefs ->
-                RetrofitInstance.overrideBackend(prefs.backendHost, prefs.backendPort)
+                if (prefs.backendHost.isNotBlank() && prefs.backendPort.isNotBlank()) {
+                    RetrofitInstance.overrideBackend(prefs.backendHost, prefs.backendPort)
+                }
             }
         }
     }

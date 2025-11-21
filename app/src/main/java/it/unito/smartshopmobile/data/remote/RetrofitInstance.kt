@@ -1,7 +1,6 @@
 package it.unito.smartshopmobile.data.remote
 
 import android.os.Build
-import it.unito.smartshopmobile.BuildConfig
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import okhttp3.Interceptor
@@ -17,10 +16,11 @@ object RetrofitInstance {
         val assetBaseUrl: String get() = "http://$host:$port/"
     }
 
+    // Default: usa 10.0.2.2 per emulatore Android, altrimenti usa IP rete locale
     private val configRef = AtomicReference(
         BackendConfig(
-            host = initialHost(),
-            port = initialPort()
+            host = if (isEmulator()) "10.0.2.2" else "192.168.1.51",
+            port = "3000"
         )
     )
 
@@ -31,6 +31,7 @@ object RetrofitInstance {
         val normalizedHost = host?.takeIf { it.isNotBlank() } ?: configRef.get().host
         val normalizedPort = port?.takeIf { it.isNotBlank() } ?: configRef.get().port
         configRef.set(BackendConfig(normalizedHost, normalizedPort))
+        println("🔧 Backend updated to: http://$normalizedHost:$normalizedPort")
     }
 
     fun currentBaseUrl(): String = configRef.get().baseUrl
@@ -91,16 +92,6 @@ object RetrofitInstance {
     val api: SmartShopApiService by lazy {
         retrofit.create(SmartShopApiService::class.java)
     }
-
-    private fun initialHost(): String {
-        val envOverride = System.getenv("SMARTSHOP_HOST")?.takeIf { it.isNotBlank() }
-        if (isEmulator()) return envOverride ?: "10.0.2.2"
-        return envOverride ?: BuildConfig.BACKEND_HOST.ifBlank { "10.0.2.2" }
-    }
-
-    private fun initialPort(): String {
-        val envOverride = System.getenv("SMARTSHOP_PORT")?.takeIf { it.isNotBlank() }
-        return envOverride ?: BuildConfig.BACKEND_PORT.ifBlank { "3000" }
-    }
 }
+
 
