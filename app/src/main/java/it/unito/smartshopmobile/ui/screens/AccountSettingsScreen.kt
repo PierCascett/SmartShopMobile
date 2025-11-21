@@ -134,14 +134,14 @@ private fun BackendCard(
         ) {
             Text("Rete backend", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Text(
-                "Configura l'IP e la porta del server Node. Se sei in emulatore usa 10.0.2.2, su dispositivo metti l'IP locale del PC.",
+                "Il server viene rilevato automaticamente tramite broadcast UDP. Modifica solo se la connessione fallisce.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             OutlinedTextField(
                 value = host,
                 onValueChange = onHostChange,
-                label = { Text("Host backend") },
+                label = { Text("Host backend (auto-rilevato)") },
                 modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(

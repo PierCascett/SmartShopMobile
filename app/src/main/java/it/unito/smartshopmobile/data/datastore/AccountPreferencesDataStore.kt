@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import it.unito.smartshopmobile.utils.NetworkUtils
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -29,7 +30,7 @@ class AccountPreferencesDataStore(private val context: Context) {
             nome = prefs[KEY_NOME].orEmpty(),
             cognome = prefs[KEY_COGNOME].orEmpty(),
             indirizzoSpedizione = prefs[KEY_INDIRIZZO].orEmpty(),
-            backendHost = prefs[KEY_BACKEND_HOST] ?: "192.168.1.51",
+            backendHost = prefs[KEY_BACKEND_HOST] ?: NetworkUtils.detectBackendHost(),
             backendPort = prefs[KEY_BACKEND_PORT] ?: "3000"
         )
     }

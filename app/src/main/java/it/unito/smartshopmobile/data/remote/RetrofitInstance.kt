@@ -1,6 +1,9 @@
 package it.unito.smartshopmobile.data.remote
 
-import android.os.Build
+import it.unito.smartshopmobile.utils.NetworkUtils
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import okhttp3.Interceptor
@@ -16,13 +19,23 @@ object RetrofitInstance {
         val assetBaseUrl: String get() = "http://$host:$port/"
     }
 
-    // Default: usa 10.0.2.2 per emulatore Android, altrimenti usa IP rete locale
+    // Inizia con un placeholder, poi rileva automaticamente il server
     private val configRef = AtomicReference(
         BackendConfig(
-            host = if (isEmulator()) "10.0.2.2" else "192.168.1.51",
+            host = "192.168.1.1", // Placeholder temporaneo
             port = "3000"
         )
     )
+
+    init {
+        println("🔧 Rilevamento automatico del server in corso...")
+        // Avvia il discovery in background
+        CoroutineScope(Dispatchers.IO).launch {
+            val detectedHost = NetworkUtils.detectBackendHost()
+            configRef.set(BackendConfig(detectedHost, "3000"))
+            println("🔧 ✅ Server rilevato automaticamente: http://$detectedHost:3000")
+        }
+    }
 
     val assetBaseUrl: String
         get() = configRef.get().assetBaseUrl
@@ -40,21 +53,6 @@ object RetrofitInstance {
         if (relativePath.isNullOrBlank()) return null
         val path = relativePath.removePrefix("/")
         return assetBaseUrl + path
-    }
-
-    private fun isEmulator(): Boolean {
-        return (
-            Build.FINGERPRINT.startsWith("google/sdk_gphone") ||
-                Build.FINGERPRINT.startsWith("generic") ||
-                Build.FINGERPRINT.contains("vbox") ||
-                Build.FINGERPRINT.contains("test-keys") ||
-                Build.MODEL.contains("google_sdk") ||
-                Build.MODEL.contains("Emulator") ||
-                Build.MODEL.contains("Android SDK built for x86") ||
-                Build.MANUFACTURER.contains("Genymotion") ||
-                Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic") ||
-                "google_sdk" == Build.PRODUCT
-            )
     }
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
