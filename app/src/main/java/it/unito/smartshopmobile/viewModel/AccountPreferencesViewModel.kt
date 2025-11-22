@@ -16,9 +16,9 @@ class AccountPreferencesViewModel(application: Application) : AndroidViewModel(a
     val preferences: StateFlow<AccountPreferences> = dataStore.data
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountPreferences())
 
-    fun updateProfile(nome: String, cognome: String, indirizzo: String) {
+    fun updateProfile(nome: String, cognome: String, indirizzo: String, telefono: String) {
         viewModelScope.launch {
-            dataStore.updateProfile(nome, cognome, indirizzo)
+            dataStore.updateProfile(nome, cognome, indirizzo, telefono)
         }
     }
 }

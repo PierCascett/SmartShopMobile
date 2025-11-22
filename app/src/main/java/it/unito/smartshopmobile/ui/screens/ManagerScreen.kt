@@ -54,6 +54,7 @@ import it.unito.smartshopmobile.viewModel.ManagerViewModel
 
 private enum class ManagerTab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     RESTOCK("Effettua riordine", Icons.Filled.Assignment),
+    TRANSFER("Trasferisci", Icons.Filled.Refresh),
     LIST("Storico", Icons.Filled.List)
 }
 
@@ -97,6 +98,24 @@ fun ManagerScreen(
                         onQuantityChange = viewModel::onQuantityChanged,
                         onShowProduct = { viewModel.showProductDetail(it) },
                         onSubmit = { viewModel.submitRestock() }
+                    )
+                }
+            }
+            ManagerTab.TRANSFER -> LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                item {
+                    TransferForm(
+                        state = state,
+                        onCategorySelected = viewModel::onCategorySelected,
+                        onProductSelected = viewModel::onProductSelected,
+                        onShelfSelected = viewModel::onShelfSelected,
+                        onQuantityChange = viewModel::onTransferQuantityChanged,
+                        onSubmit = viewModel::moveStockToShelf
                     )
                 }
             }
@@ -236,6 +255,113 @@ private fun RestockForm(
             }
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             state.successMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+        }
+    }
+}
+
+@Composable
+private fun TransferForm(
+    state: ManagerUiState,
+    onCategorySelected: (String?) -> Unit,
+    onProductSelected: (String) -> Unit,
+    onShelfSelected: (Int) -> Unit,
+    onQuantityChange: (String) -> Unit,
+    onSubmit: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Trasferisci dal magazzino agli scaffali", style = MaterialTheme.typography.titleMedium)
+            Text("Seleziona categoria", style = MaterialTheme.typography.labelLarge)
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(state.categories) { category ->
+                    val selected = category.id == state.selectedCategoryId
+                    AssistChip(
+                        onClick = { onCategorySelected(category.id) },
+                        label = { Text(category.nome ?: category.id) },
+                        shape = RoundedCornerShape(50),
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    )
+                }
+            }
+
+            Text("Prodotti (magazzino -> catalogo)", style = MaterialTheme.typography.labelLarge)
+            if (state.availableProducts.isEmpty()) {
+                Text("Nessun prodotto in questa categoria", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 220.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(state.availableProducts, key = { it.catalogId }) { product ->
+                        val selected = product.id == state.selectedProductId
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onProductSelected(product.id) },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(product.name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(product.brand, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    "Magazzino: ${product.warehouseQuantity} | Catalogo: ${product.catalogQuantity} | Totale: ${product.totalQuantity}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Text("Scaffale di destinazione", style = MaterialTheme.typography.labelLarge)
+            if (state.shelves.isEmpty()) {
+                Text("Nessuno scaffale disponibile", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(state.shelves) { shelf ->
+                        val selected = shelf.id == state.selectedShelfId
+                        AssistChip(
+                            onClick = { onShelfSelected(shelf.id) },
+                            label = { Text(shelf.nome) },
+                            shape = RoundedCornerShape(50),
+                            colors = AssistChipDefaults.assistChipColors(
+                                containerColor = if (selected) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        )
+                    }
+                }
+            }
+
+            OutlinedTextField(
+                value = state.transferQuantity,
+                onValueChange = onQuantityChange,
+                label = { Text("Quantita da spostare") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                "I pezzi verranno scalati dal magazzino e aggiunti allo scaffale selezionato.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Button(
+                onClick = onSubmit,
+                enabled = !state.isTransferring,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (state.isTransferring) "Trasferimento..." else "Trasferisci scorte")
+            }
+            state.transferError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            state.transferSuccess?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
         }
     }
 }

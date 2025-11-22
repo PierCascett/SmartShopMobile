@@ -66,6 +66,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
@@ -89,6 +90,7 @@ import it.unito.smartshopmobile.viewModel.CatalogViewModel
 import it.unito.smartshopmobile.viewModel.CatalogUiState
 import it.unito.smartshopmobile.viewModel.LoginViewModel
 
+import kotlinx.coroutines.launch
 private enum class CustomerTab { SHOP, ORDERS, ACCOUNT }
 
 class MainActivity : ComponentActivity() {
@@ -156,7 +158,13 @@ class MainActivity : ComponentActivity() {
                                 onMenuClick = { showMenu = true },
                                 onCartClick = { showCart = true },
                                 accountPrefs = accountPrefs,
-                                onSaveProfile = accountPreferencesViewModel::updateProfile,
+                                onSaveProfile = { nome: String, cognome: String, email: String, indirizzo: String, telefono: String ->
+                                    val result = catalogViewModel.updateCustomerProfile(nome, cognome, email, telefono.ifBlank { null })
+                                    result.onSuccess {
+                                        accountPreferencesViewModel.updateProfile(nome, cognome, indirizzo, telefono)
+                                    }
+                                    result
+                                },
                                 customerTab = customerTab,
                                 onCustomerTabChange = { customerTab = it }
                             )
@@ -217,7 +225,7 @@ private fun ContentWithSessionBar(
     onMenuClick: () -> Unit,
     onCartClick: () -> Unit,
     accountPrefs: AccountPreferences,
-    onSaveProfile: (String, String, String) -> Unit,
+    onSaveProfile: suspend (String, String, String, String, String) -> Result<it.unito.smartshopmobile.data.entity.User>,
     customerTab: CustomerTab,
     onCustomerTabChange: (CustomerTab) -> Unit
 ) {
@@ -270,8 +278,12 @@ private fun CustomerHome(
     onTabChange: (CustomerTab) -> Unit,
     onMenuClick: () -> Unit,
     onCartClick: () -> Unit,
-    onSaveProfile: (String, String, String) -> Unit
+    onSaveProfile: suspend (String, String, String, String, String) -> Result<it.unito.smartshopmobile.data.entity.User>
 ) {
+    val scope = rememberCoroutineScope()
+    var savingProfile by rememberSaveable { mutableStateOf(false) }
+    var profileError by rememberSaveable { mutableStateOf<String?>(null) }
+    var profileSuccess by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(selectedTab) {
         if (selectedTab == CustomerTab.ORDERS) {
             catalogViewModel.refreshOrderHistory()
@@ -280,8 +292,16 @@ private fun CustomerHome(
 
     val resolvedPrefs = accountPrefs.copy(
         nome = accountPrefs.nome.ifBlank { state.loggedUser?.nome.orEmpty() },
-        cognome = accountPrefs.cognome.ifBlank { state.loggedUser?.cognome.orEmpty() }
+        cognome = accountPrefs.cognome.ifBlank { state.loggedUser?.cognome.orEmpty() },
+        telefono = accountPrefs.telefono.ifBlank { state.loggedUser?.telefono.orEmpty() }
     )
+
+    LaunchedEffect(resolvedPrefs.indirizzoSpedizione, resolvedPrefs.telefono) {
+        catalogViewModel.setCustomerContacts(
+            indirizzo = resolvedPrefs.indirizzoSpedizione,
+            telefono = resolvedPrefs.telefono.ifBlank { null }
+        )
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -336,7 +356,11 @@ private fun CustomerHome(
                 orders = state.orderHistory,
                 isLoading = state.isOrderHistoryLoading,
                 error = state.orderHistoryError,
+                pickupInProgressId = state.pickupInProgressId,
+                pickupMessage = state.pickupMessage,
                 onRefresh = { catalogViewModel.refreshOrderHistory() },
+                onScanQr = { catalogViewModel.simulateLockerPickup(it) },
+                onDismissMessage = catalogViewModel::clearPickupMessage,
                 modifier = Modifier
                     .padding(innerPadding)
                     .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -344,7 +368,25 @@ private fun CustomerHome(
 
             CustomerTab.ACCOUNT -> AccountSettingsScreen(
                 preferences = resolvedPrefs,
-                onSaveProfile = onSaveProfile,
+                email = state.loggedUser?.email.orEmpty(),
+                isSaving = savingProfile,
+                error = profileError,
+                success = profileSuccess,
+                onSaveProfile = { nome, cognome, emailInput, indirizzo, telefono ->
+                    savingProfile = true
+                    profileError = null
+                    profileSuccess = null
+                    scope.launch {
+                        val result: Result<it.unito.smartshopmobile.data.entity.User> =
+                            onSaveProfile(nome, cognome, emailInput, indirizzo, telefono)
+                        result.onSuccess { _ ->
+                            profileSuccess = "Dati aggiornati"
+                        }.onFailure { error ->
+                            profileError = error.message
+                        }
+                        savingProfile = false
+                    }
+                },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)

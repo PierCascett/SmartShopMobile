@@ -1079,12 +1079,15 @@ data class SideMenuEntry(
 
 private fun formatPrice(value: Double): String = "\u20AC ${String.format(java.util.Locale.ROOT, "%.2f", value)}"
 
-private fun orderStatusLabel(status: String): String = when (status.uppercase()) {
-    "IN_PREPARAZIONE" -> "In preparazione"
-    "CONCLUSO" -> "Concluso"
-    "CREATO" -> "Creato"
-    "SPEDITO" -> "Spedito"
-    "ANNULLATO" -> "Annullato"
+private fun orderStatusLabel(status: String, method: String? = null): String = when {
+    method.equals("LOCKER", true) && status.equals("SPEDITO", true) -> "Da ritirare"
+    method.equals("DOMICILIO", true) && status.equals("SPEDITO", true) -> "In consegna"
+    status.uppercase() == "IN_PREPARAZIONE" -> "In preparazione"
+    status.uppercase() == "CONCLUSO" -> "Concluso"
+    status.uppercase() == "CREATO" -> "Creato"
+    status.uppercase() == "SPEDITO" -> "Spedito"
+    status.uppercase() == "CONSEGNATO" -> "Consegnato"
+    status.uppercase() == "ANNULLATO" -> "Annullato"
     else -> status.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
 }
 
@@ -1175,7 +1178,11 @@ fun OrderHistoryPanel(
     orders: List<CustomerOrderHistoryEntry>,
     isLoading: Boolean,
     error: String?,
+    pickupInProgressId: Int?,
+    pickupMessage: String?,
     onRefresh: () -> Unit,
+    onScanQr: (Int) -> Unit,
+    onDismissMessage: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -1205,6 +1212,14 @@ fun OrderHistoryPanel(
             error?.let {
                 Text(it, color = MaterialTheme.colorScheme.error)
             }
+            pickupMessage?.let {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(it, color = MaterialTheme.colorScheme.primary)
+                    TextButton(onClick = onDismissMessage, contentPadding = PaddingValues(horizontal = 8.dp)) {
+                        Text("Ok")
+                    }
+                }
+            }
             if (orders.isEmpty() && error == null && !isLoading) {
                 Text(
                     "Nessun ordine effettuato finora",
@@ -1219,7 +1234,11 @@ fun OrderHistoryPanel(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(orders, key = { it.order.idOrdine }) { entry ->
-                        OrderHistoryCard(entry)
+                        OrderHistoryCard(
+                            entry = entry,
+                            pickupInProgressId = pickupInProgressId,
+                            onScanQr = onScanQr
+                        )
                     }
                 }
             }
@@ -1228,13 +1247,21 @@ fun OrderHistoryPanel(
 }
 
 @Composable
-private fun OrderHistoryCard(entry: CustomerOrderHistoryEntry) {
+private fun OrderHistoryCard(
+    entry: CustomerOrderHistoryEntry,
+    pickupInProgressId: Int?,
+    onScanQr: (Int) -> Unit
+) {
     val order = entry.order
-    val statusLabel = orderStatusLabel(order.stato)
+    val statusLabel = orderStatusLabel(order.stato, order.metodoConsegna)
     val deliveryLabel = deliveryMethodLabel(order.metodoConsegna)
+    val readyForPickup = order.metodoConsegna.equals("LOCKER", true) && order.stato.equals("SPEDITO", true)
+    val isScanning = pickupInProgressId == order.idOrdine
     Card(
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        colors = CardDefaults.cardColors(
+            containerColor = if (readyForPickup) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant
+        )
     ) {
         Column(
             modifier = Modifier
@@ -1258,11 +1285,35 @@ private fun OrderHistoryCard(entry: CustomerOrderHistoryEntry) {
                 order.idLocker?.let {
                     Text("Locker: $it", style = MaterialTheme.typography.bodySmall)
                 }
-                order.codiceRitiro?.let {
-                    Text("Codice ritiro: $it", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                if (readyForPickup) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            if (isScanning) "Ritirato dal locker, chiudo..." else "Da ritirare: usa il QR sul locker",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        TextButton(
+                            onClick = { onScanQr(order.idOrdine) },
+                            enabled = !isScanning
+                        ) {
+                            Text(if (isScanning) "In corso..." else "Inquadra QR")
+                        }
+                    }
                 }
             } else {
-                Text("Consegna a domicilio in gestione", style = MaterialTheme.typography.bodySmall)
+                val homeLabel = if (order.stato.equals("CONSEGNATO", true) || order.stato.equals("CONCLUSO", true)) {
+                    "Consegnato a domicilio"
+                } else {
+                    "Consegna a domicilio in gestione"
+                }
+                Text(homeLabel, style = MaterialTheme.typography.bodySmall)
+                order.indirizzoSpedizione?.takeIf { it.isNotBlank() }?.let {
+                    Text("Indirizzo: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
             if (order.righe.isEmpty()) {
@@ -1289,7 +1340,11 @@ fun AppOrderHistoryOverlay(
     orders: List<CustomerOrderHistoryEntry>,
     isLoading: Boolean,
     error: String?,
-    onRefresh: () -> Unit
+    pickupInProgressId: Int?,
+    pickupMessage: String?,
+    onRefresh: () -> Unit,
+    onScanQr: (Int) -> Unit,
+    onDismissMessage: () -> Unit = {}
 ) {
     OverlayContainer(onDismiss = onDismiss) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -1297,7 +1352,11 @@ fun AppOrderHistoryOverlay(
                 orders = orders,
                 isLoading = isLoading,
                 error = error,
+                pickupInProgressId = pickupInProgressId,
+                pickupMessage = pickupMessage,
                 onRefresh = onRefresh,
+                onScanQr = onScanQr,
+                onDismissMessage = onDismissMessage,
                 modifier = Modifier
                     .align(Alignment.Center)
                     .padding(16.dp)

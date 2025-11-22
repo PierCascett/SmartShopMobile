@@ -211,6 +211,10 @@ private fun PickingTab(
 
         SelectedAislePanel(selected = state.selectedAisle, onProductClick = onProductClick)
 
+        state.orderActionError?.let {
+            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+        }
+
         if (activeOrder == null) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
@@ -309,6 +313,10 @@ private fun OrdersTab(
             Text("Conclusi: $completedCount", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
+        state.orderActionError?.let {
+            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+        }
+
         when {
             state.isLoadingOrders -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             state.ordersError != null -> Text(state.ordersError, color = MaterialTheme.colorScheme.error)
@@ -369,7 +377,7 @@ private fun OrdersTab(
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text("Cliente: ${order.nomeCliente} ${order.cognomeCliente}")
-                        Text("Stato: ${orderStatusLabel(order.stato)}")
+                        Text("Stato: ${orderStatusLabel(order.stato, order.metodoConsegna)}")
                         Text("Totale: ${formatEuro(order.totale)} | Articoli: ${order.righe.sumOf { it.quantita }}")
                         Text("Consegna: ${order.metodoConsegna}")
                         if (order.righe.isEmpty()) {
@@ -419,7 +427,10 @@ private fun ClaimTab(
             state.isLoadingOrders -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             state.ordersError != null -> Text(state.ordersError, color = MaterialTheme.colorScheme.error)
             else -> {
-                val claimable = state.orders.filter { !orderIsFinal(it.stato) }
+                val claimable = state.orders.filter {
+                    !orderIsFinal(it.stato) &&
+                        !(it.metodoConsegna.equals("LOCKER", true) && it.stato.equals("SPEDITO", true))
+                }
                 if (claimable.isEmpty()) {
                     Text("Nessun ordine da prendere in carico", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
@@ -571,8 +582,11 @@ private fun OrderPickingPanel(
     onSetInPreparation: ((Int) -> Unit)?,
     onReleaseActive: (() -> Unit)?
 ) {
-    val statusLabel = orderStatusLabel(order.stato)
+    val statusLabel = orderStatusLabel(order.stato, order.metodoConsegna)
     val allPicked = order.righe.isNotEmpty() && order.righe.all { pickedLines.contains(it.idRiga) }
+    val isLocker = order.metodoConsegna.equals("LOCKER", true)
+    val readyInLocker = isLocker && order.stato.equals("SPEDITO", true)
+    val completionLabel = if (isLocker) "Pronto al ritiro" else "Segna consegnato"
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -588,6 +602,11 @@ private fun OrderPickingPanel(
             }
             Text("Totale: ${formatEuro(order.totale)} | Articoli: ${order.righe.sumOf { it.quantita }}")
             Text("Metodo: ${order.metodoConsegna}", style = MaterialTheme.typography.bodySmall)
+            if (order.metodoConsegna.equals("DOMICILIO", true)) {
+                order.indirizzoSpedizione?.takeIf { it.isNotBlank() }?.let {
+                    Text("Indirizzo: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
 
             if (order.righe.isEmpty()) {
                 Text("Nessuna riga ordine disponibile", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -627,8 +646,8 @@ private fun OrderPickingPanel(
                   }
                 Button(
                     onClick = { onMarkCompleted(order.idOrdine) },
-                    enabled = updatingOrderId != order.idOrdine && !order.stato.equals("CONCLUSO", true) && !orderIsFinal(order.stato) && allPicked
-                ) { Text(if (allPicked) "Segna concluso" else "Completa checklist") }
+                    enabled = updatingOrderId != order.idOrdine && !orderIsFinal(order.stato) && allPicked && !readyInLocker
+                ) { Text(if (allPicked) completionLabel else "Completa checklist") }
             }
             if (updatingOrderId == order.idOrdine) {
                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -744,8 +763,11 @@ private fun OrderClusterCard(orders: List<Order>, expandedOrderId: Int?, updatin
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun OrderEntry(order: Order, isExpanded: Boolean, updatingOrderId: Int?, showActions: Boolean, actionError: String?, onOrderClick: () -> Unit, onMarkShipped: () -> Unit, onMarkCompleted: () -> Unit, onMarkCanceled: () -> Unit) {
-    val statusLabel = orderStatusLabel(order.stato)
+    val statusLabel = orderStatusLabel(order.stato, order.metodoConsegna)
     val deliveryLabel = if (order.metodoConsegna.equals("DOMICILIO", ignoreCase = true)) "Spesa a domicilio" else "Ritiro nel locker"
+    val isLocker = order.metodoConsegna.equals("LOCKER", ignoreCase = true)
+    val readyInLocker = isLocker && order.stato.equals("SPEDITO", true)
+    val completionLabel = if (isLocker) "Pronto al ritiro" else "Segna consegnato"
 
     Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surface).clickable { onOrderClick() }.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -758,6 +780,11 @@ private fun OrderEntry(order: Order, isExpanded: Boolean, updatingOrderId: Int?,
 
         Text("Totale: ${formatEuro(order.totale)} | Articoli: ${order.righe.sumOf { it.quantita }}")
         Text("Consegna: $deliveryLabel", style = MaterialTheme.typography.bodySmall)
+        if (order.metodoConsegna.equals("DOMICILIO", true)) {
+            order.indirizzoSpedizione?.takeIf { it.isNotBlank() }?.let {
+                Text("Indirizzo: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
 
         if (isExpanded) {
             HorizontalDivider()
@@ -776,7 +803,7 @@ private fun OrderEntry(order: Order, isExpanded: Boolean, updatingOrderId: Int?,
                         OutlinedButton(onClick = onMarkShipped, enabled = updatingOrderId != order.idOrdine && !orderIsFinal(order.stato) && order.stato.uppercase() != "SPEDITO", modifier = Modifier.widthIn(min = 140.dp)) { Text("Segna spedito") }
                     }
                     OutlinedButton(onClick = onMarkCanceled, enabled = updatingOrderId != order.idOrdine && !orderIsFinal(order.stato), modifier = Modifier.widthIn(min = 140.dp)) { Text("Annulla") }
-                    Button(onClick = onMarkCompleted, enabled = updatingOrderId != order.idOrdine && !order.stato.equals("CONCLUSO", true), modifier = Modifier.widthIn(min = 140.dp)) { Text("Segna concluso") }
+                    Button(onClick = onMarkCompleted, enabled = updatingOrderId != order.idOrdine && !orderIsFinal(order.stato) && !readyInLocker, modifier = Modifier.widthIn(min = 140.dp)) { Text(completionLabel) }
                 }
 
                 if (updatingOrderId == order.idOrdine) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -799,8 +826,11 @@ private fun SimpleOrderCard(
     onMarkCompleted: () -> Unit,
     onMarkCanceled: () -> Unit
 ) {
-    val statusLabel = orderStatusLabel(order.stato)
+    val statusLabel = orderStatusLabel(order.stato, order.metodoConsegna)
     val deliveryLabel = if (order.metodoConsegna.equals("DOMICILIO", true)) "Domicilio" else "Locker"
+    val isLocker = order.metodoConsegna.equals("LOCKER", true)
+    val readyInLocker = isLocker && order.stato.equals("SPEDITO", true)
+    val completionLabel = if (isLocker) "Pronto al ritiro" else "Segna consegnato"
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -823,6 +853,11 @@ private fun SimpleOrderCard(
             Text("${order.nomeCliente} ${order.cognomeCliente}", style = MaterialTheme.typography.bodySmall)
             Text("Totale: ${formatEuro(order.totale)} • Articoli: ${order.righe.sumOf { it.quantita }} • $deliveryLabel", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (isExpanded) {
+                if (order.metodoConsegna.equals("DOMICILIO", true)) {
+                    order.indirizzoSpedizione?.takeIf { it.isNotBlank() }?.let {
+                        Text("Indirizzo: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
                 order.righe.forEach { line ->
                     Text(
                         "${line.nomeProdotto} x${line.quantita}",
@@ -846,8 +881,8 @@ private fun SimpleOrderCard(
                     ) { Text("Annulla") }
                     TextButton(
                         onClick = onMarkCompleted,
-                        enabled = updatingOrderId != order.idOrdine && !order.stato.equals("CONCLUSO", true) && !orderIsFinal(order.stato)
-                    ) { Text("Concluso") }
+                        enabled = updatingOrderId != order.idOrdine && !orderIsFinal(order.stato) && !readyInLocker
+                    ) { Text(completionLabel) }
                 }
             } else {
                 Text("Tocca per dettagli", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -861,12 +896,15 @@ private fun orderIsFinal(status: String): Boolean = when (status.uppercase()) {
     else -> false
 }
 
-private fun orderStatusLabel(status: String): String = when (status.uppercase()) {
-    "IN_PREPARAZIONE" -> "In preparazione"
-    "CONCLUSO" -> "Concluso"
-    "SPEDITO" -> "Spedito"
-    "CONSEGNATO" -> "Consegnato"
-    "ANNULLATO" -> "Annullato"
+private fun orderStatusLabel(status: String, method: String? = null): String = when {
+    method.equals("LOCKER", true) && status.equals("SPEDITO", true) -> "Da ritirare al locker"
+    method.equals("DOMICILIO", true) && status.equals("SPEDITO", true) -> "In consegna"
+    status.uppercase() == "IN_PREPARAZIONE" -> "In preparazione"
+    status.uppercase() == "CONCLUSO" -> "Concluso"
+    status.uppercase() == "CREATO" -> "Creato"
+    status.uppercase() == "SPEDITO" -> "Spedito"
+    status.uppercase() == "CONSEGNATO" -> "Consegnato"
+    status.uppercase() == "ANNULLATO" -> "Annullato"
     else -> status
 }
 

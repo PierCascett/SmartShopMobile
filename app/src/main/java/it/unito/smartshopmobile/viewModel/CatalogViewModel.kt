@@ -42,6 +42,7 @@ import it.unito.smartshopmobile.data.repository.CategoryRepository
 import it.unito.smartshopmobile.data.repository.ProductRepository
 import it.unito.smartshopmobile.data.repository.ShelfRepository
 import it.unito.smartshopmobile.data.repository.OrderRepository
+import it.unito.smartshopmobile.data.repository.UserRepository
 import it.unito.smartshopmobile.ui.screens.SideMenuEntry
 import it.unito.smartshopmobile.ui.screens.SideMenuSection
 import kotlinx.coroutines.flow.*
@@ -51,6 +52,9 @@ import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.delay
+import it.unito.smartshopmobile.data.entity.UpdateUserRequest
+import it.unito.smartshopmobile.data.datastore.SessionDataStore
 
 class CatalogViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -72,6 +76,8 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         RetrofitInstance.api,
         database.orderDao()
     )
+    private val userRepository = UserRepository(RetrofitInstance.api)
+    private val sessionDataStore = SessionDataStore(application)
 
     // UI State
     private val _uiState = MutableStateFlow(CatalogUiState())
@@ -167,6 +173,33 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
     fun clearSession() {
         started = false
         mutateState { CatalogUiState() }
+    }
+
+    fun setCustomerContacts(indirizzo: String, telefono: String?) {
+        mutateState {
+            it.copy(
+                shippingAddress = indirizzo,
+                shippingPhone = telefono.orEmpty()
+            )
+        }
+    }
+
+    suspend fun updateCustomerProfile(
+        nome: String,
+        cognome: String,
+        email: String,
+        telefono: String?
+    ): Result<User> {
+        val current = _uiState.value.loggedUser ?: return Result.failure(Exception("Utente non loggato"))
+        val result = userRepository.updateProfile(
+            current.id,
+            UpdateUserRequest(nome = nome, cognome = cognome, email = email, telefono = telefono)
+        )
+        result.onSuccess { updated ->
+            mutateState { it.copy(loggedUser = updated) }
+            sessionDataStore.saveUser(updated)
+        }
+        return result
     }
 
     private fun refreshData() {
@@ -276,6 +309,8 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
 
     fun clearOrderFeedback() = mutateState { it.copy(lastOrderId = null) }
 
+    fun clearPickupMessage() = mutateState { it.copy(pickupMessage = null) }
+
     fun refreshOrderHistory() {
         if (_uiState.value.loggedUser == null) {
             mutateState { it.copy(orderHistoryError = "Accedi per visualizzare lo storico ordini") }
@@ -291,6 +326,36 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
                     it.copy(
                         isOrderHistoryLoading = false,
                         orderHistoryError = error.message ?: "Errore nel recupero dello storico"
+                    )
+                }
+            }
+        }
+    }
+
+    fun simulateLockerPickup(orderId: Int) {
+        val snapshot = _uiState.value
+        if (snapshot.pickupInProgressId != null) return
+        val order = snapshot.orderHistory.firstOrNull { it.order.idOrdine == orderId }?.order
+        if (order == null || !order.metodoConsegna.equals("LOCKER", true) || !order.stato.equals("SPEDITO", true)) {
+            return
+        }
+
+        viewModelScope.launch {
+            mutateState {
+                it.copy(
+                    pickupInProgressId = order.idOrdine,
+                    pickupMessage = "Ritirato dal locker ${order.idLocker ?: ""}".trim()
+                )
+            }
+            delay(15_000)
+            val result = orderRepository.updateOrderStatus(order.idOrdine, "CONCLUSO")
+            result.onSuccess {
+                mutateState { it.copy(pickupInProgressId = null, pickupMessage = null) }
+            }.onFailure { error ->
+                mutateState {
+                    it.copy(
+                        pickupInProgressId = null,
+                        pickupMessage = error.message ?: "Errore nel completamento ritiro"
                     )
                 }
             }
@@ -422,6 +487,10 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
             mutateState { it.copy(orderError = "Il carrello è vuoto") }
             return
         }
+        if (snapshot.deliveryMethod == DeliveryMethod.DOMICILIO && snapshot.shippingAddress.isBlank()) {
+            mutateState { it.copy(orderError = "Aggiungi un indirizzo di spedizione nelle impostazioni") }
+            return
+        }
         val items = snapshot.cart.map { (productId, qty) ->
             OrderItemRequest(idProdotto = productId, quantita = qty)
         }
@@ -431,6 +500,7 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
                 CreateOrderRequest(
                     idUtente = user.id,
                     metodoConsegna = snapshot.deliveryMethod.apiValue,
+                    indirizzoSpedizione = snapshot.shippingAddress.ifBlank { null },
                     items = items
                 )
             )
@@ -478,6 +548,10 @@ data class CatalogUiState(
     val orderHistory: List<CustomerOrderHistoryEntry> = emptyList(),
     val isOrderHistoryLoading: Boolean = false,
     val orderHistoryError: String? = null,
+    val shippingAddress: String = "",
+    val shippingPhone: String = "",
+    val pickupInProgressId: Int? = null,
+    val pickupMessage: String? = null,
     val showToast: Boolean = false,
     val toastMessage: String? = null,
     val cart: Map<String, Int> = emptyMap(),

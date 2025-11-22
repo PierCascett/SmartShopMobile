@@ -27,12 +27,18 @@ import it.unito.smartshopmobile.data.datastore.AccountPreferences
 @Composable
 fun AccountSettingsScreen(
     preferences: AccountPreferences,
-    onSaveProfile: (String, String, String) -> Unit,
+    email: String,
+    isSaving: Boolean,
+    error: String?,
+    success: String?,
+    onSaveProfile: (String, String, String, String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var nome by rememberSaveable(preferences.nome) { mutableStateOf(preferences.nome) }
     var cognome by rememberSaveable(preferences.cognome) { mutableStateOf(preferences.cognome) }
     var indirizzo by rememberSaveable(preferences.indirizzoSpedizione) { mutableStateOf(preferences.indirizzoSpedizione) }
+    var telefono by rememberSaveable(preferences.telefono) { mutableStateOf(preferences.telefono) }
+    var currentEmail by rememberSaveable(email) { mutableStateOf(email) }
 
     Column(
         modifier = modifier
@@ -45,10 +51,17 @@ fun AccountSettingsScreen(
             nome = nome,
             cognome = cognome,
             indirizzo = indirizzo,
+            telefono = telefono,
+            email = currentEmail,
             onNomeChange = { nome = it },
             onCognomeChange = { cognome = it },
             onIndirizzoChange = { indirizzo = it },
-            onSave = { onSaveProfile(nome, cognome, indirizzo) }
+            onTelefonoChange = { telefono = it },
+            onEmailChange = { currentEmail = it },
+            isSaving = isSaving,
+            error = error,
+            success = success,
+            onSave = { onSaveProfile(nome, cognome, currentEmail, indirizzo, telefono) }
         )
     }
 }
@@ -58,9 +71,16 @@ private fun ProfileCard(
     nome: String,
     cognome: String,
     indirizzo: String,
+    telefono: String,
+    email: String,
     onNomeChange: (String) -> Unit,
     onCognomeChange: (String) -> Unit,
     onIndirizzoChange: (String) -> Unit,
+    onTelefonoChange: (String) -> Unit,
+    onEmailChange: (String) -> Unit,
+    isSaving: Boolean,
+    error: String?,
+    success: String?,
     onSave: () -> Unit
 ) {
     Card(
@@ -76,6 +96,12 @@ private fun ProfileCard(
         ) {
             Text("Profilo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             OutlinedTextField(
+                value = email,
+                onValueChange = onEmailChange,
+                label = { Text("Email") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
                 value = nome,
                 onValueChange = onNomeChange,
                 label = { Text("Nome") },
@@ -88,16 +114,24 @@ private fun ProfileCard(
                 modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
+                value = telefono,
+                onValueChange = onTelefonoChange,
+                label = { Text("Telefono") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
                 value = indirizzo,
                 onValueChange = onIndirizzoChange,
                 label = { Text("Indirizzo di spedizione") },
                 modifier = Modifier.fillMaxWidth()
             )
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            success?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
-                TextButton(onClick = onSave) { Text("Salva dati") }
+                TextButton(onClick = onSave, enabled = !isSaving) { Text(if (isSaving) "Salvataggio..." else "Salva dati") }
             }
         }
     }
