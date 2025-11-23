@@ -113,8 +113,7 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
         observeProductsAndCategories()
         observeSuppliers()
         observeShelves()
-        refreshRestocks()
-        refreshCatalogData()
+        refreshAllData()
     }
 
     private fun observeRestocks() {
@@ -194,10 +193,12 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
                 if (variants.size == 1) {
                     first
                 } else {
+                    val sumCatalog = variants.sumOf { it.catalogQuantity }
+                    val warehouse = variants.maxOf { it.warehouseQuantity } // unico magazzino per prodotto
                     first.copy(
-                        catalogQuantity = variants.sumOf { it.catalogQuantity },
-                        warehouseQuantity = variants.sumOf { it.warehouseQuantity },
-                        totalQuantity = variants.sumOf { it.totalQuantity }
+                        catalogQuantity = sumCatalog,
+                        warehouseQuantity = warehouse,
+                        totalQuantity = sumCatalog + warehouse
                     )
                 }
             }
@@ -208,7 +209,10 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             repository.fetchRestocks()
-                .onSuccess { _uiState.update { it.copy(isLoading = false) } }
+                .onSuccess {
+                    productRepository.refreshProducts()
+                    _uiState.update { it.copy(isLoading = false) }
+                }
                 .onFailure { error -> _uiState.update { it.copy(isLoading = false, error = error.message) } }
         }
     }
@@ -219,6 +223,18 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
             productRepository.refreshProducts()
             supplierRepository.refreshSuppliers()
             shelfRepository.refresh()
+        }
+    }
+
+    fun refreshAllData() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            // Prima riallinea magazzino con i riordini arrivati
+            inventoryRepository.reconcileArrivals()
+            // Poi ricarica riordini, categorie, prodotti, scaffali
+            refreshRestocks()
+            refreshCatalogData()
+            _uiState.update { it.copy(isLoading = false) }
         }
     }
 
@@ -285,7 +301,7 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
             )
             inventoryRepository.moveStock(request)
                 .onSuccess {
-                    productRepository.refreshProducts()
+                    refreshAllData()
                     _uiState.update {
                         it.copy(
                             isTransferring = false,

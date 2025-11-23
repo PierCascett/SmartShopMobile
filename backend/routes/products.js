@@ -21,8 +21,8 @@ router.get('/', async (req, res) => {
                 cat.prezzo AS price,
                 cat.vecchio_prezzo AS "oldPrice",
                 cat.id_scaffale AS "shelfId",
-                COALESCE(SUM(mg.quantita_disponibile), 0) AS "warehouseQuantity",
-                COALESCE(SUM(mg.quantita_disponibile), 0) + cat.quantita_disponibile AS "totalQuantity",
+                COALESCE(mg.sum_qty, 0) AS "warehouseQuantity",
+                COALESCE(mg.sum_qty, 0) + cat.quantita_disponibile AS "totalQuantity",
                 CASE
                     WHEN cat.quantita_disponibile <= 0 THEN 'Non disponibile'
                     WHEN cat.quantita_disponibile <= 5 THEN 'Quasi esaurito'
@@ -33,13 +33,17 @@ router.get('/', async (req, res) => {
                 p.descrizione AS description
             FROM prodotti p
             JOIN catalogo cat ON cat.id_prodotto = p.id_prodotto
-            LEFT JOIN magazzino mg ON mg.id_prodotto = p.id_prodotto
+            LEFT JOIN (
+                SELECT id_prodotto, SUM(quantita_disponibile) AS sum_qty
+                FROM magazzino
+                GROUP BY id_prodotto
+            ) mg ON mg.id_prodotto = p.id_prodotto
             LEFT JOIN prodotti_tag pt ON pt.id_prodotto = p.id_prodotto
             LEFT JOIN tag t ON t.id_tag = pt.id_tag
             LEFT JOIN categorie_prodotti c ON c.id_categoria = p.id_categoria
             GROUP BY p.id_prodotto, p.nome, p.marca, p.id_categoria, p.descrizione,
                      cat.id_catalogo, cat.quantita_disponibile, cat.prezzo, cat.vecchio_prezzo,
-                     cat.id_scaffale, c.nome, c.descrizione
+                     cat.id_scaffale, c.nome, c.descrizione, mg.sum_qty
             ORDER BY p.nome`
         );
         res.json(result.rows);
@@ -69,8 +73,8 @@ router.get('/categoria/:categoryId', async (req, res) => {
                 cat.prezzo AS price,
                 cat.vecchio_prezzo AS "oldPrice",
                 cat.id_scaffale AS "shelfId",
-                COALESCE(SUM(mg.quantita_disponibile), 0) AS "warehouseQuantity",
-                COALESCE(SUM(mg.quantita_disponibile), 0) + cat.quantita_disponibile AS "totalQuantity",
+                COALESCE(mg.sum_qty, arr.sum_arrivati, 0) AS "warehouseQuantity",
+                COALESCE(mg.sum_qty, arr.sum_arrivati, 0) + cat.quantita_disponibile AS "totalQuantity",
                 CASE
                  WHEN cat.quantita_disponibile <= 0 THEN 'Non disponibile'
                  WHEN cat.quantita_disponibile <= 5 THEN 'Quasi esaurito'
@@ -81,14 +85,24 @@ router.get('/categoria/:categoryId', async (req, res) => {
                 p.descrizione AS description
             FROM prodotti p
             JOIN catalogo cat ON cat.id_prodotto = p.id_prodotto
-            LEFT JOIN magazzino mg ON mg.id_prodotto = p.id_prodotto
+            LEFT JOIN (
+                SELECT id_prodotto, SUM(quantita_disponibile) AS sum_qty
+                FROM magazzino
+                GROUP BY id_prodotto
+            ) mg ON mg.id_prodotto = p.id_prodotto
+            LEFT JOIN (
+                SELECT id_prodotto, SUM(quantita_ordinata) AS sum_arrivati
+                FROM riordini_magazzino
+                WHERE arrivato = true
+                GROUP BY id_prodotto
+            ) arr ON arr.id_prodotto = p.id_prodotto
             LEFT JOIN prodotti_tag pt ON pt.id_prodotto = p.id_prodotto
             LEFT JOIN tag t ON t.id_tag = pt.id_tag
             LEFT JOIN categorie_prodotti c ON c.id_categoria = p.id_categoria
             WHERE p.id_categoria = $1
             GROUP BY p.id_prodotto, p.nome, p.marca, p.id_categoria, p.descrizione,
                      cat.id_catalogo, cat.quantita_disponibile, cat.prezzo, cat.vecchio_prezzo,
-                     cat.id_scaffale, c.nome, c.descrizione
+                     cat.id_scaffale, c.nome, c.descrizione, mg.sum_qty, arr.sum_arrivati
             ORDER BY p.nome`,
             [categoryId]
         );
@@ -124,8 +138,8 @@ router.get('/search', async (req, res) => {
                 cat.prezzo AS price,
                 cat.vecchio_prezzo AS "oldPrice",
                 cat.id_scaffale AS "shelfId",
-                COALESCE(SUM(mg.quantita_disponibile), 0) AS "warehouseQuantity",
-                COALESCE(SUM(mg.quantita_disponibile), 0) + cat.quantita_disponibile AS "totalQuantity",
+                COALESCE(mg.sum_qty, 0) AS "warehouseQuantity",
+                COALESCE(mg.sum_qty, 0) + cat.quantita_disponibile AS "totalQuantity",
                 CASE
                     WHEN cat.quantita_disponibile <= 0 THEN 'Non disponibile'
                     WHEN cat.quantita_disponibile <= 5 THEN 'Quasi esaurito'
@@ -136,14 +150,18 @@ router.get('/search', async (req, res) => {
                 p.descrizione AS description
             FROM prodotti p
             JOIN catalogo cat ON cat.id_prodotto = p.id_prodotto
-            LEFT JOIN magazzino mg ON mg.id_prodotto = p.id_prodotto
+            LEFT JOIN (
+                SELECT id_prodotto, SUM(quantita_disponibile) AS sum_qty
+                FROM magazzino
+                GROUP BY id_prodotto
+            ) mg ON mg.id_prodotto = p.id_prodotto
             LEFT JOIN prodotti_tag pt ON pt.id_prodotto = p.id_prodotto
             LEFT JOIN tag t ON t.id_tag = pt.id_tag
             LEFT JOIN categorie_prodotti c ON c.id_categoria = p.id_categoria
             WHERE LOWER(p.nome) LIKE $1 OR LOWER(p.marca) LIKE $1
             GROUP BY p.id_prodotto, p.nome, p.marca, p.id_categoria, p.descrizione,
                      cat.id_catalogo, cat.quantita_disponibile, cat.prezzo, cat.vecchio_prezzo,
-                     cat.id_scaffale, c.nome, c.descrizione
+                     cat.id_scaffale, c.nome, c.descrizione, mg.sum_qty
             ORDER BY p.nome
             LIMIT 50`,
             [searchTerm]

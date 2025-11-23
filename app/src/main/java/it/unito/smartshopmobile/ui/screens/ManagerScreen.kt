@@ -115,7 +115,8 @@ fun ManagerScreen(
                         onProductSelected = viewModel::onProductSelected,
                         onShelfSelected = viewModel::onShelfSelected,
                         onQuantityChange = viewModel::onTransferQuantityChanged,
-                        onSubmit = viewModel::moveStockToShelf
+                        onSubmit = viewModel::moveStockToShelf,
+                        onRefresh = viewModel::refreshAllData
                     )
                 }
             }
@@ -266,14 +267,22 @@ private fun TransferForm(
     onProductSelected: (String) -> Unit,
     onShelfSelected: (Int) -> Unit,
     onQuantityChange: (String) -> Unit,
-    onSubmit: () -> Unit
+    onSubmit: () -> Unit,
+    onRefresh: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Trasferisci dal magazzino agli scaffali", style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Trasferisci dal magazzino agli scaffali", style = MaterialTheme.typography.titleMedium)
+                TextButton(onClick = onRefresh) { Text("Aggiorna") }
+            }
             Text("Seleziona categoria", style = MaterialTheme.typography.labelLarge)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(state.categories) { category ->

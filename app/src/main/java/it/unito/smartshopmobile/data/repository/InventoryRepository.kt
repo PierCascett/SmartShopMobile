@@ -27,6 +27,26 @@ class InventoryRepository(
         }
     }
 
+    suspend fun reconcileArrivals(): Result<Unit> {
+        return try {
+            val response = apiService.reconcileArrivals()
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                val message = response.errorBody()?.string()
+                Result.failure(
+                    Exception(
+                        message?.takeIf { it.isNotBlank() }
+                            ?: "Errore riconciliazione magazzino (${response.code()})"
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Log.e("InventoryRepository", "Errore riconciliazione magazzino", e)
+            Result.failure(e)
+        }
+    }
+
     private fun parseError(raw: String?): String? = raw?.let {
         try {
             JSONObject(it).optString("error").takeIf { msg -> msg.isNotBlank() }

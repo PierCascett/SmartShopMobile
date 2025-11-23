@@ -31,7 +31,7 @@ router.post('/trasferisci', async (req, res) => {
             return res.status(404).json({ error: 'Scaffale non trovato' });
         }
 
-        const warehouseRes = await client.query(
+        let warehouseRes = await client.query(
             `SELECT id_magazzino, quantita_disponibile
              FROM magazzino
              WHERE id_prodotto = $1
@@ -39,12 +39,44 @@ router.post('/trasferisci', async (req, res) => {
             [idProdotto]
         );
 
-        if (warehouseRes.rowCount === 0) {
+        let available = warehouseRes.rowCount > 0 ? Number(warehouseRes.rows[0].quantita_disponibile) : 0;
+
+        const arrivedRes = await client.query(
+            `SELECT COALESCE(SUM(quantita_ordinata), 0) AS qty
+             FROM riordini_magazzino
+             WHERE id_prodotto = $1 AND arrivato = true`,
+            [idProdotto]
+        );
+        const arrivedQty = Number(arrivedRes.rows[0].qty);
+
+        // Se non c'e' riga magazzino ma esistono arrivi, crea la riga
+        if (warehouseRes.rowCount === 0 && arrivedQty > 0) {
+            const inserted = await client.query(
+                `INSERT INTO magazzino (id_prodotto, quantita_disponibile, id_ultimo_riordino_arrivato)
+                 VALUES ($1, $2, NULL)
+                 RETURNING id_magazzino, quantita_disponibile`,
+                [idProdotto, arrivedQty]
+            );
+            warehouseRes = { rows: inserted.rows, rowCount: 1 };
+            available = Number(inserted.rows[0].quantita_disponibile);
+        }
+
+        if (warehouseRes.rowCount === 0 && arrivedQty <= 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Prodotto non presente in magazzino' });
         }
 
-        const available = Number(warehouseRes.rows[0].quantita_disponibile);
+        // Se esiste riga magazzino ma quantita' 0 e abbiamo arrivi, sincronizza con gli arrivi
+        if (available <= 0 && arrivedQty > 0) {
+            await client.query(
+                `UPDATE magazzino
+                 SET quantita_disponibile = $2
+                 WHERE id_magazzino = $1`,
+                [warehouseRes.rows[0].id_magazzino, arrivedQty]
+            );
+            available = arrivedQty;
+        }
+
         if (available < qty) {
             await client.query('ROLLBACK');
             return res.status(409).json({
@@ -114,6 +146,63 @@ router.post('/trasferisci', async (req, res) => {
         await client.query('ROLLBACK');
         console.error('Errore trasferimento scorte:', error);
         res.status(500).json({ error: 'Errore durante il trasferimento dal magazzino' });
+    } finally {
+        client.release();
+    }
+});
+
+/**
+ * POST /api/magazzino/riconcilia-arrivi
+ * Sincronizza la tabella magazzino con i riordini arrivati (arrivato = true).
+ * Utile per riallineare dati importati da dump dove magazzino non � stato aggiornato.
+ */
+router.post('/riconcilia-arrivi', async (_req, res) => {
+    const client = await db.pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const result = await client.query(
+            `
+            WITH arrivi AS (
+                SELECT id_prodotto, SUM(quantita_ordinata) AS qty,
+                       MAX(id_riordino) FILTER (WHERE arrivato = true) AS last_arrivo
+                FROM riordini_magazzino
+                WHERE arrivato = true
+                GROUP BY id_prodotto
+            ),
+            updated AS (
+                UPDATE magazzino m
+                SET quantita_disponibile = a.qty,
+                    id_ultimo_riordino_arrivato = a.last_arrivo
+                FROM arrivi a
+                WHERE m.id_prodotto = a.id_prodotto
+                  AND m.id_ultimo_riordino_arrivato IS NULL
+                RETURNING m.id_prodotto
+            ),
+            inserted AS (
+                INSERT INTO magazzino (id_prodotto, quantita_disponibile, id_ultimo_riordino_arrivato)
+                SELECT a.id_prodotto, a.qty, a.last_arrivo
+                FROM arrivi a
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM magazzino m WHERE m.id_prodotto = a.id_prodotto
+                )
+                RETURNING id_prodotto
+            )
+            SELECT id_prodotto FROM updated
+            UNION ALL
+            SELECT id_prodotto FROM inserted
+            `
+        );
+
+        await client.query('COMMIT');
+        res.json({
+            message: 'Magazzino sincronizzato con riordini arrivati',
+            updatedOrInserted: result.rowCount
+        });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Errore riconciliazione magazzino:', error);
+        res.status(500).json({ error: 'Errore durante la riconciliazione magazzino' });
     } finally {
         client.release();
     }

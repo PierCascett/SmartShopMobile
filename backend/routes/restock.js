@@ -100,6 +100,7 @@ router.patch('/:id/arrivo', async (req, res) => {
     const client = await db.pool.connect();
     try {
         const { id } = req.params;
+        const { arrivedAt } = req.body || {};
         await client.query('BEGIN');
 
         const resRiordino = await client.query(
@@ -119,9 +120,9 @@ router.patch('/:id/arrivo', async (req, res) => {
 
         await client.query(
             `UPDATE riordini_magazzino
-             SET arrivato = true, data_arrivo_effettiva = CURRENT_DATE
+             SET arrivato = true, data_arrivo_effettiva = COALESCE($2, CURRENT_DATE)
              WHERE id_riordino = $1`,
-            [id]
+            [id, arrivedAt || null]
         );
 
         const updateRes = await client.query(

@@ -75,6 +75,9 @@ interface SmartShopApiService {
     @POST("magazzino/trasferisci")
     suspend fun moveStockToShelf(@Body request: StockTransferRequest): Response<StockTransferResult>
 
+    @POST("magazzino/riconcilia-arrivi")
+    suspend fun reconcileArrivals(): Response<Map<String, Any>>
+
     @PATCH("auth/profile/{userId}")
     suspend fun updateProfile(
         @Path("userId") userId: Int,
