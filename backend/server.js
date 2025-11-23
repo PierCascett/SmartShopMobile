@@ -16,6 +16,7 @@ const restockRoutes = require('./routes/restock');
 const suppliersRoutes = require('./routes/suppliers');
 const db = require('./db');
 const shelvesRoutes = require('./routes/shelves');
+const inventoryRoutes = require('./routes/inventory');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -56,6 +57,7 @@ app.use('/api/ordini', ordersRoutes);
 app.use('/api/riordini', restockRoutes);
 app.use('/api/fornitori', suppliersRoutes);
 app.use('/api/scaffali', shelvesRoutes);
+app.use('/api/magazzino', inventoryRoutes);
 
 // 404 handler
 app.use((req, res) => {

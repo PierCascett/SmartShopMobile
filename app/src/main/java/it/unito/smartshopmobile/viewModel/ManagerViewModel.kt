@@ -40,9 +40,13 @@ import it.unito.smartshopmobile.data.repository.RestockRepository
 import it.unito.smartshopmobile.data.repository.ProductRepository
 import it.unito.smartshopmobile.data.repository.CategoryRepository
 import it.unito.smartshopmobile.data.repository.SupplierRepository
+import it.unito.smartshopmobile.data.repository.InventoryRepository
+import it.unito.smartshopmobile.data.repository.ShelfRepository
 import it.unito.smartshopmobile.data.entity.Category
 import it.unito.smartshopmobile.data.entity.Product
 import it.unito.smartshopmobile.data.entity.Supplier
+import it.unito.smartshopmobile.data.entity.Shelf
+import it.unito.smartshopmobile.data.entity.StockTransferRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -65,7 +69,13 @@ data class ManagerUiState(
     val selectedProductId: String? = null,
     val suppliers: List<Supplier> = emptyList(),
     val selectedSupplierId: Int? = null,
-    val showProductDetail: Product? = null
+    val showProductDetail: Product? = null,
+    val shelves: List<Shelf> = emptyList(),
+    val selectedShelfId: Int? = null,
+    val transferQuantity: String = "",
+    val transferError: String? = null,
+    val transferSuccess: String? = null,
+    val isTransferring: Boolean = false
 )
 
 class ManagerViewModel(application: Application) : AndroidViewModel(application) {
@@ -86,6 +96,13 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
         RetrofitInstance.api,
         database.supplierDao()
     )
+    private val shelfRepository = ShelfRepository(
+        database.shelfDao(),
+        RetrofitInstance.api
+    )
+    private val inventoryRepository = InventoryRepository(
+        RetrofitInstance.api
+    )
     private val etaFormatter: DateTimeFormatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME
     private var cachedProducts: List<Product> = emptyList()
     private val _uiState = MutableStateFlow(ManagerUiState())
@@ -95,6 +112,7 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
         observeRestocks()
         observeProductsAndCategories()
         observeSuppliers()
+        observeShelves()
         refreshRestocks()
         refreshCatalogData()
     }
@@ -146,6 +164,19 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    private fun observeShelves() {
+        viewModelScope.launch {
+            shelfRepository.getAll().collect { shelves ->
+                _uiState.update { state ->
+                    val selected = state.selectedShelfId?.takeIf { id ->
+                        shelves.any { it.id == id }
+                    } ?: shelves.firstOrNull()?.id
+                    state.copy(shelves = shelves, selectedShelfId = selected)
+                }
+            }
+        }
+    }
+
     private fun filterProductsByCategory(categoryId: String?): List<Product> {
         val filtered = if (categoryId.isNullOrBlank()) {
             cachedProducts
@@ -187,6 +218,7 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
             categoryRepository.refreshCategories()
             productRepository.refreshProducts()
             supplierRepository.refreshSuppliers()
+            shelfRepository.refresh()
         }
     }
 
@@ -227,8 +259,59 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun moveStockToShelf() {
+        val state = _uiState.value
+        val qty = state.transferQuantity.toIntOrNull()
+        val productId = state.selectedProductId
+        val shelfId = state.selectedShelfId
+
+        if (productId.isNullOrBlank() || shelfId == null || qty == null || qty <= 0) {
+            _uiState.update { it.copy(transferError = "Seleziona prodotto, scaffale e quantita' valide") }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isTransferring = true,
+                    transferError = null,
+                    transferSuccess = null
+                )
+            }
+            val request = StockTransferRequest(
+                idProdotto = productId,
+                quantita = qty,
+                idScaffale = shelfId
+            )
+            inventoryRepository.moveStock(request)
+                .onSuccess {
+                    productRepository.refreshProducts()
+                    _uiState.update {
+                        it.copy(
+                            isTransferring = false,
+                            transferSuccess = "Spostati $qty pezzi su scaffale $shelfId",
+                            transferError = null,
+                            transferQuantity = ""
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            isTransferring = false,
+                            transferError = error.message
+                        )
+                    }
+                }
+        }
+    }
+
     fun onQuantityChanged(value: String) {
         _uiState.update { it.copy(quantity = value.filter { ch -> ch.isDigit() }) }
+    }
+
+    fun onTransferQuantityChanged(value: String) {
+        _uiState.update { it.copy(transferQuantity = value.filter { ch -> ch.isDigit() }) }
     }
 
     fun onCategorySelected(categoryId: String?) {
@@ -248,6 +331,10 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
 
     fun onSupplierSelected(supplierId: Int?) {
         _uiState.update { it.copy(selectedSupplierId = supplierId) }
+    }
+
+    fun onShelfSelected(shelfId: Int?) {
+        _uiState.update { it.copy(selectedShelfId = shelfId) }
     }
 
     fun showProductDetail(productId: String) {

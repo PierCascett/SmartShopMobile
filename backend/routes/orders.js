@@ -18,6 +18,7 @@ router.get('/', async (_req, res) => {
                 o.metodo_consegna,
                 o.id_locker,
                 o.codice_ritiro,
+                o.indirizzo_spedizione,
                 u.nome,
                 u.cognome,
                 u.email,
@@ -96,6 +97,7 @@ router.post('/', async (req, res) => {
     const client = await db.pool.connect();
     try {
         const { idUtente, items, metodoConsegna } = req.body;
+        const indirizzoSpedizione = req.body?.indirizzoSpedizione;
         if (!idUtente || !Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ error: 'idUtente e items sono obbligatori' });
         }
@@ -104,6 +106,9 @@ router.post('/', async (req, res) => {
             (metodoConsegna || 'LOCKER').toString().trim().toUpperCase();
         if (!['LOCKER', 'DOMICILIO'].includes(normalizedDelivery)) {
             return res.status(400).json({ error: 'metodoConsegna deve essere LOCKER o DOMICILIO' });
+        }
+        if (normalizedDelivery === 'DOMICILIO' && (!indirizzoSpedizione || indirizzoSpedizione.trim().length === 0)) {
+            return res.status(400).json({ error: 'indirizzoSpedizione richiesto per DOMICILIO' });
         }
 
         await client.query('BEGIN');
@@ -165,13 +170,22 @@ router.post('/', async (req, res) => {
         }
 
         const orderRes = await client.query(
-            `INSERT INTO ordini (id_utente, data_ordine, stato, totale, metodo_consegna)
-             VALUES ($1, NOW(), 'CREATO', $2, $3)
-             RETURNING id_ordine, data_ordine, stato, totale, metodo_consegna`,
-            [idUtente, total, normalizedDelivery]
+            `INSERT INTO ordini (id_utente, data_ordine, stato, totale, metodo_consegna, indirizzo_spedizione)
+             VALUES ($1, NOW(), 'CREATO', $2, $3, $4)
+             RETURNING id_ordine, data_ordine, stato, totale, metodo_consegna, indirizzo_spedizione`,
+            [idUtente, total, normalizedDelivery, indirizzoSpedizione || null]
         );
 
         const orderId = orderRes.rows[0].id_ordine;
+
+        if (normalizedDelivery === 'DOMICILIO') {
+            await client.query(
+                `INSERT INTO consegna_domicilio (id_ordine, data_assegnazione)
+                 VALUES ($1, NOW())
+                 ON CONFLICT (id_ordine) DO NOTHING`,
+                [orderId]
+            );
+        }
         for (const line of orderLines) {
             await client.query(
                 `INSERT INTO righe_ordine (id_ordine, id_prodotto, quantita, prezzo_unitario, prezzo_totale)
@@ -205,7 +219,7 @@ router.patch('/:orderId', async (req, res) => {
     const client = await db.pool.connect();
     try {
         const orderId = Number(req.params.orderId);
-        const { stato } = req.body;
+        const { stato, idRider } = req.body || {};
         if (!orderId || !stato) {
             return res.status(400).json({ error: 'orderId e stato sono obbligatori' });
         }
@@ -232,32 +246,76 @@ router.patch('/:orderId', async (req, res) => {
 
         let lockerRow = null;
         let codiceRitiro = current.codice_ritiro;
+        let lockerToAssign = null;
 
-        if (newStatus === 'CONCLUSO' && current.metodo_consegna === 'LOCKER') {
-            if (current.id_locker) {
-                const lockerRes = await client.query(
-                    `SELECT * FROM locker WHERE id_locker = $1 FOR UPDATE`,
+        // Gestione locker: lo assegniamo quando l'ordine e' pronto (SPEDITO) e lo liberiamo a conclusione/annullamento
+        if (current.metodo_consegna === 'LOCKER') {
+            if (newStatus === 'SPEDITO') {
+                if (current.id_locker) {
+                    const lockerRes = await client.query(
+                        `SELECT * FROM locker WHERE id_locker = $1 FOR UPDATE`,
+                        [current.id_locker]
+                    );
+                    lockerRow = lockerRes.rows[0] || null;
+                }
+                if (!lockerRow) {
+                    const lockerRes = await client.query(
+                        `SELECT * FROM locker WHERE occupato = false LIMIT 1 FOR UPDATE`
+                    );
+                    if (lockerRes.rowCount === 0) {
+                        await client.query('ROLLBACK');
+                        return res
+                            .status(409)
+                            .json({ error: 'Nessun locker disponibile', code: 'LOCKER_FULL' });
+                    }
+                    lockerRow = lockerRes.rows[0];
+                }
+                lockerToAssign = lockerRow;
+                codiceRitiro =
+                    codiceRitiro ||
+                    Math.random().toString(36).slice(2, 8).toUpperCase();
+                await client.query(
+                    `UPDATE locker SET occupato = true WHERE id_locker = $1`,
+                    [lockerRow.id_locker]
+                );
+            }
+
+            if (['CONCLUSO', 'ANNULLATO'].includes(newStatus) && current.id_locker) {
+                await client.query(
+                    `UPDATE locker SET occupato = false WHERE id_locker = $1`,
                     [current.id_locker]
                 );
-                lockerRow = lockerRes.rows[0] || null;
             }
-            if (!lockerRow) {
-                const lockerRes = await client.query(
-                    `SELECT * FROM locker WHERE occupato = false LIMIT 1 FOR UPDATE`
-                );
-                if (lockerRes.rowCount === 0) {
-                    await client.query('ROLLBACK');
-                    return res.status(409).json({ error: 'Nessun locker disponibile' });
-                }
-                lockerRow = lockerRes.rows[0];
-            }
-            codiceRitiro =
-                codiceRitiro ||
-                Math.random().toString(36).slice(2, 8).toUpperCase();
+        }
+
+        // Gestione consegna a domicilio
+        if (current.metodo_consegna === 'DOMICILIO') {
             await client.query(
-                `UPDATE locker SET occupato = true WHERE id_locker = $1`,
-                [lockerRow.id_locker]
+                `INSERT INTO consegna_domicilio (id_ordine, data_assegnazione)
+                 VALUES ($1, NOW())
+                 ON CONFLICT (id_ordine) DO NOTHING`,
+                [orderId]
             );
+
+            if (newStatus === 'SPEDITO') {
+                await client.query(
+                    `UPDATE consegna_domicilio
+                     SET data_assegnazione = COALESCE(data_assegnazione, NOW()),
+                         id_rider = COALESCE($2, id_rider)
+                     WHERE id_ordine = $1`,
+                    [orderId, idRider ?? null]
+                );
+            }
+
+            if (['CONSEGNATO', 'CONCLUSO'].includes(newStatus)) {
+                await client.query(
+                    `UPDATE consegna_domicilio
+                     SET data_consegna = COALESCE(data_consegna, NOW()),
+                         id_rider = COALESCE($2, id_rider)
+                     WHERE id_ordine = $1`,
+                    [orderId, idRider ?? null]
+                );
+            }
         }
 
         const updateRes = await client.query(
@@ -267,18 +325,18 @@ router.patch('/:orderId', async (req, res) => {
                  codice_ritiro = COALESCE($4, codice_ritiro)
              WHERE id_ordine = $1
              RETURNING *`,
-            [orderId, newStatus, lockerRow?.id_locker ?? null, codiceRitiro ?? null]
+            [orderId, newStatus, lockerToAssign?.id_locker ?? null, codiceRitiro ?? null]
         );
 
         await client.query('COMMIT');
 
         return res.json({
             ...updateRes.rows[0],
-            locker: lockerRow
+            locker: lockerToAssign
                 ? {
-                      id: lockerRow.id_locker,
-                      codice: lockerRow.codice,
-                      posizione: lockerRow.posizione,
+                      id: lockerToAssign.id_locker,
+                      codice: lockerToAssign.codice,
+                      posizione: lockerToAssign.posizione,
                       occupato: true
                   }
                 : null

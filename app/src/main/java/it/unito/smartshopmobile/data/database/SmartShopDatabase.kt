@@ -22,7 +22,7 @@ import it.unito.smartshopmobile.data.database.Converters
 
 @Database(
     entities = [Category::class, Product::class, Order::class, OrderLine::class, Restock::class, Shelf::class, Supplier::class],
-    version = 12, // include supplier cache e ultime evoluzioni schema locale
+    version = 13, // include indirizzo spedizione negli ordini
     exportSchema = false
 )
 @TypeConverters(Converters::class)

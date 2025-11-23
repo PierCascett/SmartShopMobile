@@ -38,6 +38,9 @@ data class Order(
     @SerializedName("codice_ritiro")
     @ColumnInfo(name = "codice_ritiro")
     val codiceRitiro: String?,
+    @SerializedName("indirizzo_spedizione")
+    @ColumnInfo(name = "indirizzo_spedizione")
+    val indirizzoSpedizione: String? = null,
     @SerializedName("nome")
     @ColumnInfo(name = "nome_cliente")
     val nomeCliente: String,
@@ -66,6 +69,7 @@ data class Order(
         metodoConsegna: String,
         idLocker: Int?,
         codiceRitiro: String?,
+        indirizzoSpedizione: String?,
         nomeCliente: String,
         cognomeCliente: String,
         emailCliente: String
@@ -78,6 +82,7 @@ data class Order(
         metodoConsegna = metodoConsegna,
         idLocker = idLocker,
         codiceRitiro = codiceRitiro,
+        indirizzoSpedizione = indirizzoSpedizione,
         nomeCliente = nomeCliente,
         cognomeCliente = cognomeCliente,
         emailCliente = emailCliente,
@@ -130,6 +135,8 @@ data class CreateOrderRequest(
     val idUtente: Int,
     @SerializedName("metodoConsegna")
     val metodoConsegna: String,
+    @SerializedName("indirizzoSpedizione")
+    val indirizzoSpedizione: String?,
     @SerializedName("items")
     val items: List<OrderItemRequest>
 )

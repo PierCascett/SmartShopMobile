@@ -200,9 +200,19 @@ class EmployeeViewModel(application: Application) : AndroidViewModel(application
         _uiState.update { it.copy(orderFilter = filter, expandedOrderId = null, orderActionError = null) }
     }
 
-    fun markOrderShipped(orderId: Int) = updateOrderStatus(orderId, "SPEDITO")
+    fun markOrderShipped(orderId: Int) {
+        updateOrderStatus(orderId, "SPEDITO")
+    }
 
-    fun markOrderCompleted(orderId: Int) = updateOrderStatus(orderId, "CONCLUSO")
+    fun markOrderCompleted(orderId: Int) {
+        val order = _uiState.value.orders.firstOrNull { it.idOrdine == orderId }
+        val targetStatus = if (order?.metodoConsegna.equals("DOMICILIO", true)) {
+            "CONSEGNATO"
+        } else {
+            "SPEDITO"
+        }
+        updateOrderStatus(orderId, targetStatus)
+    }
 
     fun markOrderCanceled(orderId: Int) = updateOrderStatus(orderId, "ANNULLATO")
 

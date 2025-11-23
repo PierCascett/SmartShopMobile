@@ -8,6 +8,7 @@ import it.unito.smartshopmobile.data.entity.OrderWithLines
 import it.unito.smartshopmobile.data.entity.UpdateOrderStatusRequest
 import it.unito.smartshopmobile.data.remote.SmartShopApiService
 import kotlinx.coroutines.flow.Flow
+import org.json.JSONObject
 
 class OrderRepository(
     private val apiService: SmartShopApiService,
@@ -65,9 +66,17 @@ class OrderRepository(
                 Result.success(Unit)
             } else {
                 val errorMsg = response.errorBody()?.string()
+                val parsed = errorMsg?.let {
+                    try {
+                        JSONObject(it).optString("error").takeIf { msg -> msg.isNotBlank() }
+                            ?: JSONObject(it).optString("message").takeIf { msg -> msg.isNotBlank() }
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
                 Result.failure(
                     Exception(
-                        errorMsg?.takeIf { it.isNotBlank() }
+                        parsed?.takeIf { it.isNotBlank() }
                             ?: "Errore aggiornamento ordine (${response.code()})"
                     )
                 )

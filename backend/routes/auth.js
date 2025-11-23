@@ -75,5 +75,54 @@ router.post('/register', async (req, res) => {
     }
 });
 
+/**
+ * PATCH /api/auth/profile/:userId
+ * Aggiorna i dati anagrafici dell'utente (nome, cognome, telefono, email).
+ */
+router.patch('/profile/:userId', async (req, res) => {
+    try {
+        const userId = Number(req.params.userId);
+        const { nome, cognome, telefono, email } = req.body || {};
+
+        if (!userId) {
+            return res.status(400).json({ error: 'userId obbligatorio' });
+        }
+
+        if (email) {
+            const existing = await db.query(
+                `SELECT 1 FROM utenti WHERE LOWER(email) = LOWER($1) AND id_utente <> $2`,
+                [email, userId]
+            );
+            if (existing.rowCount > 0) {
+                return res.status(409).json({ error: 'Email già in uso' });
+            }
+        }
+
+        const current = await db.query(
+            `SELECT id_utente FROM utenti WHERE id_utente = $1`,
+            [userId]
+        );
+        if (current.rowCount === 0) {
+            return res.status(404).json({ error: 'Utente non trovato' });
+        }
+
+        const updated = await db.query(
+            `UPDATE utenti
+             SET nome = COALESCE($2, nome),
+                 cognome = COALESCE($3, cognome),
+                 telefono = COALESCE($4, telefono),
+                 email = COALESCE($5, email)
+             WHERE id_utente = $1
+             RETURNING id_utente, nome, cognome, email, telefono, ruolo`,
+            [userId, nome, cognome, telefono, email]
+        );
+
+        res.json({ user: updated.rows[0] });
+    } catch (error) {
+        console.error('Errore aggiornamento profilo:', error);
+        res.status(500).json({ error: 'Errore durante l\'aggiornamento del profilo' });
+    }
+});
+
 module.exports = router;
 

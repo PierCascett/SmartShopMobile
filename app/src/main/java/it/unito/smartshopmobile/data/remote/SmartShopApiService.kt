@@ -11,6 +11,9 @@ import it.unito.smartshopmobile.data.entity.Restock
 import it.unito.smartshopmobile.data.entity.CreateRestockRequest
 import it.unito.smartshopmobile.data.entity.Shelf
 import it.unito.smartshopmobile.data.entity.Supplier
+import it.unito.smartshopmobile.data.entity.StockTransferRequest
+import it.unito.smartshopmobile.data.entity.StockTransferResult
+import it.unito.smartshopmobile.data.entity.UpdateUserRequest
 import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Path
@@ -68,4 +71,13 @@ interface SmartShopApiService {
 
     @GET("fornitori")
     suspend fun getSuppliers(): Response<List<Supplier>>
+
+    @POST("magazzino/trasferisci")
+    suspend fun moveStockToShelf(@Body request: StockTransferRequest): Response<StockTransferResult>
+
+    @PATCH("auth/profile/{userId}")
+    suspend fun updateProfile(
+        @Path("userId") userId: Int,
+        @Body request: UpdateUserRequest
+    ): Response<Map<String, User>>
 }
