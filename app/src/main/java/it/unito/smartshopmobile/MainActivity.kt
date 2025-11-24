@@ -47,8 +47,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
@@ -72,6 +76,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.LayoutDirection
 import it.unito.smartshopmobile.data.datastore.AccountPreferences
 import it.unito.smartshopmobile.data.model.UserRole
 import it.unito.smartshopmobile.data.entity.User
@@ -90,6 +95,7 @@ import it.unito.smartshopmobile.viewModel.CatalogViewModel
 import it.unito.smartshopmobile.viewModel.CatalogUiState
 import it.unito.smartshopmobile.viewModel.LoginViewModel
 
+import it.unito.smartshopmobile.ui.components.NavBarDivider
 import kotlinx.coroutines.launch
 private enum class CustomerTab { SHOP, ORDERS, ACCOUNT }
 
@@ -225,7 +231,7 @@ private fun ContentWithSessionBar(
     onMenuClick: () -> Unit,
     onCartClick: () -> Unit,
     accountPrefs: AccountPreferences,
-    onSaveProfile: suspend (String, String, String, String, String) -> Result<it.unito.smartshopmobile.data.entity.User>,
+    onSaveProfile: suspend (String, String, String, String, String) -> Result<User>,
     customerTab: CustomerTab,
     onCustomerTabChange: (CustomerTab) -> Unit
 ) {
@@ -237,9 +243,9 @@ private fun ContentWithSessionBar(
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         SessionBar(
-            email = email,
-            onLogout = onLogout
-        )
+             email = email,
+             onLogout = onLogout
+         )
         Spacer(modifier = Modifier.height(4.dp))
         Box(modifier = Modifier.fillMaxSize()) {
             when (role) {
@@ -306,34 +312,50 @@ private fun CustomerHome(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
-            NavigationBar(windowInsets = WindowInsets(0.dp)) {
-                NavigationBarItem(
-                    selected = selectedTab == CustomerTab.SHOP,
-                    onClick = { onTabChange(CustomerTab.SHOP) },
-                    icon = { Icon(Icons.Filled.Home, contentDescription = "Catalogo") },
-                    label = { Text("Ordina") }
-                )
-                NavigationBarItem(
-                    selected = selectedTab == CustomerTab.ORDERS,
-                    onClick = { onTabChange(CustomerTab.ORDERS) },
-                    icon = { Icon(Icons.Filled.List, contentDescription = "Ordini") },
-                    label = { Text("Ordini") }
-                )
-                NavigationBarItem(
-                    selected = selectedTab == CustomerTab.ACCOUNT,
-                    onClick = { onTabChange(CustomerTab.ACCOUNT) },
-                    icon = { Icon(Icons.Filled.Settings, contentDescription = "Account") },
-                    label = { Text("Account") }
-                )
-            }
-        }
-    ) { innerPadding ->
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                NavBarDivider()
+                NavigationBar(
+                     modifier = Modifier.fillMaxWidth(),
+                     containerColor = MaterialTheme.colorScheme.surface,
+                     contentColor = MaterialTheme.colorScheme.onSurface,
+                     windowInsets = WindowInsets(0.dp)
+                ) {
+                     NavigationBarItem(
+                         selected = selectedTab == CustomerTab.SHOP,
+                         onClick = { onTabChange(CustomerTab.SHOP) },
+                         icon = { Icon(Icons.Filled.Home, contentDescription = "Catalogo") },
+                         label = { Text("Ordina") }
+                     )
+                     NavigationBarItem(
+                         selected = selectedTab == CustomerTab.ORDERS,
+                         onClick = { onTabChange(CustomerTab.ORDERS) },
+                         icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Ordini") },
+                         label = { Text("Storico") }
+                     )
+                     NavigationBarItem(
+                         selected = selectedTab == CustomerTab.ACCOUNT,
+                         onClick = { onTabChange(CustomerTab.ACCOUNT) },
+                         icon = { Icon(Icons.Filled.Settings, contentDescription = "Account") },
+                         label = { Text("Account") }
+                     )
+                 }
+             }
+         }
+     ) { innerPadding ->
+         val contentPadding = PaddingValues(
+             start = innerPadding.calculateLeftPadding(LayoutDirection.Ltr),
+             end = innerPadding.calculateRightPadding(LayoutDirection.Ltr),
+             top = innerPadding.calculateTopPadding(),
+             bottom = innerPadding.calculateBottomPadding()
+         )
         when (selectedTab) {
             CustomerTab.SHOP -> CatalogScreen(
                 state = state,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
+                    .padding(contentPadding),
                 onMenuClick = onMenuClick,
                 onCartClick = onCartClick,
                 onHistoryClick = {
@@ -362,7 +384,7 @@ private fun CustomerHome(
                 onScanQr = { catalogViewModel.simulateLockerPickup(it) },
                 onDismissMessage = catalogViewModel::clearPickupMessage,
                 modifier = Modifier
-                    .padding(innerPadding)
+                    .padding(contentPadding)
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
@@ -389,7 +411,7 @@ private fun CustomerHome(
                 },
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
+                    .padding(contentPadding)
             )
         }
     }

@@ -29,7 +29,7 @@ router.get('/', async (req, res) => {
                     ELSE 'Disponibile'
                 END AS availability,
                 COALESCE(\n                json_agg(DISTINCT t.nome) FILTER (WHERE t.nome IS NOT NULL),\n                '[]'::json\n                ) AS tags,
-                CONCAT('/images/products/', p.id_prodotto, '.svg') AS "imageUrl",
+                CONCAT('/images/products/', p.id_prodotto, '.png') AS "imageUrl",
                 p.descrizione AS description
             FROM prodotti p
             JOIN catalogo cat ON cat.id_prodotto = p.id_prodotto
@@ -81,7 +81,7 @@ router.get('/categoria/:categoryId', async (req, res) => {
                  ELSE 'Disponibile'
                 END AS availability,
                 COALESCE(\n                json_agg(DISTINCT t.nome) FILTER (WHERE t.nome IS NOT NULL),\n                '[]'::json\n                ) AS tags,
-                CONCAT('/images/products/', p.id_prodotto, '.svg') AS "imageUrl",
+                CONCAT('/images/products/', p.id_prodotto, '.png') AS "imageUrl",
                 p.descrizione AS description
             FROM prodotti p
             JOIN catalogo cat ON cat.id_prodotto = p.id_prodotto
@@ -146,7 +146,7 @@ router.get('/search', async (req, res) => {
                     ELSE 'Disponibile'
                 END AS availability,
                 COALESCE(\n                json_agg(DISTINCT t.nome) FILTER (WHERE t.nome IS NOT NULL),\n                '[]'::json\n                ) AS tags,
-                CONCAT('/images/products/', p.id_prodotto, '.svg') AS "imageUrl",
+                CONCAT('/images/products/', p.id_prodotto, '.png') AS "imageUrl",
                 p.descrizione AS description
             FROM prodotti p
             JOIN catalogo cat ON cat.id_prodotto = p.id_prodotto

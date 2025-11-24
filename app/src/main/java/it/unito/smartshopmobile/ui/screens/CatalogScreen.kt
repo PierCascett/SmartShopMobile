@@ -53,12 +53,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FilterList
@@ -77,15 +79,13 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.SuggestionChipDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -102,11 +102,14 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import it.unito.smartshopmobile.R
@@ -118,13 +121,23 @@ import it.unito.smartshopmobile.viewModel.CatalogUiState
 import it.unito.smartshopmobile.viewModel.DeliveryMethod
 import it.unito.smartshopmobile.viewModel.CustomerOrderHistoryEntry
 import it.unito.smartshopmobile.data.remote.RetrofitInstance
-import java.util.concurrent.Executors
 
 // Extension properties per Product entity
-val Product.isFavorite: Boolean get() = false // TODO: implementare logica favorites
-val Product.isInCart: Boolean get() = false // TODO: implementare da state
+@Suppress("unused")
+val Product.isFavorite: Boolean get() = false
+@Suppress("unused")
+val Product.isInCart: Boolean get() = false
 val Product.tagsList: List<String> get() = tags ?: emptyList()
 val Product.isOutOfStock: Boolean get() = catalogQuantity <= 0
+
+private fun Product.assetImageUrl(): String {
+    val remote = imageUrl?.takeIf { it.isNotBlank() }
+    if (remote != null) {
+        if (remote.startsWith("http", ignoreCase = true)) return remote
+        RetrofitInstance.buildAssetUrl(remote)?.let { return it }
+    }
+    return "${RetrofitInstance.assetBaseUrl}images/products/$id.png"
+}
 
 /**
  * Schermata MVVM del catalogo cliente con tre colonne principali:
@@ -197,7 +210,7 @@ fun CatalogScreen(
                 selectedTags = state.selectedTags,
                 onTagToggle = onTagToggle
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             CatalogContent(
                 state = state,
@@ -276,8 +289,7 @@ private fun ProductCard(
         modifier = Modifier.clickable(onClick = onClick)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Costruisce URL immagine PNG basato sull'ID prodotto
-            val imageUrl = "${RetrofitInstance.assetBaseUrl}images/products/${product.id}.png"
+            val imageUrl = product.assetImageUrl()
             val context = LocalContext.current
 
             Box(
@@ -436,45 +448,217 @@ private fun ProductDetailDialog(
     onDismiss: () -> Unit,
     onAddToCart: () -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onDismiss) { Text("Chiudi") }
-                TextButton(onClick = {
-                    onAddToCart()
-                    onDismiss()
-                }) { Text("Aggiungi al carrello") }
-            }
-        },
-        title = {
-            Column {
-                Text(product.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(product.brand, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Categoria: ${product.categoryName ?: product.categoryId}", style = MaterialTheme.typography.bodySmall)
-                Text("Prezzo: ${formatPrice(product.price)}", style = MaterialTheme.typography.bodySmall)
-                product.oldPrice?.let { Text("Vecchio prezzo: ${formatPrice(it)}", style = MaterialTheme.typography.bodySmall) }
-                Text("Disponibilità: ${product.availability}", style = MaterialTheme.typography.bodySmall)
-                product.description?.let { desc ->
-                    Text(desc, style = MaterialTheme.typography.bodyMedium)
+    val context = LocalContext.current
+    val scrollState = rememberScrollState()
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            tonalElevation = 6.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(scrollState)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 220.dp, max = 320.dp)
+                        .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(product.assetImageUrl())
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = product.name,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        placeholder = painterResource(id = R.drawable.ic_launcher_foreground),
+                        error = painterResource(id = R.drawable.ic_launcher_foreground)
+                    )
+                    if (product.isOutOfStock) {
+                        AvailabilityBadge(
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(12.dp)
+                        )
+                    }
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(12.dp)
+                            .size(36.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                                shape = CircleShape
+                            )
+                    ) {
+                        Icon(Icons.Filled.Close, contentDescription = "Chiudi dettaglio")
+                    }
                 }
-                if (product.tagsList.isNotEmpty()) {
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Tag", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            product.tagsList.forEach { tag ->
-                                TagChip(tag)
+                        Text(
+                            product.name,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            product.brand,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column {
+                            Text(
+                                text = formatPrice(product.price),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            product.oldPrice?.let {
+                                Text(
+                                    text = formatPrice(it),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textDecoration = TextDecoration.LineThrough
+                                )
                             }
+                        }
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(
+                            text = product.availability,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (product.isOutOfStock) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(
+                                    if (product.isOutOfStock) MaterialTheme.colorScheme.errorContainer
+                                    else MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                                )
+                                .padding(horizontal = 14.dp, vertical = 6.dp)
+                        )
+                    }
+
+                    ProductDetailRow(
+                        label = "Categoria",
+                        value = product.categoryName ?: product.categoryId
+                    )
+                    ProductDetailRow(
+                        label = "Disponibilità in negozio",
+                        value = if (product.catalogQuantity > 0) "${product.catalogQuantity} pezzi" else "Non disponibile"
+                    )
+
+                    product.description?.takeIf { it.isNotBlank() }?.let { desc ->
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                "Descrizione",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(desc, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+
+                    if (product.tagsList.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                "Tag",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                product.tagsList.forEach { tag ->
+                                    TagChip(tag)
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalDivider()
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                "Chiudi",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                onAddToCart()
+                                onDismiss()
+                            },
+                            enabled = !product.isOutOfStock,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(40.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                "Aggiungi",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
                         }
                     }
                 }
             }
         }
-    )
+    }
+}
+
+@Composable
+private fun ProductDetailRow(label: String, value: String) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
+        )
+    }
 }
 
 @Composable
@@ -506,7 +690,7 @@ private fun CartPanel(
 ) {
     val isDark = isSystemInDarkTheme()
 
-    androidx.compose.material3.Surface(
+    Surface(
         modifier = modifier,
         shape = RoundedCornerShape(20.dp),
         tonalElevation = 4.dp,
@@ -561,27 +745,37 @@ private fun CartPanel(
             Text(
                 "Metodo di consegna",
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                DeliveryMethod.values().forEach { method ->
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                listOf(DeliveryMethod.LOCKER, DeliveryMethod.DOMICILIO).forEach { method ->
                     val selected = method == deliveryMethod
                     OutlinedButton(
                         onClick = { onDeliveryMethodChange(method) },
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else Color.Transparent
-                        )
+                            containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp)
                     ) {
                         Text(
-                            method.label,
-                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            if (method == DeliveryMethod.LOCKER) "Locker" else "Domicilio",
+                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
                         )
                     }
                 }
             }
-
+            Spacer(modifier = Modifier.height(6.dp))
             HorizontalDivider()
             Spacer(modifier = Modifier.height(12.dp))
             Row(
@@ -628,7 +822,7 @@ private fun CartItemRow(
     onRemove: () -> Unit
 ) {
     val context = LocalContext.current
-    val imageUrl = "${RetrofitInstance.assetBaseUrl}images/products/${item.product.id}.png"
+    val imageUrl = item.product.assetImageUrl()
 
     Column {
         Row(
@@ -852,11 +1046,7 @@ private fun TopActionRow(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Categorie")
             }
-            TextButton(onClick = onHistoryClick, shape = RoundedCornerShape(50)) {
-                Icon(Icons.Filled.History, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Storico ordini")
-            }
+            // Removed Storico ordini button (now handled via navbar)
         }
         CartActionButton(count = cartItemsCount, onClick = onCartClick)
     }
@@ -1182,8 +1372,8 @@ fun OrderHistoryPanel(
     pickupMessage: String?,
     onRefresh: () -> Unit,
     onScanQr: (Int) -> Unit,
-    onDismissMessage: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDismissMessage: () -> Unit = {}
 ) {
     Card(
         modifier = modifier,

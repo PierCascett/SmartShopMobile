@@ -30,11 +30,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.FilledTonalIconButton
@@ -80,11 +80,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.unit.LayoutDirection
 import it.unito.smartshopmobile.viewModel.EmployeeUiState
+import it.unito.smartshopmobile.ui.components.NavBarDivider
+
 private enum class EmployeeTab(val label: String, val icon: ImageVector) {
     PICKING("Mappa", Icons.Filled.Map),
-    ORDERS("Storico", Icons.Filled.List),
-    CLAIM("Assegna", Icons.Filled.Assignment)
+    ORDERS("Storico", Icons.AutoMirrored.Filled.List),
+    CLAIM("Assegna", Icons.AutoMirrored.Filled.Assignment)
 }
 
 @Composable
@@ -97,23 +100,30 @@ fun EmployeeScreen(modifier: Modifier = Modifier, viewModel: EmployeeViewModel =
     Scaffold(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
-            NavigationBar(windowInsets = WindowInsets(0.dp)) {
-                EmployeeTab.entries.forEach { tab ->
-                    NavigationBarItem(
-                        selected = selectedTab == tab,
-                        onClick = { selectedTab = tab },
-                        icon = { Icon(tab.icon, contentDescription = tab.label) },
-                        label = { Text(tab.label) }
-                    )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                NavBarDivider()
+                NavigationBar(
+                    modifier = Modifier.fillMaxWidth(),
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    windowInsets = WindowInsets(0.dp)
+                ) {
+                    EmployeeTab.entries.forEach { tab ->
+                        NavigationBarItem(
+                            selected = selectedTab == tab,
+                            onClick = { selectedTab = tab },
+                            icon = { Icon(tab.icon, contentDescription = tab.label) },
+                            label = { Text(tab.label) }
+                        )
+                    }
                 }
             }
         }
     ) { innerPadding ->
-        // Padding personalizzato: niente top extra da innerPadding, manteniamo solo bottom per evitare grande spazio vuoto
         val contentModifier = Modifier.padding(
-            start = 16.dp,
-            end = 16.dp,
-            top = 8.dp,
+            start = innerPadding.calculateLeftPadding(LayoutDirection.Ltr) + 16.dp,
+            end = innerPadding.calculateRightPadding(LayoutDirection.Ltr) + 16.dp,
+            top = innerPadding.calculateTopPadding() + 8.dp,
             bottom = innerPadding.calculateBottomPadding()
         )
         when (selectedTab) {

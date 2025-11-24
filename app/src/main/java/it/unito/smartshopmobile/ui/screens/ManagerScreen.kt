@@ -5,22 +5,21 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -29,6 +28,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -48,14 +48,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.viewmodel.compose.viewModel
+import it.unito.smartshopmobile.ui.components.NavBarDivider
 import it.unito.smartshopmobile.viewModel.ManagerUiState
 import it.unito.smartshopmobile.viewModel.ManagerViewModel
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.PaddingValues
 
 private enum class ManagerTab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    RESTOCK("Effettua riordine", Icons.Filled.Assignment),
-    TRANSFER("Trasferisci", Icons.Filled.Refresh),
-    LIST("Storico", Icons.Filled.List)
+    RESTOCK("Effettua riordine", Icons.AutoMirrored.Filled.Assignment),
+    LIST("Storico", Icons.AutoMirrored.Filled.List),
+    TRANSFER("Trasferisci", Icons.Filled.Refresh)
 }
 
 @Composable
@@ -69,24 +76,37 @@ fun ManagerScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
-            NavigationBar(windowInsets = WindowInsets(0.dp)) {
-                ManagerTab.values().forEach { tab ->
-                    NavigationBarItem(
-                        selected = tab == selectedTab,
-                        onClick = { selectedTab = tab },
-                        icon = { Icon(tab.icon, contentDescription = tab.label) },
-                        label = { Text(tab.label) }
-                    )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                NavBarDivider()
+                NavigationBar(
+                    modifier = Modifier.fillMaxWidth(),
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    windowInsets = WindowInsets(0.dp)
+                ) {
+                    listOf(ManagerTab.RESTOCK, ManagerTab.LIST, ManagerTab.TRANSFER).forEach { tab ->
+                        NavigationBarItem(
+                            selected = tab == selectedTab,
+                            onClick = { selectedTab = tab },
+                            icon = { Icon(tab.icon, contentDescription = tab.label) },
+                            label = { Text(tab.label) }
+                        )
+                    }
                 }
             }
         }
     ) { innerPadding ->
+        val basePadding = Modifier.padding(
+            start = innerPadding.calculateLeftPadding(LayoutDirection.Ltr) + 16.dp,
+            end = innerPadding.calculateRightPadding(LayoutDirection.Ltr) + 16.dp,
+            top = innerPadding.calculateTopPadding() + 8.dp,
+            bottom = innerPadding.calculateBottomPadding()
+        )
         when (selectedTab) {
             ManagerTab.RESTOCK -> LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(16.dp),
+                    .then(basePadding),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
@@ -104,8 +124,7 @@ fun ManagerScreen(
             ManagerTab.TRANSFER -> LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(16.dp),
+                    .then(basePadding),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
@@ -126,8 +145,7 @@ fun ManagerScreen(
                 onShowProduct = { viewModel.showProductDetail(it) },
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(16.dp)
+                    .then(basePadding)
             )
         }
     }
@@ -146,9 +164,7 @@ fun ManagerScreen(
                     Text("Marca: ${product.brand}")
                     Text("Categoria: ${product.categoryName ?: product.categoryId}")
                     Text("Prezzo:  ${String.format(java.util.Locale.ROOT, "%.2f", product.price)}")
-                    if (!product.description.isNullOrBlank()) {
-                        Text(product.description!!)
-                    }
+                    product.description?.takeIf { it.isNotBlank() }?.let { desc -> Text(desc) }
                 }
             }
         )
@@ -280,8 +296,21 @@ private fun TransferForm(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Trasferisci dal magazzino agli scaffali", style = MaterialTheme.typography.titleMedium)
-                TextButton(onClick = onRefresh) { Text("Aggiorna") }
+                Text(
+                    "Trasferisci",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                OutlinedButton(
+                    onClick = onRefresh,
+                    enabled = !state.isLoading,
+                    modifier = Modifier.defaultMinSize(minHeight = 30.dp),
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 3.dp)
+                ) {
+                    Icon(Icons.Filled.Refresh, contentDescription = "Aggiorna dati", modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Aggiorna")
+                }
             }
             Text("Seleziona categoria", style = MaterialTheme.typography.labelLarge)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -437,4 +466,3 @@ private fun RestockEntry(restock: it.unito.smartshopmobile.data.entity.Restock, 
         }
     }
 }
-
