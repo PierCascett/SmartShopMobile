@@ -29,6 +29,9 @@
  */
 package it.unito.smartshopmobile.ui.screens
 
+import android.graphics.Bitmap
+import android.graphics.Color as AndroidColor
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -59,8 +62,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FilterList
@@ -70,15 +74,19 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -91,7 +99,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -108,8 +118,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.asImageBitmap
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.MultiFormatWriter
+import com.google.zxing.common.BitMatrix
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import it.unito.smartshopmobile.R
@@ -121,12 +137,6 @@ import it.unito.smartshopmobile.viewModel.CatalogUiState
 import it.unito.smartshopmobile.viewModel.DeliveryMethod
 import it.unito.smartshopmobile.viewModel.CustomerOrderHistoryEntry
 import it.unito.smartshopmobile.data.remote.RetrofitInstance
-
-// Extension properties per Product entity
-@Suppress("unused")
-val Product.isFavorite: Boolean get() = false
-@Suppress("unused")
-val Product.isInCart: Boolean get() = false
 val Product.tagsList: List<String> get() = tags ?: emptyList()
 val Product.isOutOfStock: Boolean get() = catalogQuantity <= 0
 
@@ -151,6 +161,7 @@ fun CatalogScreen(
     modifier: Modifier = Modifier,
     onSearchQueryChange: (String) -> Unit = {},
     onMenuClick: () -> Unit = {},
+    onFavoritesClick: () -> Unit = {},
     onCartClick: () -> Unit = {},
     onHistoryClick: () -> Unit = {},
     onRefresh: () -> Unit = {},
@@ -195,6 +206,7 @@ fun CatalogScreen(
             TopActionRow(
                 cartItemsCount = state.cartItemsCount,
                 onMenuClick = onMenuClick,
+                onFavoritesClick = onFavoritesClick,
                 onCartClick = onCartClick,
                 onHistoryClick = onHistoryClick
             )
@@ -215,6 +227,7 @@ fun CatalogScreen(
             CatalogContent(
                 state = state,
                 cartQuantities = state.cart,
+                favoriteIds = state.favoriteProductIds,
                 onBookmark = onBookmark,
                 onAddToCart = onAddToCart,
                 onDecreaseCartItem = onDecreaseCartItem,
@@ -228,8 +241,10 @@ fun CatalogScreen(
         state.selectedProduct?.let { selected ->
             ProductDetailDialog(
                 product = selected,
+                isFavorite = state.favoriteProductIds.contains(selected.id),
                 onDismiss = { onProductClick(null) },
-                onAddToCart = { onAddToCart(selected.id) }
+                onAddToCart = { onAddToCart(selected.id) },
+                onToggleFavorite = { onBookmark(selected.id) }
             )
         }
     }
@@ -239,6 +254,7 @@ fun CatalogScreen(
 private fun CatalogContent(
     state: CatalogUiState,
     cartQuantities: Map<String, Int>,
+    favoriteIds: Set<String>,
     onBookmark: (String) -> Unit,
     onAddToCart: (String) -> Unit,
     onDecreaseCartItem: (String) -> Unit,
@@ -264,6 +280,7 @@ private fun CatalogContent(
             else -> CatalogList(
                 products = state.visibleProducts,
                 cartQuantities = cartQuantities,
+                favoriteIds = favoriteIds,
                 onBookmark = onBookmark,
                 onAddToCart = onAddToCart,
                 onDecreaseFromCart = onDecreaseCartItem,
@@ -278,6 +295,7 @@ private fun CatalogContent(
 private fun ProductCard(
     product: Product,
     quantityInCart: Int,
+    isFavorite: Boolean,
     onBookmark: () -> Unit,
     onAddToCart: () -> Unit,
     onDecreaseFromCart: () -> Unit,
@@ -341,23 +359,18 @@ private fun ProductCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBookmark) {
                     Icon(
-                        imageVector = if (product.isFavorite) Icons.Rounded.Favorite else Icons.Filled.BookmarkBorder,
-                        contentDescription = null,
-                        tint = if (product.isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                        imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = "Preferiti",
+                        tint = if (isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Spacer(modifier = Modifier.weight(1f))
-                if (product.isInCart) {
-                    QuantityStepper(
-                        quantity = quantityInCart,
-                        onIncrease = onAddToCart,
-                        onDecrease = onDecreaseFromCart
-                    )
-                } else {
-                    TextButton(onClick = onAddToCart, shape = RoundedCornerShape(50)) {
-                        Text("Aggiungi al carrello")
-                    }
-                }
+                QuantityStepper(
+                    quantity = quantityInCart,
+                    onIncrease = onAddToCart,
+                    onDecrease = onDecreaseFromCart,
+                    canDecrease = quantityInCart > 0
+                )
             }
         }
     }
@@ -367,20 +380,27 @@ private fun ProductCard(
 private fun QuantityStepper(
     quantity: Int,
     onDecrease: () -> Unit,
-    onIncrease: () -> Unit
+    onIncrease: () -> Unit,
+    canDecrease: Boolean = true
 ) {
+    val containerColor = if (quantity > 0) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.primaryContainer)
+            .background(containerColor)
             .padding(horizontal = 4.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(
             onClick = onDecrease,
+            enabled = canDecrease,
             modifier = Modifier.size(28.dp)
         ) {
-            Icon(Icons.Filled.Remove, contentDescription = "Riduci quantita'")
+            Icon(
+                Icons.Filled.Remove,
+                contentDescription = "Riduci quantita'",
+                tint = if (canDecrease) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         Text(
             "$quantity",
@@ -445,8 +465,10 @@ private fun TagChip(text: String, background: Color = MaterialTheme.colorScheme.
 @Composable
 private fun ProductDetailDialog(
     product: Product,
+    isFavorite: Boolean,
     onDismiss: () -> Unit,
-    onAddToCart: () -> Unit
+    onAddToCart: () -> Unit,
+    onToggleFavorite: () -> Unit
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
@@ -600,7 +622,8 @@ private fun ProductDetailDialog(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         OutlinedButton(
                             onClick = onDismiss,
@@ -613,6 +636,19 @@ private fun ProductDetailDialog(
                             Text(
                                 "Chiudi",
                                 style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        IconButton(
+                            onClick = onToggleFavorite,
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Icon(
+                                imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Outlined.FavoriteBorder,
+                                contentDescription = if (isFavorite) "Rimuovi dai preferiti" else "Aggiungi ai preferiti",
+                                tint = if (isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                             )
                         }
                         Button(
@@ -921,6 +957,7 @@ private fun ErrorState(message: String) {
 private fun CatalogList(
     products: List<Product>,
     cartQuantities: Map<String, Int>,
+    favoriteIds: Set<String>,
     onBookmark: (String) -> Unit,
     onAddToCart: (String) -> Unit,
     onDecreaseFromCart: (String) -> Unit,
@@ -934,9 +971,11 @@ private fun CatalogList(
     ) {
         items(products, key = { it.catalogId }) { product ->
             val quantity = cartQuantities[product.id] ?: 0
+            val isFavorite = favoriteIds.contains(product.id)
             ProductCard(
                 product = product,
                 quantityInCart = quantity,
+                isFavorite = isFavorite,
                 onBookmark = { onBookmark(product.id) },
                 onAddToCart = { onAddToCart(product.id) },
                 onDecreaseFromCart = { onDecreaseFromCart(product.id) },
@@ -1032,6 +1071,7 @@ private fun CatalogHeader(
 private fun TopActionRow(
     cartItemsCount: Int,
     onMenuClick: () -> Unit,
+    onFavoritesClick: () -> Unit,
     onCartClick: () -> Unit,
     onHistoryClick: () -> Unit
 ) {
@@ -1048,7 +1088,10 @@ private fun TopActionRow(
             }
             // Removed Storico ordini button (now handled via navbar)
         }
-        CartActionButton(count = cartItemsCount, onClick = onCartClick)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            FavoritesActionButton(onClick = onFavoritesClick)
+            CartActionButton(count = cartItemsCount, onClick = onCartClick)
+        }
     }
 }
 
@@ -1067,6 +1110,124 @@ private fun CartActionButton(
         ) {
             Icon(Icons.Filled.ShoppingCart, contentDescription = "Apri carrello")
         }
+    }
+}
+
+@Composable
+private fun FavoritesPanel(
+    favorites: List<Product>,
+    cartQuantities: Map<String, Int>,
+    onIncrease: (String) -> Unit,
+    onDecrease: (String) -> Unit,
+    onToggleFavorite: (String) -> Unit,
+    onProductClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        tonalElevation = 4.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Preferiti", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text("${favorites.size} prodotti", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (favorites.isEmpty()) {
+                Text(
+                    "Non hai ancora aggiunto preferiti",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 460.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(favorites, key = { it.id }) { product ->
+                        val qty = cartQuantities[product.id] ?: 0
+                        FavoriteItemRow(
+                            product = product,
+                            quantity = qty,
+                            onIncrease = { onIncrease(product.id) },
+                            onDecrease = { onDecrease(product.id) },
+                            onToggleFavorite = { onToggleFavorite(product.id) },
+                            onProductClick = { onProductClick(product.id) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FavoriteItemRow(
+    product: Product,
+    quantity: Int,
+    onIncrease: () -> Unit,
+    onDecrease: () -> Unit,
+    onToggleFavorite: () -> Unit,
+    onProductClick: () -> Unit
+) {
+    val context = LocalContext.current
+    val imageUrl = product.assetImageUrl()
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable { onProductClick() }
+            .padding(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(context).data(imageUrl).crossfade(true).build(),
+                contentDescription = product.name,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit,
+                placeholder = painterResource(id = R.drawable.ic_launcher_foreground),
+                error = painterResource(id = R.drawable.ic_launcher_foreground)
+            )
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(product.name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(product.brand, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(formatPrice(product.price), style = MaterialTheme.typography.bodyMedium)
+        }
+        IconButton(onClick = onToggleFavorite) {
+            Icon(Icons.Rounded.Favorite, contentDescription = "Rimuovi preferito", tint = MaterialTheme.colorScheme.error)
+        }
+        QuantityStepper(
+            quantity = quantity,
+            onIncrease = onIncrease,
+            onDecrease = onDecrease,
+            canDecrease = quantity > 0
+        )
+    }
+}
+
+@Composable
+private fun FavoritesActionButton(
+    onClick: () -> Unit
+) {
+    IconButton(onClick = onClick) {
+        Icon(Icons.Rounded.Favorite, contentDescription = "Apri preferiti")
     }
 }
 
@@ -1264,10 +1425,17 @@ data class SideMenuEntry(
     val title: String
 )
 
+private enum class CustomerOrderFilter { ACTIVE, COMPLETED }
+
 // La lista supermarketSideMenu è stata rimossa: ora le categorie vengono caricate dal DB
 // tramite CatalogViewModel.sideMenuSections
 
 private fun formatPrice(value: Double): String = "\u20AC ${String.format(java.util.Locale.ROOT, "%.2f", value)}"
+
+private fun orderIsFinal(status: String): Boolean = when (status.uppercase()) {
+    "CONCLUSO", "CONSEGNATO", "ANNULLATO" -> true
+    else -> false
+}
 
 private fun orderStatusLabel(status: String, method: String? = null): String = when {
     method.equals("LOCKER", true) && status.equals("SPEDITO", true) -> "Da ritirare"
@@ -1362,6 +1530,35 @@ fun AppCartOverlay(
     }
 }
 
+@Composable
+fun AppFavoritesOverlay(
+    onDismiss: () -> Unit,
+    favorites: List<Product>,
+    cartQuantities: Map<String, Int>,
+    onIncrease: (String) -> Unit,
+    onDecrease: (String) -> Unit,
+    onToggleFavorite: (String) -> Unit,
+    onProductClick: (String) -> Unit
+) {
+    OverlayContainer(onDismiss = onDismiss) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            FavoritesPanel(
+                favorites = favorites,
+                cartQuantities = cartQuantities,
+                onIncrease = onIncrease,
+                onDecrease = onDecrease,
+                onToggleFavorite = onToggleFavorite,
+                onProductClick = onProductClick,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(16.dp)
+                    .heightIn(max = 560.dp)
+                    .widthIn(max = 400.dp)
+            )
+        }
+    }
+}
+
 
 @Composable
 fun OrderHistoryPanel(
@@ -1375,71 +1572,116 @@ fun OrderHistoryPanel(
     modifier: Modifier = Modifier,
     onDismissMessage: () -> Unit = {}
 ) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    var selectedFilter by rememberSaveable { mutableStateOf(CustomerOrderFilter.ACTIVE) }
+    var expandedOrderId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var currentPage by rememberSaveable { mutableStateOf(0) }
+    val filteredOrders = when (selectedFilter) {
+        CustomerOrderFilter.ACTIVE -> orders.filter { !orderIsFinal(it.order.stato) }
+        CustomerOrderFilter.COMPLETED -> orders.filter { orderIsFinal(it.order.stato) }
+    }
+    val activeCount = orders.count { !orderIsFinal(it.order.stato) }
+    val completedCount = orders.size - activeCount
+    val pageSize = 3
+    val pageCount = ((filteredOrders.size + pageSize - 1) / pageSize).coerceAtLeast(1)
+    currentPage = currentPage.coerceIn(0, pageCount - 1)
+    val pageOrders = filteredOrders.drop(currentPage * pageSize).take(pageSize)
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Storico ordini", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                TextButton(onClick = onRefresh, enabled = !isLoading) {
-                    Text("Aggiorna")
-                }
+            Text("Storico ordini", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            TextButton(onClick = onRefresh, enabled = !isLoading) { Text("Aggiorna") }
+        }
+
+        CustomerOrderFilterChips(
+            selected = selectedFilter,
+            onSelect = {
+                selectedFilter = it
+                currentPage = 0
             }
-            if (isLoading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        )
+
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Attivi: $activeCount", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Conclusi: $completedCount", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
+        if (isLoading) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        pickupMessage?.let {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(it, color = MaterialTheme.colorScheme.primary)
+                TextButton(onClick = onDismissMessage, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("Ok") }
             }
-            error?.let {
-                Text(it, color = MaterialTheme.colorScheme.error)
-            }
-            pickupMessage?.let {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(it, color = MaterialTheme.colorScheme.primary)
-                    TextButton(onClick = onDismissMessage, contentPadding = PaddingValues(horizontal = 8.dp)) {
-                        Text("Ok")
-                    }
-                }
-            }
-            if (orders.isEmpty() && error == null && !isLoading) {
+        }
+
+        when {
+            pageOrders.isEmpty() && error == null && !isLoading -> {
                 Text(
-                    "Nessun ordine effettuato finora",
+                    "Nessun ordine in questa sezione",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            } else {
+            }
+            else -> {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 420.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .heightIn(max = 520.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(orders, key = { it.order.idOrdine }) { entry ->
-                        OrderHistoryCard(
+                    items(pageOrders, key = { it.order.idOrdine }) { entry ->
+                        val isExpanded = expandedOrderId == entry.order.idOrdine
+                        CustomerOrderCard(
                             entry = entry,
+                            isExpanded = isExpanded,
                             pickupInProgressId = pickupInProgressId,
+                            onToggleExpand = {
+                                expandedOrderId = if (isExpanded) null else entry.order.idOrdine
+                            },
                             onScanQr = onScanQr
                         )
                     }
                 }
             }
         }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Pagina ${currentPage + 1} / $pageCount", style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilledTonalIconButton(
+                    onClick = { if (currentPage > 0) currentPage -= 1 },
+                    enabled = currentPage > 0
+                ) { Icon(Icons.Filled.ChevronLeft, contentDescription = "Pagina precedente") }
+                FilledTonalIconButton(
+                    onClick = { if (currentPage < pageCount - 1) currentPage += 1 },
+                    enabled = currentPage < pageCount - 1
+                ) { Icon(Icons.Filled.ChevronRight, contentDescription = "Pagina successiva") }
+            }
+        }
     }
 }
 
 @Composable
-private fun OrderHistoryCard(
+private fun CustomerOrderCard(
     entry: CustomerOrderHistoryEntry,
+    isExpanded: Boolean,
     pickupInProgressId: Int?,
+    onToggleExpand: () -> Unit,
     onScanQr: (Int) -> Unit
 ) {
     val order = entry.order
@@ -1447,16 +1689,17 @@ private fun OrderHistoryCard(
     val deliveryLabel = deliveryMethodLabel(order.metodoConsegna)
     val readyForPickup = order.metodoConsegna.equals("LOCKER", true) && order.stato.equals("SPEDITO", true)
     val isScanning = pickupInProgressId == order.idOrdine
-    Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (readyForPickup) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant
-        )
+    var showQr by rememberSaveable { mutableStateOf(false) }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onToggleExpand() },
+        tonalElevation = 2.dp
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
@@ -1464,17 +1707,61 @@ private fun OrderHistoryCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Ordine #${entry.sequenceNumber}", fontWeight = FontWeight.SemiBold)
-                Text(statusLabel, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
-            }
-            Text("ID backend #${order.idOrdine}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("Data: ${formatOrderDate(order.dataOrdine)}", style = MaterialTheme.typography.bodySmall)
-            Text("Totale: ${formatPrice(order.totale)}", fontWeight = FontWeight.SemiBold)
-            Text("Consegna: $deliveryLabel", style = MaterialTheme.typography.bodySmall)
-            if (order.metodoConsegna.equals("LOCKER", ignoreCase = true)) {
-                order.idLocker?.let {
-                    Text("Locker: $it", style = MaterialTheme.typography.bodySmall)
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Ordine #${entry.sequenceNumber}", fontWeight = FontWeight.SemiBold)
+                    Text("Data: ${formatOrderDate(order.dataOrdine)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                Text(
+                    statusLabel,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                )
+            }
+            Text(
+                "Totale: ${formatPrice(order.totale)} • Articoli: ${order.righe.sumOf { it.quantita }}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                "Consegna: $deliveryLabel",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (isExpanded) {
+                if (order.metodoConsegna.equals("DOMICILIO", true)) {
+                    order.indirizzoSpedizione?.takeIf { it.isNotBlank() }?.let {
+                        Text("Indirizzo: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    order.idLocker?.let {
+                        Text("Locker: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    order.codiceRitiro?.let {
+                        OutlinedButton(
+                            onClick = { showQr = true },
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Text("Mostra QR")
+                        }
+                    }
+                }
+
+                HorizontalDivider()
+
+                if (order.righe.isEmpty()) {
+                    Text("Dettaglio prodotti non disponibile", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        order.righe.forEach { line ->
+                            Text("${line.nomeProdotto} x${line.quantita} - ${formatPrice(line.prezzoTotale)}", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+
                 if (readyForPickup) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1482,44 +1769,113 @@ private fun OrderHistoryCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            if (isScanning) "Ritirato dal locker, chiudo..." else "Da ritirare: usa il QR sul locker",
+                            if (isScanning) "Ritiro in corso..." else "Pronto al locker",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary
                         )
-                        TextButton(
+                        OutlinedButton(
                             onClick = { onScanQr(order.idOrdine) },
-                            enabled = !isScanning
+                            enabled = !isScanning,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                         ) {
-                            Text(if (isScanning) "In corso..." else "Inquadra QR")
+                            if (isScanning) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                Spacer(Modifier.width(6.dp))
+                            }
+                            Text(if (isScanning) "Attendi" else "Ritira")
                         }
                     }
                 }
             } else {
-                val homeLabel = if (order.stato.equals("CONSEGNATO", true) || order.stato.equals("CONCLUSO", true)) {
-                    "Consegnato a domicilio"
-                } else {
-                    "Consegna a domicilio in gestione"
-                }
-                Text(homeLabel, style = MaterialTheme.typography.bodySmall)
-                order.indirizzoSpedizione?.takeIf { it.isNotBlank() }?.let {
-                    Text("Indirizzo: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Tocca per vedere i dettagli", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+
+    if (showQr && order.codiceRitiro != null) {
+        AlertDialog(
+            onDismissRequest = { showQr = false },
+            confirmButton = {
+                TextButton(onClick = { showQr = false }) { Text("Chiudi") }
+            },
+            title = { Text("QR locker") },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Mostra questo codice al locker per il ritiro", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    QrPreviewBox(code = order.codiceRitiro)
                 }
             }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-            if (order.righe.isEmpty()) {
-                Text(
-                    "Dettaglio prodotti non disponibile",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun QrPreviewBox(code: String, modifier: Modifier = Modifier) {
+    val qrBitmap = remember(code) { buildQrBitmap(code) }
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (qrBitmap != null) {
+            Image(
+                bitmap = qrBitmap.asImageBitmap(),
+                contentDescription = "QR $code",
+                modifier = Modifier.size(200.dp),
+                contentScale = ContentScale.Fit
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(200.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(code, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            }
+        }
+        Text(code, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+private fun buildQrBitmap(content: String, size: Int = 512): Bitmap? = try {
+    val matrix: BitMatrix = MultiFormatWriter().encode(content, BarcodeFormat.QR_CODE, size, size)
+    val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    for (x in 0 until size) {
+        for (y in 0 until size) {
+            bmp.setPixel(x, y, if (matrix[x, y]) AndroidColor.BLACK else AndroidColor.WHITE)
+        }
+    }
+    bmp
+} catch (_: Exception) {
+    null
+}
+
+@Composable
+private fun CustomerOrderFilterChips(
+    selected: CustomerOrderFilter,
+    onSelect: (CustomerOrderFilter) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        CustomerOrderFilter.entries.forEach { filter ->
+            val selectedState = filter == selected
+            AssistChip(
+                onClick = { onSelect(filter) },
+                label = { Text(if (filter == CustomerOrderFilter.ACTIVE) "In corso" else "Conclusi") },
+                colors = AssistChipDefaults.assistChipColors(
+                    containerColor = if (selectedState) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
+                    labelColor = if (selectedState) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
-            } else {
-                order.righe.forEach { line ->
-                    Text(
-                        "${line.nomeProdotto} x${line.quantita} - ${formatPrice(line.prezzoTotale)}",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
+            )
         }
     }
 }

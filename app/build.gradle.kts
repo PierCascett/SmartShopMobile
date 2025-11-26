@@ -59,6 +59,7 @@ dependencies {
     // ViewModel
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
+    implementation(libs.androidx.compose.runtime)
 
     // Room Database
     val roomVersion = "2.6.1"
@@ -80,6 +81,9 @@ dependencies {
 
     // DataStore per sessione utente
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+    // QR generation
+    implementation("com.google.zxing:core:3.5.3")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

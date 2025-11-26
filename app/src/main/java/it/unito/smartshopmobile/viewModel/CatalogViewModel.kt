@@ -47,6 +47,7 @@ import it.unito.smartshopmobile.ui.screens.SideMenuEntry
 import it.unito.smartshopmobile.ui.screens.SideMenuSection
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -55,6 +56,8 @@ import java.util.Locale
 import kotlinx.coroutines.delay
 import it.unito.smartshopmobile.data.entity.UpdateUserRequest
 import it.unito.smartshopmobile.data.datastore.SessionDataStore
+import it.unito.smartshopmobile.data.datastore.FavoritesDataStore
+import kotlin.random.Random
 
 class CatalogViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -78,12 +81,14 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
     )
     private val userRepository = UserRepository(RetrofitInstance.api)
     private val sessionDataStore = SessionDataStore(application)
+    private val favoritesDataStore = FavoritesDataStore(application)
 
     // UI State
     private val _uiState = MutableStateFlow(CatalogUiState())
     val uiState: StateFlow<CatalogUiState> = _uiState
 
     private var started = false
+    private var favoritesJob: Job? = null
     private val fallbackOrderFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ROOT)
 
     init {
@@ -142,6 +147,12 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
                     val normalized = ordersWithLines
                         .map { it.order.copy(righe = it.lines) }
                         .filter { it.idUtente == userId }
+                        .map { order ->
+                            if (order.metodoConsegna.equals("LOCKER", true)) {
+                                val code = lockerCodeFor(order.idOrdine)
+                                order.copy(codiceRitiro = code)
+                            } else order
+                        }
                     val ordered = normalized.sortedByDescending { orderTimestamp(it.dataOrdine) }
                     val numbered = ordered.mapIndexed { index, order ->
                         CustomerOrderHistoryEntry(order, index + 1)
@@ -168,10 +179,15 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
             }
     }
 
-    fun setLoggedUser(user: User) = mutateState { it.copy(loggedUser = user) }
+    fun setLoggedUser(user: User) {
+        mutateState { it.copy(loggedUser = user) }
+        observeFavorites(user.id)
+    }
 
     fun clearSession() {
         started = false
+        favoritesJob?.cancel()
+        favoritesJob = null
         mutateState { CatalogUiState() }
     }
 
@@ -268,7 +284,13 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun onBookmark(productId: String) {
-        // TODO: Implementare preferiti quando avremo la tabella nel DB
+        val userId = _uiState.value.loggedUser?.id ?: return
+        viewModelScope.launch {
+            val current = _uiState.value.favoriteProductIds
+            val updated = if (current.contains(productId)) current - productId else current + productId
+            mutateState { it.copy(favoriteProductIds = updated) }
+            favoritesDataStore.saveFavorites(userId, updated)
+        }
     }
 
     fun onAddToCart(productId: String) = mutateState { state ->
@@ -416,6 +438,15 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    private fun observeFavorites(userId: Int) {
+        favoritesJob?.cancel()
+        favoritesJob = viewModelScope.launch {
+            favoritesDataStore.favoritesFlow(userId).collect { ids ->
+                mutateState { it.copy(favoriteProductIds = ids) }
+            }
+        }
+    }
+
     private fun recomputeDerivedState(state: CatalogUiState): CatalogUiState {
         val visibleProducts = filterProducts(state)
         val cartItems = state.cart.mapNotNull { (productId, quantity) ->
@@ -423,6 +454,7 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
                 CartItemUi(product = product, quantity = quantity)
             }
         }
+        val favoriteProducts = state.allProducts.filter { state.favoriteProductIds.contains(it.id) }
         val total = cartItems.sumOf { (it.product.price * it.quantity).toDouble() }
         val count = cartItems.sumOf { it.quantity }
 
@@ -472,8 +504,17 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
             cartItemsCount = count,
             cartTotal = total,
             sideMenuSections = menuSections,
-            allAvailableTags = allAvailableTags
+            allAvailableTags = allAvailableTags,
+            favoriteProducts = favoriteProducts
         )
+    }
+
+    private fun lockerCodeFor(orderId: Int): String {
+        val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+        val rng = Random(orderId.toLong() * 1103515245 + 12345)
+        return buildString {
+            repeat(8) { append(chars[rng.nextInt(chars.length)]) }
+        }
     }
 
     fun submitOrder() {
@@ -554,6 +595,8 @@ data class CatalogUiState(
     val pickupMessage: String? = null,
     val showToast: Boolean = false,
     val toastMessage: String? = null,
+    val favoriteProductIds: Set<String> = emptySet(),
+    val favoriteProducts: List<Product> = emptyList(),
     val cart: Map<String, Int> = emptyMap(),
     val cartItems: List<CartItemUi> = emptyList(),
     val cartItemsCount: Int = 0,

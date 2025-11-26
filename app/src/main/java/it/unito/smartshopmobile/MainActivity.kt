@@ -96,6 +96,7 @@ import it.unito.smartshopmobile.viewModel.CatalogUiState
 import it.unito.smartshopmobile.viewModel.LoginViewModel
 
 import it.unito.smartshopmobile.ui.components.NavBarDivider
+import it.unito.smartshopmobile.ui.screens.AppFavoritesOverlay
 import kotlinx.coroutines.launch
 private enum class CustomerTab { SHOP, ORDERS, ACCOUNT }
 
@@ -113,6 +114,7 @@ class MainActivity : ComponentActivity() {
                 var selectedRole by rememberSaveable { mutableStateOf<UserRole?>(null) }
                 var showMenu by rememberSaveable { mutableStateOf(false) }
                 var showCart by rememberSaveable { mutableStateOf(false) }
+                var showFavorites by rememberSaveable { mutableStateOf(false) }
                 var customerTab by rememberSaveable { mutableStateOf(CustomerTab.SHOP) }
                 val catalogState by catalogViewModel.uiState.collectAsState()
                 val sessionUser by loginViewModel.sessionUser.collectAsState(initial = null)
@@ -155,6 +157,7 @@ class MainActivity : ComponentActivity() {
                                     loggedUser = null
                                     selectedRole = null
                                     showCart = false
+                                    showFavorites = false
                                     customerTab = CustomerTab.SHOP
                                     catalogViewModel.clearSession()
                                     loginViewModel.clearSession()
@@ -162,6 +165,7 @@ class MainActivity : ComponentActivity() {
                                 catalogState = catalogState,
                                 catalogViewModel = catalogViewModel,
                                 onMenuClick = { showMenu = true },
+                                onFavoritesClick = { showFavorites = true },
                                 onCartClick = { showCart = true },
                                 accountPrefs = accountPrefs,
                                 onSaveProfile = { nome: String, cognome: String, email: String, indirizzo: String, telefono: String ->
@@ -214,6 +218,18 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
+                    if (showFavorites) {
+                        AppFavoritesOverlay(
+                            onDismiss = { showFavorites = false },
+                            favorites = catalogState.favoriteProducts,
+                            cartQuantities = catalogState.cart,
+                            onIncrease = { catalogViewModel.onAddToCart(it) },
+                            onDecrease = { catalogViewModel.onDecreaseCartItem(it) },
+                            onToggleFavorite = { catalogViewModel.onBookmark(it) },
+                            onProductClick = { catalogViewModel.onProductSelected(it) }
+                        )
+                    }
+
                 }
             }
         }
@@ -229,6 +245,7 @@ private fun ContentWithSessionBar(
     catalogState: CatalogUiState,
     catalogViewModel: CatalogViewModel,
     onMenuClick: () -> Unit,
+    onFavoritesClick: () -> Unit,
     onCartClick: () -> Unit,
     accountPrefs: AccountPreferences,
     onSaveProfile: suspend (String, String, String, String, String) -> Result<User>,
@@ -256,6 +273,7 @@ private fun ContentWithSessionBar(
                     selectedTab = customerTab,
                     onTabChange = onCustomerTabChange,
                     onMenuClick = onMenuClick,
+                    onFavoritesClick = onFavoritesClick,
                     onCartClick = onCartClick,
                     onSaveProfile = onSaveProfile
                 ).also {
@@ -283,6 +301,7 @@ private fun CustomerHome(
     selectedTab: CustomerTab,
     onTabChange: (CustomerTab) -> Unit,
     onMenuClick: () -> Unit,
+    onFavoritesClick: () -> Unit,
     onCartClick: () -> Unit,
     onSaveProfile: suspend (String, String, String, String, String) -> Result<it.unito.smartshopmobile.data.entity.User>
 ) {
@@ -357,6 +376,7 @@ private fun CustomerHome(
                     .fillMaxSize()
                     .padding(contentPadding),
                 onMenuClick = onMenuClick,
+                onFavoritesClick = onFavoritesClick,
                 onCartClick = onCartClick,
                 onHistoryClick = {
                     onTabChange(CustomerTab.ORDERS)

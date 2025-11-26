@@ -61,6 +61,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -83,6 +84,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.LayoutDirection
 import it.unito.smartshopmobile.viewModel.EmployeeUiState
 import it.unito.smartshopmobile.ui.components.NavBarDivider
+import kotlinx.coroutines.launch
 
 private enum class EmployeeTab(val label: String, val icon: ImageVector) {
     PICKING("Mappa", Icons.Filled.Map),
@@ -185,6 +187,11 @@ private fun PickingTab(
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    val handleSelectAisle: (String) -> Unit = { id ->
+        onSelectAisle(id)
+        scope.launch { scrollState.animateScrollTo(0) }
+    }
     val activeOrder = state.activeOrder
     Column(
         modifier = modifier
@@ -206,7 +213,7 @@ private fun PickingTab(
             Box(modifier = Modifier.fillMaxWidth().height(280.dp).padding(8.dp)) {
                 StoreMapCanvas(
                     selectedAisleId = state.selectedAisleId,
-                    onAisleClick = onSelectAisle,
+                    onAisleClick = handleSelectAisle,
                     background = backgroundImage,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -248,7 +255,7 @@ private fun PickingTab(
                 productShelfMap = state.productShelfMap,
                 updatingOrderId = state.updatingOrderId,
                 onTogglePicked = onTogglePicked,
-                onJumpToAisle = onSelectAisle,
+                onJumpToAisle = handleSelectAisle,
                 onMarkCompleted = onMarkCompleted,
                 onMarkShipped = onMarkShipped,
                 onMarkCanceled = onMarkCanceled,
@@ -597,6 +604,11 @@ private fun OrderPickingPanel(
     val isLocker = order.metodoConsegna.equals("LOCKER", true)
     val readyInLocker = isLocker && order.stato.equals("SPEDITO", true)
     val completionLabel = if (isLocker) "Pronto al ritiro" else "Segna consegnato"
+    val canComplete = when {
+        orderIsFinal(order.stato) -> false
+        order.metodoConsegna.equals("DOMICILIO", true) -> allPicked || order.stato.equals("SPEDITO", true)
+        else -> allPicked && !readyInLocker
+    }
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -653,11 +665,18 @@ private fun OrderPickingPanel(
                           onClick = { onMarkCanceled(order.idOrdine) },
                           enabled = updatingOrderId != order.idOrdine && !orderIsFinal(order.stato)
                       ) { Text("Annulla") }
-                  }
+                }
                 Button(
                     onClick = { onMarkCompleted(order.idOrdine) },
-                    enabled = updatingOrderId != order.idOrdine && !orderIsFinal(order.stato) && allPicked && !readyInLocker
-                ) { Text(if (allPicked) completionLabel else "Completa checklist") }
+                    enabled = updatingOrderId != order.idOrdine && canComplete
+                ) {
+                    val label = when {
+                        order.metodoConsegna.equals("DOMICILIO", true) && order.stato.equals("SPEDITO", true) -> "Segna consegnato"
+                        allPicked -> completionLabel
+                        else -> "Completa checklist"
+                    }
+                    Text(label)
+                }
             }
             if (updatingOrderId == order.idOrdine) {
                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
