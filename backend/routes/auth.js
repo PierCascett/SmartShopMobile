@@ -1,7 +1,26 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
+const sharp = require('sharp');
 const router = express.Router();
 const db = require('../db');
+
+const PROFILE_DIR = path.join(__dirname, '..', 'images', 'profiles');
+fs.mkdirSync(PROFILE_DIR, { recursive: true });
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 4 * 1024 * 1024 } // 4MB
+});
+
+function getAvatarUrl(userId) {
+    const candidate = path.join(PROFILE_DIR, `${userId}.jpg`);
+    if (!fs.existsSync(candidate)) return null;
+    const stats = fs.statSync(candidate);
+    const version = Math.floor(stats.mtimeMs);
+    return `/images/profiles/${userId}.jpg?v=${version}`;
+}
 
 /**
  * POST /api/auth/login
@@ -34,7 +53,8 @@ router.post('/login', async (req, res) => {
 
         // Non inviare l'hash al client
         delete user.password;
-        res.json({ user });
+        const responseUser = { ...user, avatar_url: getAvatarUrl(user.id_utente) };
+        res.json({ user: responseUser });
     } catch (error) {
         console.error('Errore login:', error);
         res.status(500).json({ error: 'Errore durante il login' });
@@ -68,7 +88,8 @@ router.post('/register', async (req, res) => {
             [nome, cognome, email, telefono, ruolo, hashed]
         );
 
-        res.status(201).json({ user: insert.rows[0] });
+        const created = insert.rows[0];
+        res.status(201).json({ user: { ...created, avatar_url: getAvatarUrl(created.id_utente) } });
     } catch (error) {
         console.error('Errore registrazione:', error);
         res.status(500).json({ error: 'Errore durante la registrazione' });
@@ -117,10 +138,45 @@ router.patch('/profile/:userId', async (req, res) => {
             [userId, nome, cognome, telefono, email]
         );
 
-        res.json({ user: updated.rows[0] });
+        const responseUser = {
+            ...updated.rows[0],
+            avatar_url: getAvatarUrl(updated.rows[0].id_utente)
+        };
+        res.json({ user: responseUser });
     } catch (error) {
         console.error('Errore aggiornamento profilo:', error);
         res.status(500).json({ error: 'Errore durante l\'aggiornamento del profilo' });
+    }
+});
+
+/**
+ * POST /api/auth/profile/:userId/photo
+ * Carica/aggiorna la foto profilo dell'utente
+ */
+router.post('/profile/:userId/photo', upload.single('photo'), async (req, res) => {
+    const userId = Number(req.params.userId);
+    if (!userId) {
+        return res.status(400).json({ error: 'userId obbligatorio' });
+    }
+    if (!req.file) {
+        return res.status(400).json({ error: 'Nessun file caricato' });
+    }
+    if (!req.file.mimetype?.startsWith('image/')) {
+        return res.status(400).json({ error: 'Formato immagine non valido' });
+    }
+
+    try {
+        const filename = `${userId}.jpg`;
+        const filepath = path.join(PROFILE_DIR, filename);
+        await sharp(req.file.buffer)
+            .resize(600, 600, { fit: 'cover' })
+            .jpeg({ quality: 85 })
+            .toFile(filepath);
+
+        res.json({ avatarUrl: getAvatarUrl(userId) });
+    } catch (error) {
+        console.error('Errore upload foto profilo:', error);
+        res.status(500).json({ error: 'Errore nel caricamento della foto profilo' });
     }
 });
 

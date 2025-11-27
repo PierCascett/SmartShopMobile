@@ -5,6 +5,9 @@ import it.unito.smartshopmobile.data.entity.UpdateUserRequest
 import it.unito.smartshopmobile.data.entity.User
 import it.unito.smartshopmobile.data.remote.SmartShopApiService
 import org.json.JSONObject
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class UserRepository(
     private val apiService: SmartShopApiService
@@ -28,6 +31,28 @@ class UserRepository(
             }
         } catch (e: Exception) {
             Log.e("UserRepository", "Errore aggiornamento profilo", e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun uploadAvatar(userId: Int, data: ByteArray, mimeType: String): Result<String> {
+        return try {
+            val body = data.toRequestBody(mimeType.toMediaTypeOrNull())
+            val part = MultipartBody.Part.createFormData("photo", "avatar.jpg", body)
+            val response = apiService.uploadProfilePhoto(userId, part)
+            if (response.isSuccessful) {
+                val payload = response.body()
+                val url = payload?.get("avatarUrl") ?: payload?.get("avatar_url")
+                if (url is String && url.isNotBlank()) {
+                    Result.success(url)
+                } else {
+                    Result.failure(Exception("Risposta upload foto non valida"))
+                }
+            } else {
+                Result.failure(Exception("Upload foto fallito (${response.code()})"))
+            }
+        } catch (e: Exception) {
+            Log.e("UserRepository", "Errore upload avatar", e)
             Result.failure(e)
         }
     }

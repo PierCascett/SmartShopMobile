@@ -26,6 +26,7 @@
 package it.unito.smartshopmobile.viewModel
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
@@ -200,7 +201,7 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    suspend fun updateCustomerProfile(
+    suspend fun updateUserProfile(
         nome: String,
         cognome: String,
         email: String,
@@ -216,6 +217,35 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
             sessionDataStore.saveUser(updated)
         }
         return result
+    }
+
+    @Deprecated("Usa updateUserProfile per qualsiasi ruolo")
+    suspend fun updateCustomerProfile(
+        nome: String,
+        cognome: String,
+        email: String,
+        telefono: String?
+    ): Result<User> = updateUserProfile(nome, cognome, email, telefono)
+
+    suspend fun uploadProfilePhoto(uri: android.net.Uri): Result<String> {
+        val current = _uiState.value.loggedUser ?: return Result.failure(Exception("Utente non loggato"))
+        return try {
+            val resolver = getApplication<Application>().contentResolver
+            val mimeType = resolver.getType(uri) ?: "image/jpeg"
+            val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
+                ?: return Result.failure(Exception("Impossibile leggere l'immagine selezionata"))
+            val uploadResult = userRepository.uploadAvatar(current.id, bytes, mimeType)
+            uploadResult.onSuccess { url ->
+                val cacheBustedUrl = if (url.contains("?")) "$url&ts=${System.currentTimeMillis()}" else "$url?ts=${System.currentTimeMillis()}"
+                val updatedUser = current.copy(avatarUrl = cacheBustedUrl)
+                mutateState { it.copy(loggedUser = updatedUser) }
+                sessionDataStore.saveUser(updatedUser)
+            }
+            uploadResult
+        } catch (e: Exception) {
+            Log.e("CatalogViewModel", "Errore upload foto profilo", e)
+            Result.failure(e)
+        }
     }
 
     private fun refreshData() {
