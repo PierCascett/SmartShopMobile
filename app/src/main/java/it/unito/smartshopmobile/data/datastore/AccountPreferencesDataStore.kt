@@ -1,4 +1,22 @@
+/**
+ * AccountPreferencesDataStore.kt
+ *
+ * MVVM: Model Layer - Persistenza preferenze account (DataStore)
+ *
+ * FUNZIONAMENTO:
+ * - Salva/carica dati profilo locale (nome, cognome, indirizzo, telefono)
+ * - Cache locale per form pre-compilati
+ * - Flow<AccountPreferences> per osservazione reattiva
+ * - Update rapido senza chiamate API
+ *
+ * PATTERN MVVM:
+ * - Data persistence: preferenze account
+ * - Flow: stream reattivo con data class
+ * - suspend fun: operazioni asincrone
+ * - DataStore: persistenza key-value moderna
+ */
 package it.unito.smartshopmobile.data.datastore
+
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit

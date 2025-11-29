@@ -1,4 +1,22 @@
+/**
+ * FavoritesDataStore.kt
+ *
+ * MVVM: Model Layer - Persistenza preferiti cliente (DataStore)
+ *
+ * FUNZIONAMENTO:
+ * - Salva/carica prodotti preferiti per utente
+ * - Set<String> di productId per cliente
+ * - Separato per userId (evita mix tra account)
+ * - Serializzazione JSON con Gson
+ *
+ * PATTERN MVVM:
+ * - Data persistence: preferenze per-utente
+ * - Flow<Set<String>>: stream reattivo favoriti
+ * - suspend fun: operazioni asincrone
+ * - DataStore Preferences: alternativa moderna a SharedPreferences
+ */
 package it.unito.smartshopmobile.data.datastore
+
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit

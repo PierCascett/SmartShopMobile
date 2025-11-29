@@ -1,4 +1,22 @@
+/**
+ * Restock.kt
+ *
+ * MVVM: Model Layer - Entity riordino magazzino (Room + API)
+ *
+ * FUNZIONAMENTO:
+ * - Rappresenta riordino merce da fornitore
+ * - Stati: ORDINATO, IN_TRANSITO, ARRIVATO
+ * - Tracking: data ordine, data arrivo prevista/effettiva
+ * - Cache locale per storico manager
+ *
+ * PATTERN MVVM:
+ * - Entity: mapping database/API
+ * - @Entity: Room cache table
+ * - @SerializedName: mapping JSON
+ * - Denormalized: include nomi prodotto/fornitore
+ */
 package it.unito.smartshopmobile.data.entity
+
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity

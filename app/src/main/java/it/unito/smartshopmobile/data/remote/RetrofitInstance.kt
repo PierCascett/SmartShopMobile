@@ -1,4 +1,23 @@
+/**
+ * RetrofitInstance.kt
+ *
+ * MVVM: Model Layer - Configurazione client HTTP (Retrofit)
+ *
+ * FUNZIONAMENTO:
+ * - Singleton Retrofit per chiamate API REST
+ * - OkHttp con logging interceptor (debugging)
+ * - Gson converter per serializzazione JSON
+ * - Timeout configurabili (30s connect/read)
+ * - Base URL configurabile (backend Node.js)
+ *
+ * PATTERN MVVM:
+ * - Singleton: unica istanza Retrofit
+ * - Retrofit: client HTTP type-safe
+ * - OkHttp: interceptor per logging
+ * - Gson: JSON ↔ Kotlin objects
+ */
 package it.unito.smartshopmobile.data.remote
+
 
 import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
@@ -7,7 +26,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitInstance {
-    private const val BACKEND_HOST = "192.168.1.4"
+    private const val BACKEND_HOST = "192.168.1.51"
     private const val BACKEND_PORT = "3000"
 
     val assetBaseUrl: String

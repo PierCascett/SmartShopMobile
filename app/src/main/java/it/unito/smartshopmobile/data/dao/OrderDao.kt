@@ -1,4 +1,22 @@
+/**
+ * OrderDao.kt
+ *
+ * MVVM: Model Layer - DAO per ordini (Room)
+ *
+ * FUNZIONAMENTO:
+ * - Gestisce ordini e righe ordine (relazione 1-N)
+ * - @Transaction: garantisce atomicità query con join
+ * - Espone Flow<OrderWithLines> per osservare ordini completi
+ * - Cache locale per sync offline-first
+ *
+ * PATTERN MVVM:
+ * - DAO Pattern: accesso database type-safe
+ * - Flow: reattività automatica
+ * - @Transaction: query con relazioni (Order + Lines)
+ * - OnConflictStrategy.REPLACE: upsert automatico
+ */
 package it.unito.smartshopmobile.data.dao
+
 
 import androidx.room.Dao
 import androidx.room.Insert

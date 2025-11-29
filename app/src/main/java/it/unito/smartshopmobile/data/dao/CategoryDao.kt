@@ -1,23 +1,37 @@
+/**
+ * CategoryDao.kt
+ *
+ * MVVM: Model Layer - DAO per categorie (Room)
+ *
+ * FUNZIONAMENTO:
+ * - Query per categorie e macro-categorie (gerarchia parent)
+ * - Espone Flow per osservazione reattiva
+ * - CRUD: insert, query con ordinamento, delete
+ * - Query SQL complesse per gerarchie
+ *
+ * PATTERN MVVM:
+ * - DAO Pattern: astrazione accesso database
+ * - Flow<List<Category>>: stream reattivo categorie
+ * - suspend fun: operazioni write asincrone
+ * - Room annotations: @Query, @Insert con conflict strategy
+ */
 package it.unito.smartshopmobile.data.dao
 
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
+import androidx.room.*
 import it.unito.smartshopmobile.data.entity.Category
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CategoryDao {
-
-    @Query("SELECT * FROM categorie_catalogo ORDER BY nome ASC")
+    @Query("""
+        SELECT * FROM categorie_catalogo ORDER BY nome ASC
+    """)
     fun getAllCategories(): Flow<List<Category>>
 
-    // Sovracategorie distinte derivate dal campo parent
     @Query("""
-        SELECT 
+        SELECT
             DISTINCT parent_id AS id,
-            COALESCE(parent_name, 'Altro') AS nome,
+            parent_id AS nome,
             NULL AS descrizione,
             NULL AS parent_id,
             NULL AS parent_name,

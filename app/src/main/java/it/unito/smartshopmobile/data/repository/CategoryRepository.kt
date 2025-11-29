@@ -1,4 +1,22 @@
+/**
+ * CategoryRepository.kt
+ * 
+ * MVVM: Model Layer - Repository categorie prodotti
+ * 
+ * FUNZIONAMENTO:
+ * - Coordina Room (cache locale) e API (dati remoti)
+ * - Gestisce gerarchia categorie (parent/subcategories)
+ * - Espone Flow per categorie, macro-categorie, sottocategorie
+ * - Pattern Offline-First: legge da Room, sync da API
+ * 
+ * PATTERN MVVM:
+ * - Repository Pattern: astrazione sorgente dati
+ * - Flow: stream reattivo categorie
+ * - suspend fun: sync asincrone con API
+ * - Result<T>: gestione errori type-safe
+ */
 package it.unito.smartshopmobile.data.repository
+
 
 import android.util.Log
 import it.unito.smartshopmobile.data.dao.CategoryDao

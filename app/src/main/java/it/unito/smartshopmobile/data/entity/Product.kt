@@ -1,3 +1,29 @@
+/**
+ * Product.kt
+ *
+ * MVVM: Model Layer - Entity prodotto (Room + API)
+ *
+ * FUNZIONAMENTO:
+ * - Rappresenta prodotto catalogo con quantità scaffale/magazzino
+ * - catalogId: chiave primaria (riga univoca per posizione)
+ * - id: ID prodotto logico (stesso prodotto può stare su più scaffali)
+ * - ForeignKey a Category per integrità referenziale
+ *
+ * PATTERN MVVM:
+ * - Entity: mapping database/API
+ * - @Entity: Room table definition
+ * - Foreign Keys: relazioni tra tabelle
+ * - Indici: performance query su categoria_id e id
+ *
+ * CAMPI PRINCIPALI:
+ * - catalogId: PK univoca per riga catalogo
+ * - id: ID prodotto logico (può ripetersi)
+ * - catalogQuantity: quantità in scaffale
+ * - warehouseQuantity: quantità in magazzino
+ * - totalQuantity: somma totale disponibile
+ * - price/oldPrice: prezzi (vecchio prezzo per sconti)
+ * - shelfId: riferimento scaffale fisico
+ */
 package it.unito.smartshopmobile.data.entity
 
 import androidx.room.ColumnInfo

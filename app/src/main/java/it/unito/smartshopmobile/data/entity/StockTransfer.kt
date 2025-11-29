@@ -1,4 +1,22 @@
+/**
+ * StockTransfer.kt
+ *
+ * MVVM: Model Layer - DTO trasferimento stock (API)
+ *
+ * FUNZIONAMENTO:
+ * - StockTransferRequest: richiesta trasferimento magazzino→scaffale
+ * - StockTransferResult: risultato con quantità aggiornate
+ * - CatalogUpdate: aggiornamento quantità scaffale
+ * - Usato da InventoryRepository per API manager
+ *
+ * PATTERN MVVM:
+ * - DTO (Data Transfer Object): comunicazione API
+ * - @SerializedName: mapping JSON
+ * - Immutabile: data class con val
+ * - Non persistito in Room: solo rete
+ */
 package it.unito.smartshopmobile.data.entity
+
 
 import com.google.gson.annotations.SerializedName
 

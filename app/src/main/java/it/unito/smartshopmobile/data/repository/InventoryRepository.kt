@@ -1,4 +1,21 @@
+/**
+ * InventoryRepository.kt
+ * 
+ * MVVM: Model Layer - Repository gestione inventario
+ * 
+ * FUNZIONAMENTO:
+ * - Trasferisce stock da magazzino a scaffali (manager)
+ * - Riconcilia arrivi merce da riordini
+ * - Solo API (no cache locale)
+ * 
+ * PATTERN MVVM:
+ * - Repository Pattern: astrazione API inventario
+ * - suspend fun: operazioni asincrone
+ * - Result<T>: gestione errori trasferimenti
+ * - API-only: modifiche immediate server
+ */
 package it.unito.smartshopmobile.data.repository
+
 
 import android.util.Log
 import it.unito.smartshopmobile.data.entity.StockTransferRequest

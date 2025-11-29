@@ -1,4 +1,22 @@
+/**
+ * Order.kt
+ *
+ * MVVM: Model Layer - Entity ordine cliente (Room + API)
+ *
+ * FUNZIONAMENTO:
+ * - Rappresenta ordine con stato, totale, metodo consegna
+ * - Relazione 1-N con OrderLine (righe ordine)
+ * - @Ignore righe: non persistito in table Order, caricato con @Relation
+ * - Cache locale per offline-first e picking dipendente
+ *
+ * PATTERN MVVM:
+ * - Entity: mapping database/API
+ * - @Entity: Room table definition
+ * - @SerializedName: mapping JSON API
+ * - @Relation: join con OrderLine
+ */
 package it.unito.smartshopmobile.data.entity
+
 
 import androidx.room.ColumnInfo
 import androidx.room.Embedded

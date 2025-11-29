@@ -1,3 +1,24 @@
+/**
+ * SmartShopDatabase.kt
+ * 
+ * MVVM: Model Layer - Database Room (SQLite)
+ * 
+ * FUNZIONAMENTO:
+ * - Database principale dell'app (Room)
+ * - Singleton pattern: unica istanza per tutta l'app
+ * - Definisce Entity (@Database) e fornisce DAO (factory methods)
+ * - TypeConverters per tipi complessi (List, Date, ecc.)
+ * 
+ * PATTERN MVVM:
+ * - Database abstraction: Room sopra SQLite
+ * - Singleton: thread-safe con synchronized
+ * - Factory methods: categoryDao(), productDao(), ecc.
+ * - Migration strategy: versione 13 (fallbackToDestructiveMigration per dev)
+ * 
+ * NOTE:
+ * - fallbackToDestructiveMigration: cancella DB se schema cambia (solo dev!)
+ * - In produzione: definire Migration per preservare dati utente
+ */
 package it.unito.smartshopmobile.data.database
 
 import android.content.Context

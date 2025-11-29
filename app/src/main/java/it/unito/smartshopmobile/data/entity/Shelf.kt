@@ -1,4 +1,22 @@
+/**
+ * Shelf.kt
+ *
+ * MVVM: Model Layer - Entity scaffale supermercato (Room + API)
+ *
+ * FUNZIONAMENTO:
+ * - Rappresenta scaffale fisico del negozio
+ * - Usato per mappa interattiva (picking dipendente)
+ * - Mapping poligono mappa → scaffale (id corrisponde)
+ * - Relazione con Product per localizzazione
+ *
+ * PATTERN MVVM:
+ * - Entity: mapping database/API
+ * - @Entity: Room table
+ * - @SerializedName: mapping JSON
+ * - Immutabile: data class
+ */
 package it.unito.smartshopmobile.data.entity
+
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity

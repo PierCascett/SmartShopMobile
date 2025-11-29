@@ -1,4 +1,21 @@
+/**
+ * ShelfDao.kt
+ * 
+ * MVVM: Model Layer - DAO per scaffali (Room)
+ * 
+ * FUNZIONAMENTO:
+ * - Query scaffali ordinati per ID
+ * - Espone Flow per mappa interattiva (picking dipendente)
+ * - Sincronizzazione con API: insert/delete batch
+ * 
+ * PATTERN MVVM:
+ * - DAO Pattern: accesso database scaffali
+ * - Flow<List<Shelf>>: stream reattivo per UI mappa
+ * - suspend fun: insert/delete asincrone
+ * - OnConflictStrategy.REPLACE: sync da API
+ */
 package it.unito.smartshopmobile.data.dao
+
 
 import androidx.room.Dao
 import androidx.room.Insert

@@ -1,3 +1,25 @@
+/**
+ * SessionDataStore.kt
+ *
+ * MVVM: Model Layer - Persistenza sessione utente (DataStore)
+ *
+ * FUNZIONAMENTO:
+ * - Salva/carica utente loggato in DataStore Preferences
+ * - Espone Flow<User?> per osservare sessione reattivamente
+ * - Serializzazione JSON con Gson
+ * - Alternativa moderna a SharedPreferences
+ *
+ * PATTERN MVVM:
+ * - Data persistence: mantiene stato tra restart app
+ * - Flow: stream reattivo, UI si aggiorna automaticamente
+ * - suspend fun: operazioni asincrone (Coroutines)
+ * - Usato da ViewModel per persistenza sessione
+ *
+ * USO TIPICO:
+ * - Login: sessionDataStore.saveUser(user)
+ * - Osserva: sessionDataStore.userFlow.collect { user -> ... }
+ * - Logout: sessionDataStore.clear()
+ */
 package it.unito.smartshopmobile.data.datastore
 
 import android.content.Context
@@ -35,4 +57,5 @@ class SessionDataStore(private val context: Context) {
         }
     }
 }
+
 

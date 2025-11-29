@@ -1,4 +1,22 @@
+/**
+ * Category.kt
+ *
+ * MVVM: Model Layer - Entity categoria prodotti (Room + API)
+ *
+ * FUNZIONAMENTO:
+ * - Rappresenta categoria con gerarchia (parent/subcategories)
+ * - parentId/parentName: riferimento a sovracategoria
+ * - prodottiTotali: contatore per UI
+ * - Usata per filtri e navigazione catalogo
+ *
+ * PATTERN MVVM:
+ * - Entity: mapping database/API
+ * - @Entity: Room table definition
+ * - Hierarchy: self-referencing con parentId
+ * - Immutabile: data class con val
+ */
 package it.unito.smartshopmobile.data.entity
+
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity

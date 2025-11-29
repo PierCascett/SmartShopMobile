@@ -1,4 +1,22 @@
+/**
+ * Converters.kt
+ *
+ * MVVM: Model Layer - TypeConverters per Room
+ *
+ * FUNZIONAMENTO:
+ * - Converte tipi complessi per persistenza Room
+ * - List<String> ↔ JSON string
+ * - Usato da Room per serializzare campi non-primitivi
+ * - Gson per serializzazione/deserializzazione
+ *
+ * PATTERN MVVM:
+ * - TypeConverter: Room persistenza tipi complessi
+ * - @TypeConverter: annotazione Room
+ * - Gson: JSON serialization
+ * - Error handling: ritorna null se parsing fallisce
+ */
 package it.unito.smartshopmobile.data.database
+
 
 import androidx.room.TypeConverter
 import com.google.gson.Gson

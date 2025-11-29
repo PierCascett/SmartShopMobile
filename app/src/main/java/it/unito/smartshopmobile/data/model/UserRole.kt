@@ -1,18 +1,24 @@
 /**
  * UserRole.kt
- *
- * RUOLO MVVM: Model Layer (Domain Model)
- * - Definisce i ruoli utente dell'applicazione
- * - Utilizzato per determinare le funzionalità accessibili
- * - Usato da LoginViewModel per routing post-login
- *
- * RESPONSABILITÀ:
- * - Enum con tutti i ruoli possibili (CUSTOMER, EMPLOYEE, MANAGER)
- * - Ogni ruolo ha title e description per la UI
- *
- * PATTERN: Value Object (immutabile)
- * - Rappresenta un concetto di business (ruolo utente)
- * - Usato per navigazione e controllo accessi
+ * 
+ * MVVM: Domain Model Layer - Value Object per ruoli utente
+ * 
+ * FUNZIONAMENTO:
+ * - Enum type-safe per ruoli applicazione (Customer, Employee, Manager)
+ * - Helper fromDbRole() per conversione String database → enum
+ * - Self-documenting con title e description per UI
+ * - Usato per routing navigazione e controllo accessi
+ * 
+ * PATTERN MVVM:
+ * - Domain Model: concetto business separato da Entity database
+ * - Value Object: immutabile, equality by value
+ * - Type-safety: errori compile-time invece di runtime
+ * - Clean Architecture: separazione domain logic da persistenza
+ * 
+ * ESEMPIO:
+ * - Database: User.ruolo = "responsabile" (String)
+ * - Domain: UserRole.MANAGER (enum type-safe)
+ * - UI: UserRole.MANAGER.title = "Responsabile"
  */
 package it.unito.smartshopmobile.data.model
 

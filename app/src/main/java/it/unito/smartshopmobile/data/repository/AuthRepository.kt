@@ -1,3 +1,20 @@
+/**
+ * AuthRepository.kt
+ *
+ * MVVM: Model Layer - Repository per autenticazione
+ *
+ * FUNZIONAMENTO:
+ * - Gestisce login e registrazione tramite API REST
+ * - Coordina chiamate di rete (Retrofit)
+ * - Restituisce Result<User> per gestione errori type-safe
+ * - Astrae la sorgente dati dal ViewModel
+ *
+ * PATTERN MVVM:
+ * - Repository Pattern: astrazione tra ViewModel e sorgente dati
+ * - suspend fun: integrazione con Coroutines
+ * - Result<T>: gestione errori funzionale
+ * - Single Responsibility: solo logica autenticazione
+ */
 package it.unito.smartshopmobile.data.repository
 
 import android.util.Log

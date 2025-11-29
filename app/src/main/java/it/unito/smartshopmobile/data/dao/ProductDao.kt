@@ -1,3 +1,20 @@
+/**
+ * ProductDao.kt
+ *
+ * MVVM: Model Layer - Data Access Object (Room)
+ *
+ * FUNZIONAMENTO:
+ * - Interface per accesso al database Room (SQL abstraito)
+ * - Query SQL compilate a compile-time (type-safe)
+ * - Espone Flow per reattività (auto-aggiornamento UI)
+ * - CRUD operations: insert, query, delete
+ *
+ * PATTERN MVVM:
+ * - DAO Pattern: astrazione accesso database
+ * - Flow<List<T>>: stream reattivo (si aggiorna automaticamente)
+ * - suspend fun: operazioni write asincrone
+ * - Room annotations (@Query, @Insert, @Delete)
+ */
 package it.unito.smartshopmobile.data.dao
 
 import androidx.room.Dao
@@ -29,3 +46,4 @@ interface ProductDao {
     @Query("DELETE FROM prodotti_catalogo")
     suspend fun deleteAll()
 }
+

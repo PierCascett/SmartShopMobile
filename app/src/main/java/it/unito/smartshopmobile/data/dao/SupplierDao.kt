@@ -1,3 +1,19 @@
+/**
+ * SupplierDao.kt
+ *
+ * MVVM: Model Layer - DAO per fornitori (Room)
+ *
+ * FUNZIONAMENTO:
+ * - Query fornitori ordinati alfabeticamente
+ * - Cache locale elenco fornitori per riordini
+ * - Sync da API: insert/clear batch
+ *
+ * PATTERN MVVM:
+ * - DAO Pattern: accesso database fornitori
+ * - Flow<List<Supplier>>: stream reattivo
+ * - suspend fun: operazioni asincrone
+ * - Cache pattern: fornitori_cache table
+ */
 package it.unito.smartshopmobile.data.dao
 
 import androidx.room.Dao

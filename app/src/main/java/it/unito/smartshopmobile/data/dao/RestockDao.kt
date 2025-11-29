@@ -1,4 +1,21 @@
+/**
+ * RestockDao.kt
+ *
+ * MVVM: Model Layer - DAO per riordini magazzino (Room)
+ *
+ * FUNZIONAMENTO:
+ * - Query riordini ordinati per data (DESC)
+ * - Cache locale per storico riordini manager
+ * - Sincronizzazione batch con API fornitori
+ *
+ * PATTERN MVVM:
+ * - DAO Pattern: accesso database riordini
+ * - Flow<List<Restock>>: stream reattivo per UI manager
+ * - suspend fun: insert/delete asincrone
+ * - Cache pattern: riordini_cache table
+ */
 package it.unito.smartshopmobile.data.dao
+
 
 import androidx.room.Dao
 import androidx.room.Insert

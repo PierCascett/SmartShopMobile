@@ -1,4 +1,23 @@
+/**
+ * SmartShopApiService.kt
+ *
+ * MVVM: Model Layer - Interface API REST (Retrofit)
+ *
+ * FUNZIONAMENTO:
+ * - Definisce endpoint API backend Node.js
+ * - Annotazioni Retrofit: @GET, @POST, @PATCH, @Multipart
+ * - suspend fun: integrazione Coroutines
+ * - Response<T>: wrapper per gestione errori HTTP
+ * - Endpoint: auth, products, orders, restocks, inventory, users
+ *
+ * PATTERN MVVM:
+ * - API interface: contract REST API
+ * - Retrofit annotations: mapping endpoint
+ * - suspend fun: chiamate asincrone
+ * - Type-safe: errori compile-time
+ */
 package it.unito.smartshopmobile.data.remote
+
 
 import it.unito.smartshopmobile.data.entity.Category
 import it.unito.smartshopmobile.data.entity.Product
