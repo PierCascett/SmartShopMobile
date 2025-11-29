@@ -161,12 +161,6 @@ router.post('/', async (req, res) => {
                 }
             }
 
-            await client.query(
-                `UPDATE magazzino
-                 SET quantita_disponibile = GREATEST(quantita_disponibile - $2, 0)
-                 WHERE id_prodotto = $1`,
-                [idProdotto, quantita]
-            );
         }
 
         const orderRes = await client.query(

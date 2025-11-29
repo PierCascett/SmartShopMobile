@@ -50,7 +50,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Home
@@ -58,6 +62,8 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
@@ -67,16 +73,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.foundation.shape.CircleShape
+import android.net.Uri
 import it.unito.smartshopmobile.data.datastore.AccountPreferences
 import it.unito.smartshopmobile.data.model.UserRole
 import it.unito.smartshopmobile.data.entity.User
@@ -98,6 +107,8 @@ import it.unito.smartshopmobile.viewModel.LoginViewModel
 import it.unito.smartshopmobile.ui.components.NavBarDivider
 import it.unito.smartshopmobile.ui.screens.AppFavoritesOverlay
 import kotlinx.coroutines.launch
+import coil.compose.AsyncImage
+import it.unito.smartshopmobile.data.remote.RetrofitInstance
 private enum class CustomerTab { SHOP, ORDERS, ACCOUNT }
 
 class MainActivity : ComponentActivity() {
@@ -116,14 +127,21 @@ class MainActivity : ComponentActivity() {
                 var showCart by rememberSaveable { mutableStateOf(false) }
                 var showFavorites by rememberSaveable { mutableStateOf(false) }
                 var customerTab by rememberSaveable { mutableStateOf(CustomerTab.SHOP) }
+                var employeeProfileTrigger by rememberSaveable { mutableStateOf(0) }
+                var managerProfileTrigger by rememberSaveable { mutableStateOf(0) }
                 val catalogState by catalogViewModel.uiState.collectAsState()
                 val sessionUser by loginViewModel.sessionUser.collectAsState(initial = null)
                 val accountPrefs by accountPreferencesViewModel.preferences.collectAsState()
                 var sessionRestored by rememberSaveable { mutableStateOf(false) }
 
                 Box(modifier = Modifier.fillMaxSize()) {
-                    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                        val contentModifier = Modifier.padding(innerPadding)
+                    Scaffold(
+                        modifier = Modifier.fillMaxSize(),
+                        contentWindowInsets = WindowInsets(0.dp)
+                    ) { innerPadding ->
+                        val contentModifier = Modifier
+                            .padding(innerPadding)
+                            .statusBarsPadding()
                         if (loggedUser == null) {
                             if (!sessionRestored && sessionUser != null) {
                                 sessionRestored = true
@@ -140,36 +158,47 @@ class MainActivity : ComponentActivity() {
                                 modifier = contentModifier,
                                 onLoginSuccess = { user, role ->
                                     catalogViewModel.setLoggedUser(user)
-                                    loggedUser = user.email
-                                    selectedRole = role
-                                    if (role == UserRole.CUSTOMER) {
-                                        catalogViewModel.startSyncIfNeeded()
-                                    }
-                                    Toast.makeText(this@MainActivity, "Accesso: ${user.email}", Toast.LENGTH_SHORT).show()
-                                }
-                            )
-                        } else {
-                            ContentWithSessionBar(
-                                modifier = contentModifier,
-                                email = loggedUser ?: "",
-                                role = selectedRole,
-                                onLogout = {
-                                    loggedUser = null
-                                    selectedRole = null
-                                    showCart = false
-                                    showFavorites = false
-                                    customerTab = CustomerTab.SHOP
-                                    catalogViewModel.clearSession()
-                                    loginViewModel.clearSession()
-                                },
-                                catalogState = catalogState,
-                                catalogViewModel = catalogViewModel,
-                                onMenuClick = { showMenu = true },
-                                onFavoritesClick = { showFavorites = true },
+                            loggedUser = user.email
+                            selectedRole = role
+                            if (role == UserRole.CUSTOMER) {
+                                catalogViewModel.startSyncIfNeeded()
+                            }
+                            Toast.makeText(this@MainActivity, "Accesso: ${user.email}", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                } else {
+            ContentWithSessionBar(
+                modifier = contentModifier,
+                email = loggedUser ?: "",
+                avatarUrl = catalogState.loggedUser?.avatarUrl,
+                role = selectedRole,
+                onLogout = {
+                    loggedUser = null
+                    selectedRole = null
+                    showCart = false
+                    showFavorites = false
+                    customerTab = CustomerTab.SHOP
+                    catalogViewModel.clearSession()
+                    loginViewModel.clearSession()
+                        },
+                        onOpenAccount = {
+                            when (selectedRole) {
+                                UserRole.CUSTOMER -> customerTab = CustomerTab.ACCOUNT
+                                UserRole.EMPLOYEE -> employeeProfileTrigger++
+                                UserRole.MANAGER -> managerProfileTrigger++
+                                null -> Unit
+                            }
+                        },
+                catalogState = catalogState,
+                catalogViewModel = catalogViewModel,
+                employeeProfileTrigger = employeeProfileTrigger,
+                managerProfileTrigger = managerProfileTrigger,
+                onMenuClick = { showMenu = true },
+                onFavoritesClick = { showFavorites = true },
                                 onCartClick = { showCart = true },
                                 accountPrefs = accountPrefs,
                                 onSaveProfile = { nome: String, cognome: String, email: String, indirizzo: String, telefono: String ->
-                                    val result = catalogViewModel.updateCustomerProfile(nome, cognome, email, telefono.ifBlank { null })
+                                    val result = catalogViewModel.updateUserProfile(nome, cognome, email, telefono.ifBlank { null })
                                     result.onSuccess {
                                         accountPreferencesViewModel.updateProfile(nome, cognome, indirizzo, telefono)
                                     }
@@ -240,10 +269,14 @@ class MainActivity : ComponentActivity() {
 private fun ContentWithSessionBar(
     modifier: Modifier,
     email: String,
+    avatarUrl: String?,
     role: UserRole?,
     onLogout: () -> Unit,
+    onOpenAccount: () -> Unit,
     catalogState: CatalogUiState,
     catalogViewModel: CatalogViewModel,
+    employeeProfileTrigger: Int,
+    managerProfileTrigger: Int,
     onMenuClick: () -> Unit,
     onFavoritesClick: () -> Unit,
     onCartClick: () -> Unit,
@@ -252,18 +285,19 @@ private fun ContentWithSessionBar(
     customerTab: CustomerTab,
     onCustomerTabChange: (CustomerTab) -> Unit
 ) {
-    val context = LocalContext.current
+    val resolvedEmail = catalogState.loggedUser?.email ?: email
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp)
     ) {
         SessionBar(
-             email = email,
-             onLogout = onLogout
+             email = resolvedEmail,
+             avatarUrl = avatarUrl,
+             onLogout = onLogout,
+             onOpenAccount = onOpenAccount
          )
-        Spacer(modifier = Modifier.height(4.dp))
         Box(modifier = Modifier.fillMaxSize()) {
             when (role) {
                 UserRole.CUSTOMER -> CustomerHome(
@@ -276,17 +310,30 @@ private fun ContentWithSessionBar(
                     onFavoritesClick = onFavoritesClick,
                     onCartClick = onCartClick,
                     onSaveProfile = onSaveProfile
-                ).also {
-                    if (catalogState.showToast && catalogState.toastMessage != null) {
-                        LaunchedEffect(catalogState.toastMessage) {
-                            Toast.makeText(context, catalogState.toastMessage, Toast.LENGTH_SHORT).show()
-                            catalogViewModel.consumeToast()
-                        }
-                    }
-                }
+                )
 
-                UserRole.EMPLOYEE -> EmployeeScreen(modifier = Modifier.fillMaxSize())
-                UserRole.MANAGER -> ManagerScreen(modifier = Modifier.fillMaxSize())
+                UserRole.EMPLOYEE -> EmployeeScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    accountPrefs = accountPrefs,
+                    loggedUserEmail = catalogState.loggedUser?.email.orEmpty(),
+                    avatarUrl = catalogState.loggedUser?.avatarUrl,
+                    openProfileTrigger = employeeProfileTrigger,
+                    onSaveProfile = { nome, cognome, emailInput, indirizzo, telefono ->
+                        catalogViewModel.updateUserProfile(nome, cognome, emailInput, telefono.ifBlank { null })
+                    },
+                    onUploadPhoto = { uri -> catalogViewModel.uploadProfilePhoto(uri) }
+                )
+                UserRole.MANAGER -> ManagerScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    accountPrefs = accountPrefs,
+                    loggedUserEmail = catalogState.loggedUser?.email.orEmpty(),
+                    avatarUrl = catalogState.loggedUser?.avatarUrl,
+                    openProfileTrigger = managerProfileTrigger,
+                    onSaveProfile = { nome, cognome, emailInput, indirizzo, telefono ->
+                        catalogViewModel.updateUserProfile(nome, cognome, emailInput, telefono.ifBlank { null })
+                    },
+                    onUploadPhoto = { uri -> catalogViewModel.uploadProfilePhoto(uri) }
+                )
                 null -> Unit
             }
         }
@@ -307,8 +354,10 @@ private fun CustomerHome(
 ) {
     val scope = rememberCoroutineScope()
     var savingProfile by rememberSaveable { mutableStateOf(false) }
+    var uploadingPhoto by rememberSaveable { mutableStateOf(false) }
     var profileError by rememberSaveable { mutableStateOf<String?>(null) }
     var profileSuccess by rememberSaveable { mutableStateOf<String?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(selectedTab) {
         if (selectedTab == CustomerTab.ORDERS) {
             catalogViewModel.refreshOrderHistory()
@@ -328,15 +377,37 @@ private fun CustomerHome(
         )
     }
 
+    LaunchedEffect(profileError) {
+        profileError?.let {
+            snackbarHostState.showSnackbar(it)
+            profileError = null
+        }
+    }
+    LaunchedEffect(profileSuccess) {
+        profileSuccess?.let {
+            snackbarHostState.showSnackbar(it)
+            profileSuccess = null
+        }
+    }
+    LaunchedEffect(state.toastMessage, state.showToast) {
+        if (state.showToast && state.toastMessage != null) {
+            snackbarHostState.showSnackbar(state.toastMessage!!)
+            catalogViewModel.consumeToast()
+        }
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
             Column(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 NavBarDivider()
                 NavigationBar(
-                     modifier = Modifier.fillMaxWidth(),
+                     modifier = Modifier
+                         .fillMaxWidth()
+                         .navigationBarsPadding(),
                      containerColor = MaterialTheme.colorScheme.surface,
                      contentColor = MaterialTheme.colorScheme.onSurface,
                      windowInsets = WindowInsets(0.dp)
@@ -403,6 +474,7 @@ private fun CustomerHome(
                 onRefresh = { catalogViewModel.refreshOrderHistory() },
                 onScanQr = { catalogViewModel.simulateLockerPickup(it) },
                 onDismissMessage = catalogViewModel::clearPickupMessage,
+                snackbarHostState = snackbarHostState,
                 modifier = Modifier
                     .padding(contentPadding)
                     .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -411,9 +483,9 @@ private fun CustomerHome(
             CustomerTab.ACCOUNT -> AccountSettingsScreen(
                 preferences = resolvedPrefs,
                 email = state.loggedUser?.email.orEmpty(),
+                avatarUrl = state.loggedUser?.avatarUrl,
                 isSaving = savingProfile,
-                error = profileError,
-                success = profileSuccess,
+                isUploadingPhoto = uploadingPhoto,
                 onSaveProfile = { nome, cognome, emailInput, indirizzo, telefono ->
                     savingProfile = true
                     profileError = null
@@ -429,6 +501,20 @@ private fun CustomerHome(
                         savingProfile = false
                     }
                 },
+                onPickNewPhoto = { uri ->
+                    uploadingPhoto = true
+                    profileError = null
+                    profileSuccess = null
+                    scope.launch {
+                        val uploadResult = catalogViewModel.uploadProfilePhoto(uri)
+                        uploadResult.onSuccess {
+                            profileSuccess = "Foto profilo aggiornata"
+                        }.onFailure { error ->
+                            profileError = error.message
+                        }
+                        uploadingPhoto = false
+                    }
+                },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(contentPadding)
@@ -440,16 +526,36 @@ private fun CustomerHome(
 @Composable
 private fun SessionBar(
     email: String,
+    avatarUrl: String?,
     onLogout: () -> Unit,
+    onOpenAccount: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val avatarModel = remember(avatarUrl) {
+        avatarUrl?.let { url ->
+            RetrofitInstance.buildAssetUrl(url)?.let { built -> "$built?ts=${System.currentTimeMillis()}" }
+        }
+    }
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (!avatarModel.isNullOrBlank()) {
+            AsyncImage(
+                model = avatarModel,
+                contentDescription = "Avatar",
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .clickable { onOpenAccount() },
+                alignment = Alignment.Center
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+        }
         Text(
             text = email,
-            style = MaterialTheme.typography.bodyLarge
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.clickable { onOpenAccount() }
         )
         Spacer(modifier = Modifier.weight(1f))
         TextButton(onClick = onLogout) {

@@ -14,6 +14,7 @@ import it.unito.smartshopmobile.data.entity.Supplier
 import it.unito.smartshopmobile.data.entity.StockTransferRequest
 import it.unito.smartshopmobile.data.entity.StockTransferResult
 import it.unito.smartshopmobile.data.entity.UpdateUserRequest
+import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Path
@@ -21,6 +22,8 @@ import retrofit2.http.Query
 import retrofit2.http.Body
 import retrofit2.http.POST
 import retrofit2.http.PATCH
+import retrofit2.http.Multipart
+import retrofit2.http.Part
 
 interface SmartShopApiService {
 
@@ -83,4 +86,11 @@ interface SmartShopApiService {
         @Path("userId") userId: Int,
         @Body request: UpdateUserRequest
     ): Response<Map<String, User>>
+
+    @Multipart
+    @POST("auth/profile/{userId}/photo")
+    suspend fun uploadProfilePhoto(
+        @Path("userId") userId: Int,
+        @Part photo: MultipartBody.Part
+    ): Response<Map<String, String>>
 }

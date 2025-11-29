@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -29,6 +28,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -36,6 +37,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.AssistChip
@@ -61,6 +63,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -85,24 +88,68 @@ import androidx.compose.ui.unit.LayoutDirection
 import it.unito.smartshopmobile.viewModel.EmployeeUiState
 import it.unito.smartshopmobile.ui.components.NavBarDivider
 import kotlinx.coroutines.launch
+import it.unito.smartshopmobile.data.datastore.AccountPreferences
+import it.unito.smartshopmobile.data.entity.User
+import android.net.Uri
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.remember
 
 private enum class EmployeeTab(val label: String, val icon: ImageVector) {
     PICKING("Mappa", Icons.Filled.Map),
     ORDERS("Storico", Icons.AutoMirrored.Filled.List),
-    CLAIM("Assegna", Icons.AutoMirrored.Filled.Assignment)
+    CLAIM("Assegna", Icons.AutoMirrored.Filled.Assignment),
+    PROFILE("Profilo", Icons.Filled.Settings)
 }
 
 @Composable
-fun EmployeeScreen(modifier: Modifier = Modifier, viewModel: EmployeeViewModel = viewModel()) {
+fun EmployeeScreen(
+    modifier: Modifier = Modifier,
+    accountPrefs: AccountPreferences = AccountPreferences(),
+    loggedUserEmail: String = "",
+    avatarUrl: String? = null,
+    openProfileTrigger: Int = 0,
+    onSaveProfile: suspend (String, String, String, String, String) -> Result<User> = { _, _, _, _, _ -> Result.failure(Exception("Non configurato")) },
+    onUploadPhoto: suspend (Uri) -> Result<String> = { Result.failure(Exception("Non configurato")) },
+    viewModel: EmployeeViewModel = viewModel()
+) {
     val state by viewModel.uiState.collectAsState()
+    val scope = rememberCoroutineScope()
+    var savingProfile by rememberSaveable { mutableStateOf(false) }
+    var uploadingPhoto by rememberSaveable { mutableStateOf(false) }
+    var profileError by rememberSaveable { mutableStateOf<String?>(null) }
+    var profileSuccess by rememberSaveable { mutableStateOf<String?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
     val backgroundImage = rememberAssetImage("map/supermarket_resized.png")
     val aislesError = state.aislesError
     var selectedTab by rememberSaveable { mutableStateOf(EmployeeTab.PICKING) }
+    LaunchedEffect(openProfileTrigger) {
+        if (openProfileTrigger > 0) {
+            selectedTab = EmployeeTab.PROFILE
+        }
+    }
+    LaunchedEffect(profileError) {
+        profileError?.let {
+            snackbarHostState.showSnackbar(it)
+            profileError = null
+        }
+    }
+    LaunchedEffect(profileSuccess) {
+        profileSuccess?.let {
+            snackbarHostState.showSnackbar(it)
+            profileSuccess = null
+        }
+    }
+    val resolvedPrefs = accountPrefs.copy(
+        nome = accountPrefs.nome.ifBlank { state.activeOrder?.nomeCliente.orEmpty() },
+        cognome = accountPrefs.cognome.ifBlank { state.activeOrder?.cognomeCliente.orEmpty() }
+    )
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.fillMaxWidth().navigationBarsPadding()) {
                 NavBarDivider()
                 NavigationBar(
                     modifier = Modifier.fillMaxWidth(),
@@ -125,7 +172,7 @@ fun EmployeeScreen(modifier: Modifier = Modifier, viewModel: EmployeeViewModel =
         val contentModifier = Modifier.padding(
             start = innerPadding.calculateLeftPadding(LayoutDirection.Ltr) + 16.dp,
             end = innerPadding.calculateRightPadding(LayoutDirection.Ltr) + 16.dp,
-            top = innerPadding.calculateTopPadding() + 8.dp,
+            top = innerPadding.calculateTopPadding(),
             bottom = innerPadding.calculateBottomPadding()
         )
         when (selectedTab) {
@@ -162,6 +209,36 @@ fun EmployeeScreen(modifier: Modifier = Modifier, viewModel: EmployeeViewModel =
                 onTakeOrder = viewModel::startOrder,
                 onSelectTab = { selectedTab = EmployeeTab.PICKING },
                 onRefreshOrders = viewModel::refreshOrders,
+                modifier = contentModifier
+            )
+            EmployeeTab.PROFILE -> AccountSettingsScreen(
+                preferences = resolvedPrefs,
+                email = loggedUserEmail,
+                avatarUrl = avatarUrl,
+                isSaving = savingProfile,
+                isUploadingPhoto = uploadingPhoto,
+                onSaveProfile = { nome, cognome, email, indirizzo, telefono ->
+                    savingProfile = true
+                    profileError = null
+                    profileSuccess = null
+                    scope.launch {
+                        val result = onSaveProfile(nome, cognome, email, indirizzo, telefono)
+                        result.onSuccess { profileSuccess = "Dati aggiornati" }
+                            .onFailure { profileError = it.message }
+                        savingProfile = false
+                    }
+                },
+                onPickNewPhoto = { uri ->
+                    uploadingPhoto = true
+                    profileError = null
+                    profileSuccess = null
+                    scope.launch {
+                        val uploadResult = onUploadPhoto(uri)
+                        uploadResult.onSuccess { profileSuccess = "Foto aggiornata" }
+                            .onFailure { profileError = it.message }
+                        uploadingPhoto = false
+                    }
+                },
                 modifier = contentModifier
             )
         }
@@ -210,7 +287,12 @@ private fun PickingTab(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(20.dp)
         ) {
-            Box(modifier = Modifier.fillMaxWidth().height(280.dp).padding(8.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(280.dp)
+                    .padding(8.dp)
+            ) {
                 StoreMapCanvas(
                     selectedAisleId = state.selectedAisleId,
                     onAisleClick = handleSelectAisle,
@@ -323,7 +405,7 @@ private fun OrdersTab(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp),
+                .padding(horizontal = 4.dp, vertical = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text("Da gestire: $activeCount", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -364,7 +446,8 @@ private fun OrdersTab(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 6.dp),
+                .padding(horizontal = 4.dp, vertical = 6.dp)
+                .padding(bottom = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -600,6 +683,7 @@ private fun OrderPickingPanel(
     onReleaseActive: (() -> Unit)?
 ) {
     val statusLabel = orderStatusLabel(order.stato, order.metodoConsegna)
+    val statusColor = if (orderIsFinal(order.stato)) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
     val allPicked = order.righe.isNotEmpty() && order.righe.all { pickedLines.contains(it.idRiga) }
     val isLocker = order.metodoConsegna.equals("LOCKER", true)
     val readyInLocker = isLocker && order.stato.equals("SPEDITO", true)
@@ -620,7 +704,15 @@ private fun OrderPickingPanel(
                     Text("Ordine #${order.idOrdine}", fontWeight = FontWeight.SemiBold)
                     Text("Cliente: ${order.nomeCliente} ${order.cognomeCliente}", style = MaterialTheme.typography.bodySmall)
                 }
-                Text(statusLabel, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
+                Text(
+                    statusLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = statusColor,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(statusColor.copy(alpha = 0.12f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
             }
             Text("Totale: ${formatEuro(order.totale)} | Articoli: ${order.righe.sumOf { it.quantita }}")
             Text("Metodo: ${order.metodoConsegna}", style = MaterialTheme.typography.bodySmall)
@@ -793,6 +885,7 @@ private fun OrderClusterCard(orders: List<Order>, expandedOrderId: Int?, updatin
 @Composable
 private fun OrderEntry(order: Order, isExpanded: Boolean, updatingOrderId: Int?, showActions: Boolean, actionError: String?, onOrderClick: () -> Unit, onMarkShipped: () -> Unit, onMarkCompleted: () -> Unit, onMarkCanceled: () -> Unit) {
     val statusLabel = orderStatusLabel(order.stato, order.metodoConsegna)
+    val statusColor = if (orderIsFinal(order.stato)) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
     val deliveryLabel = if (order.metodoConsegna.equals("DOMICILIO", ignoreCase = true)) "Spesa a domicilio" else "Ritiro nel locker"
     val isLocker = order.metodoConsegna.equals("LOCKER", ignoreCase = true)
     val readyInLocker = isLocker && order.stato.equals("SPEDITO", true)
@@ -804,7 +897,15 @@ private fun OrderEntry(order: Order, isExpanded: Boolean, updatingOrderId: Int?,
                 Text("Ordine #${order.idOrdine}", fontWeight = FontWeight.SemiBold)
                 Text("Cliente: ${order.nomeCliente} ${order.cognomeCliente}", style = MaterialTheme.typography.bodySmall)
             }
-            Text(statusLabel, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
+            Text(
+                statusLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = statusColor,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(statusColor.copy(alpha = 0.12f))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            )
         }
 
         Text("Totale: ${formatEuro(order.totale)} | Articoli: ${order.righe.sumOf { it.quantita }}")
@@ -860,6 +961,7 @@ private fun SimpleOrderCard(
     val isLocker = order.metodoConsegna.equals("LOCKER", true)
     val readyInLocker = isLocker && order.stato.equals("SPEDITO", true)
     val completionLabel = if (isLocker) "Pronto al ritiro" else "Segna consegnato"
+    val statusColor = if (orderIsFinal(order.stato)) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -877,7 +979,15 @@ private fun SimpleOrderCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("Ordine #${order.idOrdine}", fontWeight = FontWeight.SemiBold)
-                Text(statusLabel, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
+                Text(
+                    statusLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = statusColor,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(statusColor.copy(alpha = 0.12f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
             }
             Text("${order.nomeCliente} ${order.cognomeCliente}", style = MaterialTheme.typography.bodySmall)
             Text("Totale: ${formatEuro(order.totale)} • Articoli: ${order.righe.sumOf { it.quantita }} • $deliveryLabel", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

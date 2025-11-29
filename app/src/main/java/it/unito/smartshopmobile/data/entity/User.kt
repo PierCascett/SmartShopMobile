@@ -16,6 +16,8 @@ data class User(
     val email: String,
     @SerializedName("telefono")
     val telefono: String? = null,
+    @SerializedName("avatar_url")
+    val avatarUrl: String? = null,
     @SerializedName("ruolo")
     val ruolo: String
 )

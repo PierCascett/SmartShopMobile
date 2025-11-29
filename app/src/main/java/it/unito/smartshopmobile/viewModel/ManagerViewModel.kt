@@ -52,6 +52,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -134,7 +135,7 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
             }.collect { (categories, products) ->
                 cachedProducts = products
                 _uiState.update { state ->
-                    val selectedCategory = state.selectedCategoryId ?: categories.firstOrNull()?.id
+                    val selectedCategory = state.selectedCategoryId // default: nessuna categoria -> tutte
                     val filtered = filterProductsByCategory(selectedCategory)
                     val selectedProduct = state.selectedProductId?.takeIf { id ->
                         filtered.any { it.id == id }
@@ -268,6 +269,10 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
                         )
                     }
                     refreshRestocks()
+                    viewModelScope.launch {
+                        delay(35_000)
+                        refreshRestocks()
+                    }
                 }
                 .onFailure { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.message) }
@@ -283,6 +288,16 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
 
         if (productId.isNullOrBlank() || shelfId == null || qty == null || qty <= 0) {
             _uiState.update { it.copy(transferError = "Seleziona prodotto, scaffale e quantita' valide") }
+            return
+        }
+        val product = state.availableProducts.firstOrNull { it.id == productId }
+        val availableWarehouse = product?.warehouseQuantity ?: 0
+        if (availableWarehouse <= 0) {
+            _uiState.update { it.copy(transferError = "Magazzino vuoto per questo prodotto") }
+            return
+        }
+        if (qty > availableWarehouse) {
+            _uiState.update { it.copy(transferError = "Disponibili $availableWarehouse pezzi in magazzino") }
             return
         }
 
@@ -361,5 +376,13 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
     fun dismissProductDetail() {
         _uiState.update { it.copy(showProductDetail = null) }
     }
-} 
+
+    fun clearSuccessMessage() {
+        _uiState.update { it.copy(successMessage = null) }
+    }
+
+    fun clearTransferSuccess() {
+        _uiState.update { it.copy(transferSuccess = null) }
+    }
+}
 

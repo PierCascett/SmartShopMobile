@@ -1,5 +1,7 @@
 package it.unito.smartshopmobile.ui.screens
 
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -8,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,11 +21,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -38,6 +43,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
@@ -46,6 +53,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -55,6 +64,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import it.unito.smartshopmobile.ui.components.NavBarDivider
 import it.unito.smartshopmobile.viewModel.ManagerUiState
@@ -65,21 +75,26 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import it.unito.smartshopmobile.data.datastore.AccountPreferences
 import it.unito.smartshopmobile.data.entity.Category
+import it.unito.smartshopmobile.data.entity.User
+import java.util.Comparator
 import java.util.Locale
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import it.unito.smartshopmobile.ui.components.StoreMapCanvas
 import it.unito.smartshopmobile.ui.map.rememberAssetImage
+import kotlinx.coroutines.launch
 
 private enum class ManagerTab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    RESTOCK("Effettua riordine", Icons.AutoMirrored.Filled.Assignment),
+    RESTOCK("Riordine", Icons.AutoMirrored.Filled.Assignment),
     LIST("Storico", Icons.AutoMirrored.Filled.List),
-    TRANSFER("Trasferisci", Icons.Filled.Refresh)
+    TRANSFER("Trasferisci", Icons.Filled.Refresh),
+    PROFILE("Profilo", Icons.Filled.Settings)
 }
 
 private enum class RestockFilter { INBOUND, ARRIVED }
@@ -87,15 +102,60 @@ private enum class RestockFilter { INBOUND, ARRIVED }
 @Composable
 fun ManagerScreen(
     modifier: Modifier = Modifier,
+    accountPrefs: AccountPreferences = AccountPreferences(),
+    loggedUserEmail: String = "",
+    avatarUrl: String? = null,
+    openProfileTrigger: Int = 0,
+    onSaveProfile: suspend (String, String, String, String, String) -> Result<User> = { _, _, _, _, _ -> Result.failure(Exception("Non configurato")) },
+    onUploadPhoto: suspend (Uri) -> Result<String> = { Result.failure(Exception("Non configurato")) },
     viewModel: ManagerViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var savingProfile by rememberSaveable { mutableStateOf(false) }
+    var uploadingPhoto by rememberSaveable { mutableStateOf(false) }
+    var profileError by rememberSaveable { mutableStateOf<String?>(null) }
+    var profileSuccess by rememberSaveable { mutableStateOf<String?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(state.successMessage) {
+        state.successMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearSuccessMessage()
+        }
+    }
+
+    LaunchedEffect(state.transferSuccess) {
+        state.transferSuccess?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearTransferSuccess()
+        }
+    }
     var selectedTab by rememberSaveable { mutableStateOf(ManagerTab.RESTOCK) }
+    LaunchedEffect(openProfileTrigger) {
+        if (openProfileTrigger > 0) {
+            selectedTab = ManagerTab.PROFILE
+        }
+    }
+    LaunchedEffect(profileError) {
+        profileError?.let {
+            snackbarHostState.showSnackbar(it)
+            profileError = null
+        }
+    }
+    LaunchedEffect(profileSuccess) {
+        profileSuccess?.let {
+            snackbarHostState.showSnackbar(it)
+            profileSuccess = null
+        }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.fillMaxWidth().navigationBarsPadding()) {
                 NavBarDivider()
                 NavigationBar(
                     modifier = Modifier.fillMaxWidth(),
@@ -103,7 +163,7 @@ fun ManagerScreen(
                     contentColor = colorScheme.onSurface,
                     windowInsets = WindowInsets(0.dp)
                 ) {
-                    listOf(ManagerTab.RESTOCK, ManagerTab.LIST, ManagerTab.TRANSFER).forEach { tab ->
+                    ManagerTab.entries.forEach { tab ->
                         NavigationBarItem(
                             selected = tab == selectedTab,
                             onClick = { selectedTab = tab },
@@ -136,6 +196,7 @@ fun ManagerScreen(
                         onSupplierSelected = viewModel::onSupplierSelected,
                         onQuantityChange = viewModel::onQuantityChanged,
                         onShowProduct = { viewModel.showProductDetail(it) },
+                        onRefresh = viewModel::refreshAllData,
                         onSubmit = { viewModel.submitRestock() }
                     )
                 }
@@ -150,12 +211,13 @@ fun ManagerScreen(
                     TransferForm(
                         state = state,
                         onCategorySelected = viewModel::onCategorySelected,
-                        onProductSelected = viewModel::onProductSelected,
-                        onShelfSelected = viewModel::onShelfSelected,
-                        onQuantityChange = viewModel::onTransferQuantityChanged,
-                        onSubmit = viewModel::moveStockToShelf,
-                        onRefresh = viewModel::refreshAllData
-                    )
+                    onProductSelected = viewModel::onProductSelected,
+                    onShowProduct = { viewModel.showProductDetail(it) },
+                    onShelfSelected = viewModel::onShelfSelected,
+                    onQuantityChange = viewModel::onTransferQuantityChanged,
+                    onSubmit = viewModel::moveStockToShelf,
+                    onRefresh = viewModel::refreshAllData
+                )
                 }
             }
             ManagerTab.LIST -> RestockList(
@@ -166,6 +228,40 @@ fun ManagerScreen(
                     .fillMaxSize()
                     .then(basePadding)
             )
+            ManagerTab.PROFILE -> {
+                AccountSettingsScreen(
+                    preferences = accountPrefs,
+                    email = loggedUserEmail,
+                    avatarUrl = avatarUrl,
+                    isSaving = savingProfile,
+                    isUploadingPhoto = uploadingPhoto,
+                    onSaveProfile = { nome, cognome, email, indirizzo, telefono ->
+                        savingProfile = true
+                        profileError = null
+                        profileSuccess = null
+                        scope.launch {
+                            val result = onSaveProfile(nome, cognome, email, indirizzo, telefono)
+                            result.onSuccess { profileSuccess = "Dati aggiornati" }
+                                .onFailure { profileError = it.message }
+                            savingProfile = false
+                        }
+                    },
+                    onPickNewPhoto = { uri ->
+                        uploadingPhoto = true
+                        profileError = null
+                        profileSuccess = null
+                        scope.launch {
+                            val uploadResult = onUploadPhoto(uri)
+                            uploadResult.onSuccess { profileSuccess = "Foto aggiornata" }
+                                .onFailure { profileError = it.message }
+                            uploadingPhoto = false
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(basePadding)
+                )
+            }
         }
     }
 
@@ -198,13 +294,14 @@ private fun RestockForm(
     onSupplierSelected: (Int) -> Unit,
     onQuantityChange: (String) -> Unit,
     onShowProduct: (String) -> Unit,
+    onRefresh: () -> Unit,
     onSubmit: () -> Unit
 ) {
     var productQuery by rememberSaveable { mutableStateOf("") }
     var showAllProducts by rememberSaveable { mutableStateOf(false) }
     var showCategoryModal by rememberSaveable { mutableStateOf(false) }
     var showSupplierModal by rememberSaveable { mutableStateOf(false) }
-    val categorySections = buildCategorySections(state.categories)
+    val sideMenuSections = remember(state.categories) { buildSideMenuSectionsFromCategories(state.categories) }
     val filteredProducts = state.availableProducts
         .filter { product ->
             val query = productQuery.trim()
@@ -229,7 +326,32 @@ private fun RestockForm(
         colors = CardDefaults.cardColors(containerColor = colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Nuovo riordino", style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick = { showCategoryModal = true },
+                    shape = RoundedCornerShape(50),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Icon(Icons.Filled.Menu, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Categorie")
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                OutlinedButton(
+                    onClick = onRefresh,
+                    enabled = !state.isLoading,
+                    modifier = Modifier.defaultMinSize(minHeight = 30.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Icon(Icons.Filled.Refresh, contentDescription = "Aggiorna dati", modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Aggiorna")
+                }
+            }
             ProductPickerHeader(
                 query = productQuery,
                 onQueryChange = {
@@ -242,7 +364,8 @@ private fun RestockForm(
                     onCategorySelected(null)
                     onProductSelected("")
                 },
-                onOpenCategories = { showCategoryModal = true }
+                onOpenCategories = { showCategoryModal = true },
+                showCategoriesButton = false
             )
 
         ProductCompactList(
@@ -253,13 +376,14 @@ private fun RestockForm(
             showAll = showAllProducts,
             onShowProduct = onShowProduct,
             priceBuilder = { product: it.unito.smartshopmobile.data.entity.Product -> "€ ${String.format(Locale.ROOT, "%.2f", product.price)}" },
-            showStockRow = false
+            showStockRow = false,
+            selectedContainerColor = colorScheme.surfaceVariant,
+            unselectedContainerColor = colorScheme.surface
         )
             if (filteredProducts.isNotEmpty() && state.selectedProductId.isNullOrBlank()) {
                 Text("Seleziona un prodotto da riordinare", color = colorScheme.onSurfaceVariant)
             }
 
-            Text("Fornitori", style = MaterialTheme.typography.labelLarge)
             if (state.suppliers.isEmpty()) {
                 Text("Nessun fornitore disponibile", color = colorScheme.onSurfaceVariant)
             } else {
@@ -270,7 +394,7 @@ private fun RestockForm(
                         .fillMaxWidth()
                         .height(56.dp)
                 ) {
-                    Icon(Icons.Filled.Menu, contentDescription = null)
+                    Icon(Icons.Filled.LocalShipping, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(selectedSupplier?.name ?: "Fornitori")
                 }
@@ -296,17 +420,21 @@ private fun RestockForm(
     }
 
     if (showCategoryModal) {
-        CategoryProductDialog(
-            sections = categorySections,
-            products = state.availableProducts,
-            selectedCategoryId = state.selectedCategoryId,
-            onSelectCategory = onCategorySelected,
-            onSelectProduct = {
-                onProductSelected(it)
-                showCategoryModal = false
-            },
-            onDismiss = { showCategoryModal = false }
-        )
+        Dialog(
+            onDismissRequest = { showCategoryModal = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            SideMenuOverlay(
+                onDismiss = { showCategoryModal = false },
+                sections = sideMenuSections,
+                onParentSelected = { parent -> onCategorySelected(parent) },
+                onEntrySelected = { id ->
+                    onCategorySelected(id)
+                    onProductSelected("")
+                    showCategoryModal = false
+                }
+            )
+        }
     }
 
     if (showSupplierModal) {
@@ -327,6 +455,7 @@ private fun TransferForm(
     state: ManagerUiState,
     onCategorySelected: (String?) -> Unit,
     onProductSelected: (String) -> Unit,
+    onShowProduct: (String) -> Unit,
     onShelfSelected: (Int) -> Unit,
     onQuantityChange: (String) -> Unit,
     onSubmit: () -> Unit,
@@ -344,13 +473,13 @@ private fun TransferForm(
             }
             val matchesCategory = if (query.isNotBlank()) true else state.selectedCategoryId?.let { product.categoryId == it } ?: true
             matchesQuery && matchesCategory
-        }
+    }
         .sortedWith(
             compareByDescending<it.unito.smartshopmobile.data.entity.Product> { it.warehouseQuantity }
                 .thenBy { it.name }
         )
     val mapImage = rememberAssetImage("map/supermarket_resized.png")
-    val categorySections = buildCategorySections(state.categories)
+    val sideMenuSections = remember(state.categories) { buildSideMenuSectionsFromCategories(state.categories) }
     LaunchedEffect(Unit) {
         if (!state.selectedProductId.isNullOrBlank()) {
             onProductSelected("")
@@ -365,14 +494,19 @@ private fun TransferForm(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                "Trasferisci scorte",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold
-            )
+            TextButton(
+                onClick = { showCategoryModal = true },
+                shape = RoundedCornerShape(50),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Icon(Icons.Filled.Menu, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Categorie")
+            }
+            Spacer(modifier = Modifier.weight(1f))
             OutlinedButton(
                 onClick = onRefresh,
                 enabled = !state.isLoading,
@@ -397,7 +531,8 @@ private fun TransferForm(
                 onCategorySelected(null)
                 onProductSelected("")
             },
-            onOpenCategories = { showCategoryModal = true }
+            onOpenCategories = { showCategoryModal = true },
+            showCategoriesButton = false
         )
 
         ProductCompactList(
@@ -406,14 +541,16 @@ private fun TransferForm(
             onSelect = onProductSelected,
             onShowAllToggle = { showAllProducts = !showAllProducts },
             showAll = showAllProducts,
-            onShowProduct = { /* non serve dettaglio qui */ },
-            priceBuilder = null
+            onShowProduct = onShowProduct,
+            priceBuilder = { product: it.unito.smartshopmobile.data.entity.Product -> "€ ${String.format(Locale.ROOT, "%.2f", product.price)}" },
+            showStockRow = false,
+            selectedContainerColor = colorScheme.surfaceVariant,
+            unselectedContainerColor = colorScheme.surface
         )
         if (filteredProducts.isNotEmpty() && state.selectedProductId.isNullOrBlank()) {
             Text("Seleziona un prodotto per il trasferimento", color = colorScheme.onSurfaceVariant)
         }
 
-        Text("Scaffale di destinazione (mappa)", style = MaterialTheme.typography.labelLarge)
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -435,7 +572,7 @@ private fun TransferForm(
             label = { Text("Quantita da spostare") },
             modifier = Modifier.fillMaxWidth()
         )
-        QuickQuantityRow(currentValue = state.transferQuantity, onQuantityChange = onQuantityChange, options = listOf(1, 5, 10, 50))
+        QuickQuantityRow(currentValue = state.transferQuantity, onQuantityChange = onQuantityChange, options = listOf(1, 5, 10, -10, -5, -1))
         Button(
             onClick = onSubmit,
             enabled = !state.isTransferring,
@@ -448,17 +585,21 @@ private fun TransferForm(
     }
 
     if (showCategoryModal) {
-        CategoryProductDialog(
-            sections = categorySections,
-            products = state.availableProducts,
-            selectedCategoryId = state.selectedCategoryId,
-            onSelectCategory = onCategorySelected,
-            onSelectProduct = {
-                onProductSelected(it)
-                showCategoryModal = false
-            },
-            onDismiss = { showCategoryModal = false }
-        )
+        Dialog(
+            onDismissRequest = { showCategoryModal = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            SideMenuOverlay(
+                onDismiss = { showCategoryModal = false },
+                sections = sideMenuSections,
+                onParentSelected = { parent -> onCategorySelected(parent) },
+                onEntrySelected = { id ->
+                    onCategorySelected(id)
+                    onProductSelected("")
+                    showCategoryModal = false
+                }
+            )
+        }
     }
 }
 
@@ -478,7 +619,8 @@ private fun ProductPickerHeader(
     query: String,
     onQueryChange: (String) -> Unit,
     onClearQuery: () -> Unit,
-    onOpenCategories: () -> Unit
+    onOpenCategories: () -> Unit,
+    showCategoriesButton: Boolean = true
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         OutlinedTextField(
@@ -496,14 +638,16 @@ private fun ProductPickerHeader(
                 }
             }
         )
-        TextButton(
-            onClick = onOpenCategories,
-            shape = RoundedCornerShape(50),
-            modifier = Modifier.height(56.dp)
-        ) {
-            Icon(Icons.Filled.Menu, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Categorie")
+        if (showCategoriesButton) {
+            TextButton(
+                onClick = onOpenCategories,
+                shape = RoundedCornerShape(50),
+                modifier = Modifier.height(56.dp)
+            ) {
+                Icon(Icons.Filled.Menu, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Categorie")
+            }
         }
     }
 }
@@ -517,7 +661,9 @@ private fun ProductCompactList(
     showAll: Boolean,
     onShowProduct: (String) -> Unit,
     priceBuilder: ((it.unito.smartshopmobile.data.entity.Product) -> String)?,
-    showStockRow: Boolean = true
+    showStockRow: Boolean = true,
+    selectedContainerColor: androidx.compose.ui.graphics.Color = colorScheme.surface,
+    unselectedContainerColor: androidx.compose.ui.graphics.Color = colorScheme.surfaceVariant
 ) {
     if (products.isEmpty()) {
         Text("Nessun prodotto per questi filtri", color = colorScheme.onSurfaceVariant)
@@ -527,13 +673,14 @@ private fun ProductCompactList(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         visible.forEach { product ->
             val selected = product.id == selectedProductId
+            val showQuantities = showStockRow || selected
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { onSelect(product.id) },
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (selected) colorScheme.surface else colorScheme.surfaceVariant
+                    containerColor = if (selected) selectedContainerColor else unselectedContainerColor
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 3.dp else 1.dp)
             ) {
@@ -547,7 +694,7 @@ private fun ProductCompactList(
                             SummaryChip(builder(product))
                         }
                     }
-                    if (showStockRow) {
+                    if (showQuantities) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                             SummaryChip("Magazzino ${product.warehouseQuantity}")
                             SummaryChip("Catalogo ${product.catalogQuantity}")
@@ -624,7 +771,7 @@ private fun CategoryProductDialog(
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 TextButton(
-                                    onClick = { onSelectCategory(category.id) },
+                                    onClick = { onSelectCategory(if (selected) null else category.id) },
                                     modifier = Modifier.fillMaxWidth(),
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                                 ) {
@@ -677,6 +824,17 @@ private fun CategoryProductDialog(
         }
     }
 }
+
+private data class CategorySectionUi(
+    val id: String,
+    val title: String?,
+    val children: List<CategoryChildUi>
+)
+
+private data class CategoryChildUi(
+    val id: String,
+    val name: String
+)
 
 @Composable
 private fun SupplierPickerDialog(
@@ -778,7 +936,7 @@ private fun ProductTransferGrid(
 private fun QuickQuantityRow(
     currentValue: String,
     onQuantityChange: (String) -> Unit,
-    options: List<Int> = listOf(1, 5, 10, 50)
+    options: List<Int> = listOf(1, 5, 10, -10, -5, -1)
 ) {
     Row(
         modifier = Modifier,
@@ -787,7 +945,14 @@ private fun QuickQuantityRow(
     ) {
         val base = currentValue.toIntOrNull() ?: 0
         options.forEach { inc ->
-            AssistChip(onClick = { onQuantityChange((base + inc).toString()) }, label = { Text("+$inc") })
+            val label = if (inc > 0) "+$inc" else inc.toString()
+            AssistChip(
+                onClick = {
+                    val newValue = (base + inc).coerceAtLeast(0)
+                    onQuantityChange(newValue.toString())
+                },
+                label = { Text(label) }
+            )
         }
     }
 }
@@ -813,21 +978,27 @@ private fun RestockList(
     val pageItems = filtered.drop(currentPage * pageSize).take(pageSize)
 
     Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Storico riordini magazzino", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            TextButton(
+            RestockFilterChips(
+                selected = selectedFilter,
+                onSelect = {
+                    selectedFilter = it
+                    currentPage = 0
+                },
+                modifier = Modifier.weight(1f)
+            )
+            OutlinedButton(
                 onClick = onRefresh,
                 enabled = !state.isLoading,
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                modifier = Modifier.defaultMinSize(minHeight = 30.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Icon(Icons.Filled.Refresh, contentDescription = "Aggiorna storico", modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(6.dp))
@@ -835,13 +1006,10 @@ private fun RestockList(
             }
         }
 
-        RestockFilterChips(selected = selectedFilter, onSelect = {
-            selectedFilter = it
-            currentPage = 0
-        })
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text("In arrivo: ${incoming.size}", style = MaterialTheme.typography.labelLarge, color = colorScheme.onSurfaceVariant)
             Text("Arrivati: ${arrived.size}", style = MaterialTheme.typography.labelLarge, color = colorScheme.onSurfaceVariant)
@@ -852,42 +1020,43 @@ private fun RestockList(
         }
         state.error?.let { Text(it, color = colorScheme.error) }
 
-        if (pageItems.isEmpty()) {
-            Text("Nessun riordino per questo filtro", color = colorScheme.onSurfaceVariant)
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 520.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(pageItems, key = { it.idRiordino }) { restock ->
-                    RestockHistoryCard(restock = restock, onShowProduct = onShowProduct)
+        when {
+            pageItems.isEmpty() -> {
+                Text("Nessun riordino per questo filtro", color = colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.weight(1f))
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)
+                ) {
+                    items(pageItems, key = { it.idRiordino }) { restock ->
+                        RestockHistoryCard(restock = restock, onShowProduct = onShowProduct)
+                    }
                 }
             }
         }
 
-        if (pageCount > 1) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Pagina ${currentPage + 1} / $pageCount", style = MaterialTheme.typography.labelLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    PagePillButton(
-                        icon = Icons.Filled.ChevronLeft,
-                        enabled = currentPage > 0,
-                        highlight = currentPage > 0
-                    ) { currentPage -= 1 }
-                    PagePillButton(
-                        icon = Icons.Filled.ChevronRight,
-                        enabled = currentPage < pageCount - 1,
-                        highlight = currentPage < pageCount - 1
-                    ) { currentPage += 1 }
-                }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp, bottom = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Pagina ${currentPage + 1} / $pageCount", style = MaterialTheme.typography.labelLarge)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilledTonalIconButton(
+                    onClick = { if (currentPage > 0) currentPage -= 1 },
+                    enabled = currentPage > 0
+                ) { Icon(Icons.Filled.ChevronLeft, contentDescription = "Pagina precedente") }
+                FilledTonalIconButton(
+                    onClick = { if (currentPage < pageCount - 1) currentPage += 1 },
+                    enabled = currentPage < pageCount - 1
+                ) { Icon(Icons.Filled.ChevronRight, contentDescription = "Pagina successiva") }
             }
         }
     }
@@ -896,38 +1065,36 @@ private fun RestockList(
 @Composable
 private fun RestockHistoryCard(restock: it.unito.smartshopmobile.data.entity.Restock, onShowProduct: (String) -> Unit) {
     val statusLabel = if (restock.arrivato) "Arrivato" else "In arrivo"
-    val statusColor = if (restock.arrivato) colorScheme.primary else colorScheme.tertiary
+    val statusColor = if (restock.arrivato) colorScheme.primary else colorScheme.secondary
     val subtleColor = colorScheme.onSurfaceVariant
-    Card(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colorScheme.background),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            .clip(RoundedCornerShape(16.dp)),
+        tonalElevation = 2.dp
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text("Riordino #${restock.idRiordino}", fontWeight = FontWeight.SemiBold)
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Riordino #${restock.idRiordino}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                     restock.dataOrdine.takeIf { it.isNotBlank() }?.let {
                         Text("Ordine: ${formatRestockDate(it)}", style = MaterialTheme.typography.bodySmall, color = subtleColor)
                     }
                 }
                 Text(
                     statusLabel,
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelSmall,
                     color = statusColor,
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .background(statusColor.copy(alpha = 0.15f))
+                        .background(statusColor.copy(alpha = 0.12f))
                         .padding(horizontal = 10.dp, vertical = 6.dp)
                 )
             }
@@ -948,15 +1115,9 @@ private fun RestockHistoryCard(restock: it.unito.smartshopmobile.data.entity.Res
                 )
             }
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(colorScheme.surfaceVariant)
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
             ) {
-                Text("ID prodotto: ${restock.idProdotto}", style = MaterialTheme.typography.labelSmall, color = subtleColor)
                 TextButton(onClick = { onShowProduct(restock.idProdotto) }) {
                     Text("Dettagli prodotto")
                 }
@@ -966,8 +1127,8 @@ private fun RestockHistoryCard(restock: it.unito.smartshopmobile.data.entity.Res
 }
 
 @Composable
-private fun RestockFilterChips(selected: RestockFilter, onSelect: (RestockFilter) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+private fun RestockFilterChips(selected: RestockFilter, onSelect: (RestockFilter) -> Unit, modifier: Modifier = Modifier) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier) {
         RestockFilter.entries.forEach { filter ->
             val isSelected = filter == selected
             AssistChip(
@@ -987,87 +1148,34 @@ private fun formatRestockDate(raw: String?): String {
     return raw.replace('T', ' ').replace("Z", "").trim()
 }
 
-@Composable
-private fun PagePillButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    enabled: Boolean,
-    highlight: Boolean,
-    onClick: () -> Unit
-) {
-    val background = when {
-        !enabled -> colorScheme.surfaceVariant
-        highlight -> colorScheme.primary
-        else -> colorScheme.surfaceVariant
-    }
-    val content = when {
-        !enabled -> colorScheme.onSurfaceVariant
-        highlight -> colorScheme.onPrimary
-        else -> colorScheme.onSurface
-    }
-    Surface(
-        modifier = Modifier.size(40.dp),
-        shape = CircleShape,
-        color = background,
-        tonalElevation = if (highlight) 1.dp else 0.dp
-    ) {
-        IconButton(onClick = onClick, enabled = enabled) {
-            Icon(icon, contentDescription = null, tint = content)
-        }
-    }
-}
-
-// --- Category UI helpers (aligned to Catalog side menu style) ---
-private data class CategorySectionUi(
-    val id: String,
-    val title: String?,
-    val children: List<CategoryChildUi>
-)
-
-private data class CategoryChildUi(
-    val id: String,
-    val name: String
-)
-
-private fun buildCategorySections(categories: List<Category>): List<CategorySectionUi> {
+private fun buildSideMenuSectionsFromCategories(categories: List<Category>): List<SideMenuSection> {
     if (categories.isEmpty()) return emptyList()
-    val parents = categories.filter { it.parentId == null }
-    val childrenByParent = categories.filter { it.parentId != null }.groupBy { it.parentId }
-
-    val sections = parents.sortedBy { it.nome }.map { parent ->
-        val children = childrenByParent[parent.id].orEmpty()
-            .sortedBy { it.nome }
-            .map { CategoryChildUi(id = it.id, name = it.nome) }
-        CategorySectionUi(
-            id = parent.id,
-            title = parent.nome,
-            children = children
-        )
-    }.toMutableList()
-
-    // Orphan children without known parent become their own section using parentName or parentId as title
-    val orphanParents = childrenByParent.keys.filterNot { key -> parents.any { it.id == key } }
-    orphanParents.forEach { orphanParentId ->
-        val orphanChildren = childrenByParent[orphanParentId].orEmpty()
-        val title = orphanChildren.firstOrNull()?.parentName ?: orphanParentId ?: "Altro"
-        sections.add(
-            CategorySectionUi(
-                id = orphanParentId ?: title,
+    val parentNameFallback = mapOf(
+        "1" to "Casa",
+        "2" to "Cura Personale",
+        "3" to "Carne",
+        "4" to "Pesce",
+        "5" to "Verdura",
+        "6" to "Frutta",
+        "7" to "Bevande"
+    )
+    val grouped = categories.groupBy { it.parentId }
+    return grouped
+        .toSortedMap(Comparator.nullsFirst(String.CASE_INSENSITIVE_ORDER))
+        .map { (parentId, cats) ->
+            val title = cats.firstOrNull { !it.parentName.isNullOrBlank() }?.parentName
+                ?: parentNameFallback[parentId]
+                ?: "Altro"
+            SideMenuSection(
+                id = parentId ?: "parent-none",
+                parentId = parentId,
                 title = title,
-                children = orphanChildren.sortedBy { it.nome }.map { CategoryChildUi(id = it.id, name = it.nome) }
+                entries = cats.sortedBy { it.nome }.map { cat ->
+                    SideMenuEntry(
+                        id = cat.id,
+                        title = cat.nome
+                    )
+                }
             )
-        )
-    }
-
-    // Fallback: categories without parent but not in parents list
-    categories.filter { it.parentId == null && parents.none { p -> p.id == it.id } }.forEach { lone ->
-        sections.add(
-            CategorySectionUi(
-                id = lone.id,
-                title = lone.nome,
-                children = emptyList()
-            )
-        )
-    }
-
-    return sections
+        }
 }

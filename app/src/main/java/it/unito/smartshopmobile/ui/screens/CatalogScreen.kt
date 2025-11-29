@@ -86,18 +86,20 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -725,126 +727,136 @@ private fun CartPanel(
     modifier: Modifier = Modifier
 ) {
     val isDark = isSystemInDarkTheme()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        tonalElevation = 4.dp,
-        color = if (isDark) Color.Black else Color(0xFFFBFBFC),
-        contentColor = if (isDark) Color.White else MaterialTheme.colorScheme.onSurface
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(Icons.Filled.ShoppingCart, contentDescription = null)
-                Column {
-                    Text("Carrello", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text("$cartItemsCount articoli", style = MaterialTheme.typography.bodySmall)
-                }
-            }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-            if (cartItems.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f, fill = true),
-                    contentAlignment = Alignment.Center
+    LaunchedEffect(orderError) {
+        orderError?.let { snackbarHostState.showSnackbar(it) }
+    }
+    LaunchedEffect(lastOrderId) {
+        lastOrderId?.let { snackbarHostState.showSnackbar("Ordine #$it inviato") }
+    }
+
+    Box(modifier = modifier) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            shape = RoundedCornerShape(20.dp),
+            tonalElevation = 4.dp,
+            color = if (isDark) Color.Black else Color(0xFFFBFBFC),
+            contentColor = if (isDark) Color.White else MaterialTheme.colorScheme.onSurface
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = "Non hai ancora aggiunto prodotti",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f, fill = true)
-                        .padding(bottom = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 16.dp)
-                ) {
-                    items(cartItems, key = { it.product.catalogId }) { item ->
-                        CartItemRow(
-                            item = item,
-                            onIncrease = { onIncrease(item.product.id) },
-                            onDecrease = { onDecrease(item.product.id) },
-                            onRemove = { onRemove(item.product.id) }
-                        )
+                    Icon(Icons.Filled.ShoppingCart, contentDescription = null)
+                    Column {
+                        Text("Carrello", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text("$cartItemsCount articoli", style = MaterialTheme.typography.bodySmall)
                     }
                 }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                "Metodo di consegna",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                listOf(DeliveryMethod.LOCKER, DeliveryMethod.DOMICILIO).forEach { method ->
-                    val selected = method == deliveryMethod
-                    OutlinedButton(
-                        onClick = { onDeliveryMethodChange(method) },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent
-                        ),
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                if (cartItems.isEmpty()) {
+                    Box(
                         modifier = Modifier
-                            .weight(1f)
-                            .height(44.dp)
+                            .fillMaxWidth()
+                            .weight(1f, fill = true),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            if (method == DeliveryMethod.LOCKER) "Locker" else "Domicilio",
-                            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                            text = "Non hai ancora aggiunto prodotti",
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f, fill = true)
+                            .padding(bottom = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(bottom = 16.dp)
+                    ) {
+                        items(cartItems, key = { it.product.catalogId }) { item ->
+                            CartItemRow(
+                                item = item,
+                                onIncrease = { onIncrease(item.product.id) },
+                                onDecrease = { onDecrease(item.product.id) },
+                                onRemove = { onRemove(item.product.id) }
+                            )
+                        }
+                    }
                 }
-            }
-            Spacer(modifier = Modifier.height(6.dp))
-            HorizontalDivider()
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Totale", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text(formatPrice(total), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            orderError?.let {
-                Text(it, color = MaterialTheme.colorScheme.error)
-            }
-            lastOrderId?.let {
-                Text("Ordine #$it inviato", color = MaterialTheme.colorScheme.primary)
-            }
-            Button(
-                onClick = onSubmitOrder,
-                enabled = cartItems.isNotEmpty() && !isSubmittingOrder,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                if (isSubmittingOrder) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(Modifier.width(8.dp))
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Metodo di consegna",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    listOf(DeliveryMethod.LOCKER, DeliveryMethod.DOMICILIO).forEach { method ->
+                        val selected = method == deliveryMethod
+                        OutlinedButton(
+                            onClick = { onDeliveryMethodChange(method) },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.Transparent
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                        ) {
+                            Text(
+                                if (method == DeliveryMethod.LOCKER) "Locker" else "Domicilio",
+                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                        }
+                    }
                 }
-                Text(if (isSubmittingOrder) "Invio..." else "Procedi all'ordine")
+                Spacer(modifier = Modifier.height(6.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Totale", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(formatPrice(total), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = onSubmitOrder,
+                    enabled = cartItems.isNotEmpty() && !isSubmittingOrder,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    if (isSubmittingOrder) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(if (isSubmittingOrder) "Invio..." else "Procedi all'ordine")
+                }
             }
         }
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(12.dp)
+        )
     }
 }
 
@@ -1570,7 +1582,8 @@ fun OrderHistoryPanel(
     onRefresh: () -> Unit,
     onScanQr: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    onDismissMessage: () -> Unit = {}
+    onDismissMessage: () -> Unit = {},
+    snackbarHostState: SnackbarHostState? = null
 ) {
     var selectedFilter by rememberSaveable { mutableStateOf(CustomerOrderFilter.ACTIVE) }
     var expandedOrderId by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -1587,25 +1600,33 @@ fun OrderHistoryPanel(
     val pageOrders = filteredOrders.drop(currentPage * pageSize).take(pageSize)
 
     Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Storico ordini", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            TextButton(onClick = onRefresh, enabled = !isLoading) { Text("Aggiorna") }
-        }
-
-        CustomerOrderFilterChips(
-            selected = selectedFilter,
-            onSelect = {
-                selectedFilter = it
-                currentPage = 0
+            CustomerOrderFilterChips(
+                selected = selectedFilter,
+                onSelect = {
+                    selectedFilter = it
+                    currentPage = 0
+                },
+                modifier = Modifier.weight(1f)
+            )
+            OutlinedButton(
+                onClick = onRefresh,
+                enabled = !isLoading,
+                modifier = Modifier.defaultMinSize(minHeight = 30.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Icon(Icons.Filled.Refresh, contentDescription = "Aggiorna storico", modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Aggiorna")
             }
-        )
+        }
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("Attivi: $activeCount", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1616,10 +1637,17 @@ fun OrderHistoryPanel(
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        pickupMessage?.let {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(it, color = MaterialTheme.colorScheme.primary)
-                TextButton(onClick = onDismissMessage, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("Ok") }
+        if (pickupMessage != null && snackbarHostState != null) {
+            LaunchedEffect(pickupMessage) {
+                snackbarHostState.showSnackbar(pickupMessage)
+                onDismissMessage()
+            }
+        } else {
+            pickupMessage?.let {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(it, color = MaterialTheme.colorScheme.primary)
+                    TextButton(onClick = onDismissMessage, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("Ok") }
+                }
             }
         }
 
@@ -1630,13 +1658,15 @@ fun OrderHistoryPanel(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Spacer(modifier = Modifier.weight(1f))
             }
             else -> {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 520.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                        .weight(1f),
+                    contentPadding = PaddingValues(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)
                 ) {
                     items(pageOrders, key = { it.order.idOrdine }) { entry ->
                         val isExpanded = expandedOrderId == entry.order.idOrdine
@@ -1657,7 +1687,7 @@ fun OrderHistoryPanel(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 4.dp),
+                .padding(top = 4.dp, bottom = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1690,6 +1720,7 @@ private fun CustomerOrderCard(
     val readyForPickup = order.metodoConsegna.equals("LOCKER", true) && order.stato.equals("SPEDITO", true)
     val isScanning = pickupInProgressId == order.idOrdine
     var showQr by rememberSaveable { mutableStateOf(false) }
+    val statusColor = if (orderIsFinal(order.stato)) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
 
     Surface(
         modifier = Modifier
@@ -1713,11 +1744,11 @@ private fun CustomerOrderCard(
                 }
                 Text(
                     statusLabel,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = statusColor,
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                        .background(statusColor.copy(alpha = 0.12f))
                         .padding(horizontal = 10.dp, vertical = 6.dp)
                 )
             }

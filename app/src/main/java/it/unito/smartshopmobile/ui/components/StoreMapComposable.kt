@@ -333,37 +333,6 @@ private fun DrawScope.drawPolygonShelf(
     val borderColor = if (isSelected) Color(0xFFF57F17) else polygon.strokeColor
     val borderWidth = if (isSelected) 5f * scaleX else 2f * scaleX
     drawPath(path = path, color = borderColor, style = Stroke(width = borderWidth))
-    // Draw numeric badge at centroid (small circle with number)
-    val c = polygon.centroid()
-    val cx = c.x * scaleX
-    val cy = c.y * scaleY
-    val badgeRadius = 42f * scaleAvg
-    val badgeColor = if (isSelected) Color(0xFFFFC107) else Color(0xFFFFD54F)
-    val badgeBorder = Color.Black.copy(alpha = 0.35f)
-    drawCircle(
-        color = badgeColor,
-        radius = badgeRadius,
-        center = Offset(cx, cy)
-    )
-    drawCircle(
-        color = badgeBorder,
-        radius = badgeRadius,
-        center = Offset(cx, cy),
-        style = Stroke(width = 3.5f * scaleAvg)
-    )
-    // Number text: use native canvas via drawContext.canvas.nativeCanvas to avoid extension issues
-    val textSizePx = (30f * scaleAvg).coerceIn(16f, 42f)
-    val paint = android.graphics.Paint().apply {
-        isAntiAlias = true
-        color = android.graphics.Color.BLACK
-        textAlign = android.graphics.Paint.Align.CENTER
-        textSize = textSizePx
-        typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
-        setShadowLayer(6f * scaleAvg, 0f, 0f, android.graphics.Color.argb(160, 0, 0, 0))
-    }
-    // vertically center text using paint metrics
-    val baseline = cy - (paint.descent() + paint.ascent()) / 2f
-    drawContext.canvas.nativeCanvas.drawText(number.toString(), cx, baseline, paint)
 }
 
 // Ripple model
