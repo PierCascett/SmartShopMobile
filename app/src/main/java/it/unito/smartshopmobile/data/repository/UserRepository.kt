@@ -1,4 +1,21 @@
+/**
+ * UserRepository.kt
+ *
+ * MVVM: Model Layer - Repository gestione profilo utente
+ *
+ * FUNZIONAMENTO:
+ * - Aggiorna profilo utente (nome, cognome, email, telefono)
+ * - Upload avatar (foto profilo) con multipart
+ * - Solo API (no cache, aggiorna SessionDataStore da ViewModel)
+ *
+ * PATTERN MVVM:
+ * - Repository Pattern: astrazione API utente
+ * - suspend fun: operazioni asincrone
+ * - Result<T>: gestione errori update
+ * - Multipart upload per foto profilo
+ */
 package it.unito.smartshopmobile.data.repository
+
 
 import android.util.Log
 import it.unito.smartshopmobile.data.entity.UpdateUserRequest

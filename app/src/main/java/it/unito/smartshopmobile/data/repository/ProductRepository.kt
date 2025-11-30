@@ -1,3 +1,20 @@
+/**
+ * ProductRepository.kt
+ *
+ * MVVM: Model Layer - Repository prodotti
+ *
+ * FUNZIONAMENTO:
+ * - Coordina dati locali (Room) e remoti (Retrofit API)
+ * - Espone Flow<List<Product>> per reattività
+ * - Sincronizza prodotti da server a database locale
+ * - Pattern "Offline-First": legge da Room, sincronizza da API
+ *
+ * PATTERN MVVM:
+ * - Repository Pattern: astrazione sorgente dati
+ * - Flow: stream reattivo di dati (osservabile)
+ * - suspend fun: operazioni asincrone con Coroutines
+ * - Result<T>: gestione errori type-safe
+ */
 package it.unito.smartshopmobile.data.repository
 
 import android.util.Log

@@ -1,4 +1,22 @@
+/**
+ * OrderRepository.kt
+ * 
+ * MVVM: Model Layer - Repository ordini cliente
+ * 
+ * FUNZIONAMENTO:
+ * - Crea ordini via API (checkout carrello)
+ * - Osserva ordini con relazioni (Order + OrderLines)
+ * - Aggiorna stato ordini (dipendente/manager)
+ * - Cache locale con sync da API
+ * 
+ * PATTERN MVVM:
+ * - Repository Pattern: coordina API + Room
+ * - Flow<OrderWithLines>: stream reattivo ordini completi
+ * - suspend fun: operazioni asincrone
+ * - Result<T>: gestione errori creazione/update
+ */
 package it.unito.smartshopmobile.data.repository
+
 
 import android.util.Log
 import it.unito.smartshopmobile.data.dao.OrderDao

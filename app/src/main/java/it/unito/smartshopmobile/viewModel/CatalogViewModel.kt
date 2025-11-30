@@ -1,27 +1,26 @@
 /**
  * CatalogViewModel.kt
  *
- * RUOLO MVVM: ViewModel Layer
- * - Gestisce lo stato UI e la logica di presentazione del catalogo prodotti
- * - Intermedia tra UI (CatalogScreen) e Repository (ProdottoRepository, CategoriaRepository)
- * - Sopravvive ai cambiamenti di configurazione (rotazione schermo)
+ * MVVM: ViewModel Layer - Gestione catalogo prodotti
  *
- * RESPONSABILITÀ:
- * - Esporre stato UI osservabile (StateFlow<CatalogUiState>)
- * - Gestire intent utente (ricerca, filtri, aggiungi al carrello)
- * - Coordinare operazioni asincrone (viewModelScope)
- * - Trasformare dati dal Repository in stato UI
+ * FUNZIONAMENTO:
+ * - Gestisce stato UI complesso (prodotti, categorie, carrello, ordini)
+ * - Coordina multiple Repository (Product, Category, Shelf, Order)
+ * - Espone StateFlow<CatalogUiState> con stato unificato e immutabile
+ * - Sincronizza dati da API e osserva database locale (Room)
  *
- * PATTERN: MVVM (Model-View-ViewModel)
- * - NON conosce Compose, Activity o Fragment
- * - NON accede direttamente a Room o Retrofit
- * - Usa solo i Repository per i dati
- * - Espone UI State immutabile (CatalogUiState)
+ * PATTERN MVVM:
+ * - ViewModel: logica presentazione, sopravvive a rotazioni schermo
+ * - StateFlow: stato reattivo type-safe (no dipendenze Compose)
+ * - Coroutines: operazioni asincrone con viewModelScope
+ * - combine(): osserva multiple Flow simultaneamente
+ * - Unidirectional Data Flow: UI → Intent → ViewModel → State → UI
  *
- * PRINCIPI RISPETTATI:
+ * BEST PRACTICE RISPETTATE:
  * - Single Source of Truth: uiState contiene tutto lo stato
- * - Unidirectional Data Flow: UI → intent → ViewModel → State → UI
- * - Separation of Concerns: logica UI qui, logica dati nel Repository
+ * - Immutabilità: CatalogUiState è data class immutabile
+ * - Separation of Concerns: NON accede direttamente a Room/Retrofit
+ * - Repository Pattern: delega logica dati ai Repository
  */
 package it.unito.smartshopmobile.viewModel
 

@@ -1,4 +1,21 @@
+/**
+ * RestockRepository.kt
+ * 
+ * MVVM: Model Layer - Repository riordini magazzino
+ * 
+ * FUNZIONAMENTO:
+ * - Crea riordini a fornitori (manager)
+ * - Osserva storico riordini con stato
+ * - Sync da API a Room per cache locale
+ * 
+ * PATTERN MVVM:
+ * - Repository Pattern: coordina API + Room
+ * - Flow<List<Restock>>: stream reattivo riordini
+ * - suspend fun: create/fetch asincrone
+ * - Result<T>: gestione errori
+ */
 package it.unito.smartshopmobile.data.repository
+
 
 import android.util.Log
 import it.unito.smartshopmobile.data.dao.RestockDao

@@ -1,3 +1,19 @@
+/**
+ * SupplierRepository.kt
+ * 
+ * MVVM: Model Layer - Repository fornitori
+ * 
+ * FUNZIONAMENTO:
+ * - Carica elenco fornitori per riordini
+ * - Sync da API a Room (cache)
+ * - Espone Flow per UI manager
+ * 
+ * PATTERN MVVM:
+ * - Repository Pattern: coordina API + Room
+ * - Flow<List<Supplier>>: stream reattivo fornitori
+ * - suspend fun: refresh asincrone
+ * - Result<T>: gestione errori sync
+ */
 package it.unito.smartshopmobile.data.repository
 
 import it.unito.smartshopmobile.data.dao.SupplierDao

@@ -1,9 +1,20 @@
 /**
  * EmployeeViewModel.kt
  *
- * Gestisce la schermata Dipendente:
- * - osserva ordini dal repository
- * - carica scaffali e prodotti e li mappa alle corsie della mappa (poligono N -> scaffale id N)
+ * MVVM: ViewModel Layer - Gestione schermata Dipendente
+ *
+ * FUNZIONAMENTO:
+ * - Osserva ordini da OrderRepository per picking
+ * - Carica scaffali e prodotti, mappa a corsie mappa (poligono N → scaffale N)
+ * - Gestisce ordine attivo, linee picked, navigazione mappa
+ * - Aggiorna stato ordini (SPEDITO, CONSEGNATO, ANNULLATO)
+ *
+ * PATTERN MVVM:
+ * - ViewModel: logica presentazione per UI dipendente
+ * - StateFlow<EmployeeUiState>: stato unificato e immutabile
+ * - Coroutines: operazioni asincrone (update ordini, refresh)
+ * - combine(): osserva ordini, scaffali, prodotti simultaneamente
+ * - Repository Pattern: delega dati a OrderRepository, ShelfRepository, ProductRepository
  */
 package it.unito.smartshopmobile.viewModel
 

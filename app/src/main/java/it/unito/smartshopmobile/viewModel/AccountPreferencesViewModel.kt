@@ -1,4 +1,22 @@
+/**
+ * AccountPreferencesViewModel.kt
+ *
+ * MVVM: ViewModel Layer - Gestione preferenze account
+ *
+ * FUNZIONAMENTO:
+ * - Gestisce dati profilo locale (cache veloce)
+ * - Espone StateFlow<AccountPreferences> per UI
+ * - Update preferenze senza chiamate API
+ * - Usato per pre-compilare form checkout
+ *
+ * PATTERN MVVM:
+ * - ViewModel: logica presentazione preferenze
+ * - StateFlow: stato reattivo
+ * - DataStore: persistenza locale
+ * - Intent: updateProfile()
+ */
 package it.unito.smartshopmobile.viewModel
+
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel

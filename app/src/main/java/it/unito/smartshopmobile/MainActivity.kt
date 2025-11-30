@@ -1,33 +1,28 @@
 /**
  * MainActivity.kt
  *
- * RUOLO MVVM: Entry Point & Navigation Host
- * - Activity principale dell'applicazione Android
- * - Ospita la navigazione tra le diverse schermate
- * - Inizializza il tema Material Design
- * - Gestisce il ciclo di vita dell'app
+ * MVVM: Entry Point - Activity principale Android
  *
- * RESPONSABILITÀ:
- * - Setup del tema (enableEdgeToEdge, MaterialTheme)
- * - Inizializzazione ViewModels (by viewModels())
- * - Gestione navigazione tra Login/Customer/Employee/Manager
- * - Gestione stato globale (drawer menu, carrello)
- * - Rispondere a cambiamenti di configurazione (rotazione)
+ * FUNZIONAMENTO:
+ * - Activity host per tutta l'applicazione (Jetpack Compose)
+ * - Inizializza ViewModel (by viewModels() - lifecycle-aware)
+ * - Gestisce navigazione tra schermate in base a UserRole
+ * - Applica tema Material Design globale
+ * - Gestisce ciclo vita app (onCreate, configurazione changes)
  *
- * PATTERN: Controller (Android)
- * - ComponentActivity: ciclo di vita Android
- * - setContent: entry point Jetpack Compose
- * - viewModels(): ViewModel lifecycle-aware
- * - Navigation: routing condizionale in base a UserRole
+ * PATTERN MVVM:
+ * - Controller Android: entry point app
+ * - setContent: bridge da Activity a Compose
+ * - viewModels(): crea ViewModel legato a lifecycle
+ * - Navigation: routing Login → Customer/Employee/Manager
+ * - State hoisting: stato sessione da SessionDataStore
  *
  * COMPONENTI:
- * - SmartShopApp: Composable root dell'app
- * - Routing: switch tra schermate in base al ruolo
- * - Theme wrapping: MaterialTheme applicato globalmente
+ * - SmartShopApp: root Composable
+ * - LoginScreenMVVM: schermata iniziale
+ * - Routing condizionale: CatalogScreen / EmployeeScreen / ManagerScreen
  */
 // Activity principale: avvio tema e schermata di login
-// - uso `LoginViewModel` con `by viewModels()`
-// - mostro `LoginScreenMVVM` e gestisco il successo con un Toast
 
 package it.unito.smartshopmobile
 
@@ -103,15 +98,18 @@ import it.unito.smartshopmobile.viewModel.AccountPreferencesViewModel
 import it.unito.smartshopmobile.viewModel.CatalogViewModel
 import it.unito.smartshopmobile.viewModel.CatalogUiState
 import it.unito.smartshopmobile.viewModel.LoginViewModel
+import it.unito.smartshopmobile.viewModel.MainViewModel
+import it.unito.smartshopmobile.viewModel.CustomerTab
 
 import it.unito.smartshopmobile.ui.components.NavBarDivider
 import it.unito.smartshopmobile.ui.screens.AppFavoritesOverlay
 import kotlinx.coroutines.launch
 import coil.compose.AsyncImage
 import it.unito.smartshopmobile.data.remote.RetrofitInstance
-private enum class CustomerTab { SHOP, ORDERS, ACCOUNT }
+import androidx.compose.ui.platform.LocalContext
 
 class MainActivity : ComponentActivity() {
+    private val mainViewModel: MainViewModel by viewModels()
     private val loginViewModel: LoginViewModel by viewModels()
     private val catalogViewModel: CatalogViewModel by viewModels()
     private val accountPreferencesViewModel: AccountPreferencesViewModel by viewModels()
@@ -121,18 +119,28 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             SmartShopMobileTheme {
-                var loggedUser by rememberSaveable { mutableStateOf<String?>(null) }
-                var selectedRole by rememberSaveable { mutableStateOf<UserRole?>(null) }
-                var showMenu by rememberSaveable { mutableStateOf(false) }
-                var showCart by rememberSaveable { mutableStateOf(false) }
-                var showFavorites by rememberSaveable { mutableStateOf(false) }
-                var customerTab by rememberSaveable { mutableStateOf(CustomerTab.SHOP) }
-                var employeeProfileTrigger by rememberSaveable { mutableStateOf(0) }
-                var managerProfileTrigger by rememberSaveable { mutableStateOf(0) }
+                val context = LocalContext.current
+                val mainState by mainViewModel.uiState.collectAsState()
                 val catalogState by catalogViewModel.uiState.collectAsState()
-                val sessionUser by loginViewModel.sessionUser.collectAsState(initial = null)
                 val accountPrefs by accountPreferencesViewModel.preferences.collectAsState()
-                var sessionRestored by rememberSaveable { mutableStateOf(false) }
+
+                // Gestione Toast tramite LaunchedEffect (MVVM-compliant)
+                LaunchedEffect(mainState.toastMessage) {
+                    mainState.toastMessage?.let { message ->
+                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                        mainViewModel.consumeToast()
+                    }
+                }
+
+                // Sincronizzazione session → catalogViewModel
+                LaunchedEffect(mainState.loggedUser, mainState.selectedRole) {
+                    mainState.loggedUser?.let { user ->
+                        catalogViewModel.setLoggedUser(user)
+                        if (mainState.selectedRole == UserRole.CUSTOMER) {
+                            catalogViewModel.startSyncIfNeeded()
+                        }
+                    }
+                }
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     Scaffold(
@@ -142,94 +150,70 @@ class MainActivity : ComponentActivity() {
                         val contentModifier = Modifier
                             .padding(innerPadding)
                             .statusBarsPadding()
-                        if (loggedUser == null) {
-                            if (!sessionRestored && sessionUser != null) {
-                                sessionRestored = true
-                                val saved = sessionUser!!
-                                catalogViewModel.setLoggedUser(saved)
-                                loggedUser = saved.email
-                                selectedRole = UserRole.fromDbRole(saved.ruolo)
-                                if (selectedRole == UserRole.CUSTOMER) {
-                                    catalogViewModel.startSyncIfNeeded()
-                                }
-                            }
+
+                        if (mainState.loggedUser == null) {
                             LoginScreenMVVM(
                                 viewModel = loginViewModel,
                                 modifier = contentModifier,
                                 onLoginSuccess = { user, role ->
-                                    catalogViewModel.setLoggedUser(user)
-                            loggedUser = user.email
-                            selectedRole = role
-                            if (role == UserRole.CUSTOMER) {
-                                catalogViewModel.startSyncIfNeeded()
-                            }
-                            Toast.makeText(this@MainActivity, "Accesso: ${user.email}", Toast.LENGTH_SHORT).show()
-                        }
-                    )
-                } else {
-            ContentWithSessionBar(
-                modifier = contentModifier,
-                email = loggedUser ?: "",
-                avatarUrl = catalogState.loggedUser?.avatarUrl,
-                role = selectedRole,
-                onLogout = {
-                    loggedUser = null
-                    selectedRole = null
-                    showCart = false
-                    showFavorites = false
-                    customerTab = CustomerTab.SHOP
-                    catalogViewModel.clearSession()
-                    loginViewModel.clearSession()
-                        },
-                        onOpenAccount = {
-                            when (selectedRole) {
-                                UserRole.CUSTOMER -> customerTab = CustomerTab.ACCOUNT
-                                UserRole.EMPLOYEE -> employeeProfileTrigger++
-                                UserRole.MANAGER -> managerProfileTrigger++
-                                null -> Unit
-                            }
-                        },
-                catalogState = catalogState,
-                catalogViewModel = catalogViewModel,
-                employeeProfileTrigger = employeeProfileTrigger,
-                managerProfileTrigger = managerProfileTrigger,
-                onMenuClick = { showMenu = true },
-                onFavoritesClick = { showFavorites = true },
-                                onCartClick = { showCart = true },
+                                    mainViewModel.onLoginSuccess(user, role)
+                                }
+                            )
+                        } else {
+                            ContentWithSessionBar(
+                                modifier = contentModifier,
+                                email = mainState.loggedUser?.email ?: "",
+                                avatarUrl = catalogState.loggedUser?.avatarUrl,
+                                role = mainState.selectedRole,
+                                onLogout = {
+                                    mainViewModel.onLogout()
+                                    catalogViewModel.clearSession()
+                                    loginViewModel.clearSession()
+                                },
+                                onOpenAccount = {
+                                    mainViewModel.openAccountForRole(mainState.selectedRole)
+                                },
+                                catalogState = catalogState,
+                                catalogViewModel = catalogViewModel,
+                                employeeProfileTrigger = mainState.employeeProfileTrigger,
+                                managerProfileTrigger = mainState.managerProfileTrigger,
+                                onMenuClick = { mainViewModel.setShowMenu(true) },
+                                onFavoritesClick = { mainViewModel.setShowFavorites(true) },
+                                onCartClick = { mainViewModel.setShowCart(true) },
                                 accountPrefs = accountPrefs,
-                                onSaveProfile = { nome: String, cognome: String, email: String, indirizzo: String, telefono: String ->
+                                onSaveProfile = { nome, cognome, email, indirizzo, telefono ->
                                     val result = catalogViewModel.updateUserProfile(nome, cognome, email, telefono.ifBlank { null })
                                     result.onSuccess {
                                         accountPreferencesViewModel.updateProfile(nome, cognome, indirizzo, telefono)
                                     }
                                     result
                                 },
-                                customerTab = customerTab,
-                                onCustomerTabChange = { customerTab = it }
+                                customerTab = mainState.currentTab,
+                                onCustomerTabChange = { mainViewModel.setCurrentTab(it) }
                             )
                         }
                     }
 
-                    if (showMenu) {
+                    if (mainState.showMenu) {
                         SideMenuOverlay(
-                            onDismiss = { showMenu = false },
-                            sections = catalogState.sideMenuSections, // <-- usa categorie dal DB
+                            onDismiss = { mainViewModel.setShowMenu(false) },
+                            sections = catalogState.sideMenuSections,
                             onParentSelected = { parentId: String? ->
                                 catalogViewModel.onParentCategorySelected(parentId)
                                 catalogViewModel.onSearchQueryChange("")
                             },
                             onEntrySelected = { selection: String? ->
-                                showMenu = false
+                                mainViewModel.setShowMenu(false)
                                 catalogViewModel.onCategorySelected(selection)
                                 catalogViewModel.onSearchQueryChange("")
                             }
                         )
                     }
 
-                    if (showCart) {
+                    if (mainState.showCart) {
                         AppCartOverlay(
                             onDismiss = {
-                                showCart = false
+                                mainViewModel.setShowCart(false)
                                 catalogViewModel.clearOrderFeedback()
                             },
                             cartItems = catalogState.cartItems,
@@ -247,9 +231,9 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    if (showFavorites) {
+                    if (mainState.showFavorites) {
                         AppFavoritesOverlay(
-                            onDismiss = { showFavorites = false },
+                            onDismiss = { mainViewModel.setShowFavorites(false) },
                             favorites = catalogState.favoriteProducts,
                             cartQuantities = catalogState.cart,
                             onIncrease = { catalogViewModel.onAddToCart(it) },
