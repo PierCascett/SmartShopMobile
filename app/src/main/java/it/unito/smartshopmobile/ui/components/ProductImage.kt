@@ -1,3 +1,21 @@
+/**
+ * ProductImage.kt
+ *
+ * MVVM: View Layer - Componente immagine prodotto
+ *
+ * FUNZIONAMENTO:
+ * - Carica immagine prodotto da server backend
+ * - URL: http://<host>:<port>/images/products/<productId>.png
+ * - Coil AsyncImage per loading asincrono
+ * - Placeholder/Loading/Error states gestiti
+ * - Cache automatica con Coil
+ *
+ * PATTERN MVVM:
+ * - View Component: elemento UI riutilizzabile
+ * - Coil: libreria image loading Android
+ * - SubcomposeAsyncImage: gestione stati loading
+ * - ContentScale: adatta immagine a dimensioni
+ */
 package it.unito.smartshopmobile.ui.components
 
 import androidx.compose.foundation.background

@@ -7,7 +7,20 @@ import it.unito.smartshopmobile.data.entity.MapPolygon
 /**
  * SupermarketPolygons.kt
  *
- * Adatta il poligono dell'asset JSON alla UI (Offset) e gestisce hit detection.
+ * MVVM: View Layer - Modello poligoni scaffali
+ *
+ * FUNZIONAMENTO:
+ * - Data class ShelfPolygon per rappresentare scaffale su mappa
+ * - Adatta MapPolygon (JSON asset) a Compose UI (Offset)
+ * - Hit detection: containsPoint() con ray-casting algorithm
+ * - Centroid: calcola punto centrale per label
+ * - Colori: fill, stroke, text configurabili
+ *
+ * PATTERN MVVM:
+ * - Model: rappresentazione dati UI scaffale
+ * - Data class immutabile
+ * - Algoritmi geometrici: ray-casting per point-in-polygon
+ * - Utility: conversion MapPolygon → ShelfPolygon
  */
 
 // Modello per poligoni scaffali

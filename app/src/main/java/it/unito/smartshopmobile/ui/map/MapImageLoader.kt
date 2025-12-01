@@ -1,4 +1,26 @@
+/**
+ * MapImageLoader.kt
+ *
+ * MVVM: View Layer - Utility caricamento immagini assets
+ *
+ * FUNZIONAMENTO:
+ * - Carica immagini da cartella assets (es: assets/map/supermarket.jpg)
+ * - remember() per caching risultato (evita reload)
+ * - BitmapFactory per decodifica immagine
+ * - Ritorna ImageBitmap per Compose Canvas
+ *
+ * PATTERN MVVM:
+ * - Utility: helper per caricamento risorse
+ * - Compose remember(): cache in memoria
+ * - Asset loading: context.assets.open()
+ * - Error handling: ritorna null se file mancante
+ *
+ * USAGE:
+ * val mapImage = rememberAssetImage("map/supermarket.jpg")
+ * StoreMapCanvas(background = mapImage)
+ */
 package it.unito.smartshopmobile.ui.map
+
 
 import android.graphics.BitmapFactory
 import androidx.compose.runtime.Composable

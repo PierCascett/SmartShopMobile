@@ -1,3 +1,18 @@
+/**
+ * NavBarDecor.kt
+ *
+ * MVVM: View Layer - Componente UI decorativo
+ *
+ * FUNZIONAMENTO:
+ * - Divisore decorativo per NavigationBar
+ * - Gradiente orizzontale con fade-in/fade-out laterale
+ * - Separatore visivo tra contenuto e bottom navigation
+ *
+ * PATTERN MVVM:
+ * - View Component: elemento UI riutilizzabile
+ * - Stateless: riceve colore come parametro
+ * - Material 3: usa MaterialTheme.colorScheme.primary
+ */
 package it.unito.smartshopmobile.ui.components
 
 import androidx.compose.foundation.background

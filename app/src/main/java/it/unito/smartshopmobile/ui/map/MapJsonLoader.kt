@@ -1,3 +1,25 @@
+/**
+ * MapJsonLoader.kt
+ *
+ * MVVM: View Layer - Loader poligoni mappa da JSON
+ *
+ * FUNZIONAMENTO:
+ * - Carica poligoni scaffali da assets/map/supermarket.json
+ * - Downsampling automatico per bitmap grandi (evita crash Canvas)
+ * - Parsing JSON: array di array di punti [x, y]
+ * - Mapping poligono n → id_scaffale n (1-based)
+ * - Ottimizzazione: maxSide e maxPixels per ridimensionamento
+ *
+ * PATTERN MVVM:
+ * - Utility: helper caricamento dati mappa
+ * - remember(): caching poligoni
+ * - JSON parsing: org.json.JSONArray
+ * - Downsampling: BitmapFactory.Options.inSampleSize
+ *
+ * NOTE:
+ * - maxSide: lato massimo bitmap (default 4096px)
+ * - maxPixels: budget totale pixel (~16MP)
+ */
 package it.unito.smartshopmobile.ui.map
 
 import android.graphics.BitmapFactory

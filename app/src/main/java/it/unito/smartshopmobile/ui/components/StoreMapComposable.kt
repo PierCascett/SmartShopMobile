@@ -1,28 +1,33 @@
 /**
  * StoreMapComposable.kt
  *
- * Mappa del supermercato renderizzata con Jetpack Compose Canvas
- * - 100% nativo Android, no WebView
- * - Performante e reattivo
- * - Integrato con Material 3
- * 
- * ARCHITETTURA:
- * - Background: Immagine planimetria (supermarket.jpg) caricata da assets/map/
- * - Overlay: Poligoni scaffali caricati da assets/map/supermarket.json
- * - Interazioni: Pan, zoom (pinch), tap per selezione scaffale
- * 
- * COORDINATE SYSTEM:
- * - I poligoni sono definiti in pixel dell'immagine originale
- * - La canvas scala automaticamente immagine e poligoni insieme
- * - baseWidth/baseHeight: dimensioni immagine (o fallback 7000x5000)
- * - scaleX/scaleY: fattori di scala per adattare a dimensioni canvas
- * 
+ * MVVM: View Layer - Mappa interattiva supermercato (Canvas)
+ *
+ * FUNZIONAMENTO:
+ * - Mappa planimetria con Jetpack Compose Canvas (100% nativo)
+ * - Background: immagine supermarket.jpg da assets
+ * - Overlay: poligoni scaffali da supermarket.json
+ * - Interazioni: tap per selezione scaffale, ripple effect
+ * - Coordinate system: poligoni definiti in pixel immagine originale
+ * - Auto-scaling: adatta immagine e poligoni a dimensioni canvas
+ *
+ * PATTERN MVVM:
+ * - View: rendering Canvas con gesture detection
+ * - Hit detection: ray-casting su poligoni
+ * - State: selectedAisleId da ViewModel (EmployeeViewModel)
+ * - Callback: onAisleClick per comunicare selezione
+ *
  * RENDERING PIPELINE:
- * 1. Disegna sfondo (immagine o gradient)
- * 2. Applica trasformazioni (pan + zoom)
- * 3. Disegna percorso animato dall'ingresso allo scaffale selezionato
- * 4. Disegna ogni poligono con ombra, riempimento, bordo e label
- * 5. Disegna effetti ripple su tap (fuori dalla trasformazione)
+ * 1. Sfondo (immagine o gradient)
+ * 2. Trasformazioni (pan + zoom)
+ * 3. Poligoni scaffali (ombra + riempimento + bordo)
+ * 4. Ripple effect su tap (feedback visivo)
+ *
+ * TECNOLOGIE:
+ * - Compose Canvas per rendering custom
+ * - DetectTapGestures per interazioni
+ * - Path API per poligoni
+ * - LaunchedEffect per animazioni ripple
  */
 package it.unito.smartshopmobile.ui.components
 
@@ -109,7 +114,7 @@ fun StoreMapCanvas(
     val scale = 1f
     val translation = Offset.Zero
     val ripples = remember { mutableStateListOf<Ripple>() }
-    val polygons = rememberPolygonsFromJson("map/supermarket.json").map { it.toShelfPolygon() }
+    val polygons: List<ShelfPolygon> = rememberPolygonsFromJson("map/supermarket.json").map { mapPolygon -> mapPolygon.toShelfPolygon() }
     // Stato condiviso tra draw e pointerInput per consentire al pointerInput
     // di trasformare immediatamente i tap in coordinate immagine.
     var currentImgWidth by remember { mutableStateOf(0f) }
