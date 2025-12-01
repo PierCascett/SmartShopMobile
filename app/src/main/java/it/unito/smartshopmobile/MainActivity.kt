@@ -32,57 +32,54 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.foundation.shape.CircleShape
-import android.net.Uri
+import androidx.compose.ui.unit.dp
 import it.unito.smartshopmobile.data.datastore.AccountPreferences
-import it.unito.smartshopmobile.data.model.UserRole
+import it.unito.smartshopmobile.domain.UserRole
 import it.unito.smartshopmobile.data.entity.User
 import it.unito.smartshopmobile.ui.screens.CatalogScreen
 import it.unito.smartshopmobile.ui.screens.LoginScreenMVVM
@@ -106,7 +103,6 @@ import it.unito.smartshopmobile.ui.screens.AppFavoritesOverlay
 import kotlinx.coroutines.launch
 import coil.compose.AsyncImage
 import it.unito.smartshopmobile.data.remote.RetrofitInstance
-import androidx.compose.ui.platform.LocalContext
 
 class MainActivity : ComponentActivity() {
     private val mainViewModel: MainViewModel by viewModels()
@@ -271,18 +267,24 @@ private fun ContentWithSessionBar(
 ) {
     val resolvedEmail = catalogState.loggedUser?.email ?: email
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp)
-    ) {
-        SessionBar(
-             email = resolvedEmail,
-             avatarUrl = avatarUrl,
-             onLogout = onLogout,
-             onOpenAccount = onOpenAccount
-         )
-        Box(modifier = Modifier.fillMaxSize()) {
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0.dp),
+        topBar = {
+            SessionBar(
+                email = resolvedEmail,
+                avatarUrl = avatarUrl,
+                onLogout = onLogout,
+                onOpenAccount = onOpenAccount
+            )
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp)
+        ) {
             when (role) {
                 UserRole.CUSTOMER -> CustomerHome(
                     state = catalogState,
@@ -507,6 +509,7 @@ private fun CustomerHome(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SessionBar(
     email: String,
@@ -520,32 +523,50 @@ private fun SessionBar(
             RetrofitInstance.buildAssetUrl(url)?.let { built -> "$built?ts=${System.currentTimeMillis()}" }
         }
     }
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (!avatarModel.isNullOrBlank()) {
-            AsyncImage(
-                model = avatarModel,
-                contentDescription = "Avatar",
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .clickable { onOpenAccount() },
-                alignment = Alignment.Center
+    TopAppBar(
+        modifier = modifier,
+        title = {
+            Text(
+                text = email.ifBlank { "Account" },
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.clickable { onOpenAccount() }
             )
-            Spacer(modifier = Modifier.width(8.dp))
-        }
-        Text(
-            text = email,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.clickable { onOpenAccount() }
-        )
-        Spacer(modifier = Modifier.weight(1f))
-        TextButton(onClick = onLogout) {
-            Text("Esci")
-        }
-    }
+        },
+        navigationIcon = {
+            if (!avatarModel.isNullOrBlank()) {
+                AsyncImage(
+                    model = avatarModel,
+                    contentDescription = "Avatar",
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .clickable { onOpenAccount() }
+                )
+            } else {
+                IconButton(onClick = onOpenAccount) {
+                    Icon(
+                        imageVector = Icons.Filled.AccountCircle,
+                        contentDescription = "Account"
+                    )
+                }
+            }
+        },
+        actions = {
+            TextButton(onClick = onLogout) {
+                Text("Esci")
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+            actionIconContentColor = MaterialTheme.colorScheme.primary
+        ),
+        windowInsets = WindowInsets(0.dp)
+    )
 }
 
 @Preview(showBackground = true)

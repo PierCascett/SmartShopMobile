@@ -28,7 +28,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import it.unito.smartshopmobile.data.datastore.SessionDataStore
 import it.unito.smartshopmobile.data.entity.User
-import it.unito.smartshopmobile.data.model.UserRole
+import it.unito.smartshopmobile.domain.UserRole
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 

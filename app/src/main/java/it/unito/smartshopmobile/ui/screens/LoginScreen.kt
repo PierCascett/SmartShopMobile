@@ -85,8 +85,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import it.unito.smartshopmobile.R
-import it.unito.smartshopmobile.data.model.UserRole
 import it.unito.smartshopmobile.data.entity.User
+import it.unito.smartshopmobile.domain.UserRole
 import it.unito.smartshopmobile.viewModel.LoginViewModel
 import kotlinx.coroutines.launch
 
