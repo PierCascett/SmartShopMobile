@@ -1,4 +1,23 @@
+/**
+ * Color.kt
+ *
+ * MVVM: View Layer - Palette colori Material Design
+ *
+ * FUNZIONAMENTO:
+ * - Definisce palette colori per tema Light e Dark
+ * - Primary: Verde (brand supermercato)
+ * - Secondary: Giallo/Arancione (accent)
+ * - Tertiary: Teal (complementare)
+ * - Container colors: varianti chiare per superfici
+ *
+ * PATTERN MVVM:
+ * - Theme: configurazione visuale globale
+ * - Material 3 Color System
+ * - Accessibilità: contrast ratio WCAG
+ * - Dark mode support
+ */
 package it.unito.smartshopmobile.ui.theme
+
 
 import androidx.compose.ui.graphics.Color
 

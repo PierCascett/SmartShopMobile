@@ -26,7 +26,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitInstance {
-    private const val BACKEND_HOST = "192.168.1.53"
+    private const val BACKEND_HOST = "192.168.1.3"
     private const val BACKEND_PORT = "3000"
 
     val assetBaseUrl: String

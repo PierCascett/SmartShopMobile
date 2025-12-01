@@ -1,3 +1,20 @@
+/**
+ * AccountSettingsScreen.kt
+ *
+ * MVVM: View Layer - UI impostazioni profilo
+ *
+ * FUNZIONAMENTO:
+ * - Form modifica profilo (nome, cognome, email, telefono)
+ * - Upload foto profilo con image picker
+ * - Validazione input (email pattern)
+ * - Salvataggio su API + aggiorna SessionDataStore
+ *
+ * PATTERN MVVM:
+ * - View: rendering form profilo
+ * - Validazione locale UI-side
+ * - Callback: onSaveProfile, onUploadPhoto
+ * - ActivityResultLauncher: selezione immagine
+ */
 package it.unito.smartshopmobile.ui.screens
 
 import android.net.Uri

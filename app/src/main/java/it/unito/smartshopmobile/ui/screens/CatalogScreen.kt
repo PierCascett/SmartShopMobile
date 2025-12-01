@@ -1,31 +1,27 @@
 /**
  * CatalogScreen.kt
  *
- * RUOLO MVVM: View Layer (UI - Jetpack Compose)
- * - Schermata principale del catalogo prodotti per il ruolo Customer
- * - Puramente presentazionale: visualizza stato e invia eventi al ViewModel
- * - Reattiva: si ricompone automaticamente quando lo stato cambia
+ * MVVM: View Layer - UI catalogo prodotti (Customer)
  *
- * RESPONSABILITÀ:
- * - Osservare stato UI dal CatalogViewModel (collectAsState)
- * - Renderizzare UI in base allo stato (loading, error, success)
- * - Inviare intent utente al ViewModel (search, filter, addToCart)
- * - Gestire navigazione (carrello, dettaglio prodotto)
- * - NO logica business: solo composizione UI
+ * FUNZIONAMENTO:
+ * - Osserva CatalogViewModel.uiState con collectAsState()
+ * - Renderizza griglia prodotti, filtri, ricerca, carrello
+ * - Invia eventi al ViewModel (ricerca, aggiungi carrello, filtra)
+ * - Ricompone automaticamente quando stato cambia (reattività)
  *
- * PATTERN: MVVM - View
+ * PATTERN MVVM:
+ * - View: solo UI rendering, nessuna logica business
  * - @Composable: funzioni dichiarative per UI
  * - State hoisting: stato gestito dal ViewModel
- * - Unidirectional Data Flow: eventi → ViewModel → stato → UI
- * - NON conosce Repository, Room, Retrofit
+ * - collectAsState(): osserva StateFlow e ricompone UI
+ * - Unidirectional Data Flow: UI event → ViewModel → State → UI update
+ * - Separation of Concerns: NON conosce Repository/Room/Retrofit
  *
- * COMPONENTI PRINCIPALI:
- * - CatalogScreen: schermata principale
- * - SearchBar: input ricerca prodotti
- * - FilterRow: filtri categoria/disponibilità
- * - ProductGrid: griglia prodotti
- * - ProductCard: card singolo prodotto
+ * COMPONENTI:
+ * - CatalogScreen: container principale
+ * - SearchBar, FilterRow, ProductGrid, ProductCard
  * - CartOverlay: overlay carrello laterale
+ * - ProductDetailDialog: dettaglio prodotto
  */
 package it.unito.smartshopmobile.ui.screens
 

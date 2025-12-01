@@ -1,4 +1,22 @@
-// EmployeeScreen.kt - Compose screen for employee UI (cleaned header)
+/**
+ * EmployeeScreen.kt
+ *
+ * MVVM: View Layer - UI per schermata Dipendente
+ *
+ * FUNZIONAMENTO:
+ * - Osserva EmployeeViewModel.uiState per picking ordini
+ * - Mostra mappa supermercato con corsie (scaffold) e prodotti
+ * - Gestisce ordine attivo, linee da pickare, navigazione mappa
+ * - Tabs: Mappa picking, Storico ordini, Assegna ordine, Profilo
+ *
+ * PATTERN MVVM:
+ * - View: solo rendering UI, reattività automatica
+ * - collectAsState(): osserva StateFlow<EmployeeUiState>
+ * - Intent al ViewModel: selectAisle(), togglePicked(), markOrderCompleted()
+ * - Unidirectional Data Flow: UI event → ViewModel → State → UI
+ * - Componenti: StoreMapCanvas, OrderList, ProductDetail
+ */
+// EmployeeScreen.kt - Compose screen for employee UI
 package it.unito.smartshopmobile.ui.screens
 
 import androidx.compose.foundation.ExperimentalFoundationApi

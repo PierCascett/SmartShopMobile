@@ -1,3 +1,22 @@
+/**
+ * ManagerScreen.kt
+ *
+ * MVVM: View Layer - UI per schermata Responsabile
+ *
+ * FUNZIONAMENTO:
+ * - Osserva ManagerViewModel.uiState per gestione magazzino
+ * - Form riordino merce da fornitori (Restock)
+ * - Trasferimento stock da magazzino a scaffali
+ * - Visualizza storico riordini e arrivi
+ * - Tabs: Riordine, Storico, Trasferisci, Profilo
+ *
+ * PATTERN MVVM:
+ * - View: solo rendering UI dashboard amministrativa
+ * - collectAsState(): osserva StateFlow<ManagerUiState>
+ * - Intent al ViewModel: submitRestock(), moveStockToShelf(), refreshAllData()
+ * - Unidirectional Data Flow: UI event → ViewModel → State → UI
+ * - Componenti: RestockForm, RestockList, TransferForm, ProductSelector
+ */
 package it.unito.smartshopmobile.ui.screens
 
 import android.net.Uri

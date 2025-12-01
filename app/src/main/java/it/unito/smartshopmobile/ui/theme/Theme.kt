@@ -1,4 +1,23 @@
+/**
+ * Theme.kt
+ *
+ * MVVM: View Layer - Tema Material Design 3
+ *
+ * FUNZIONAMENTO:
+ * - SmartShopMobileTheme: wrapper tema globale
+ * - Light/Dark ColorScheme da Color.kt
+ * - Dynamic color (Android 12+) opzionale
+ * - SystemBars styling (status bar, navigation bar)
+ * - Typography da Type.kt
+ *
+ * PATTERN MVVM:
+ * - Theme: configurazione UI globale
+ * - MaterialTheme: Material 3 theming
+ * - isSystemInDarkTheme(): auto dark mode
+ * - SideEffect: aggiorna system bars
+ */
 package it.unito.smartshopmobile.ui.theme
+
 
 import android.app.Activity
 import android.os.Build

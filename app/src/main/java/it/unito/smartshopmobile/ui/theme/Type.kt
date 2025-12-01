@@ -1,3 +1,20 @@
+/**
+ * Type.kt
+ *
+ * MVVM: View Layer - Tipografia Material Design
+ *
+ * FUNZIONAMENTO:
+ * - Definisce TextStyle per Material 3 Typography
+ * - bodyLarge: testo corpo principale
+ * - titleLarge, labelSmall: varianti disponibili
+ * - Font: FontFamily.Default (Roboto su Android)
+ * - Responsive: fontSize, lineHeight, letterSpacing
+ *
+ * PATTERN MVVM:
+ * - Typography: sistema tipografico Material 3
+ * - TextStyle: configurazione testo (size, weight, spacing)
+ * - Consistency: stili uniformi tutta app
+ */
 package it.unito.smartshopmobile.ui.theme
 
 import androidx.compose.material3.Typography
