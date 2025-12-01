@@ -6,6 +6,7 @@ const os = require('os');
 const { promisify } = require('util');
 const { exec } = require('child_process');
 const execPromise = promisify(exec);
+const swaggerUi = require('swagger-ui-express');
 require('dotenv').config();
 
 const categoriesRoutes = require('./routes/categories');
@@ -17,6 +18,7 @@ const suppliersRoutes = require('./routes/suppliers');
 const db = require('./db');
 const shelvesRoutes = require('./routes/shelves');
 const inventoryRoutes = require('./routes/inventory');
+const swaggerDocument = require('./swagger/SwaggerDocumentation.json');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -30,6 +32,9 @@ app.use(morgan('dev'));
 
 // Serve static images
 app.use('/images', express.static(path.join(__dirname, 'images')));
+
+// Swagger UI
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, { explorer: true }));
 
 // Health check
 app.get('/health', async (req, res) => {

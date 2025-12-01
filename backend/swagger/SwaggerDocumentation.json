@@ -1,0 +1,286 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "SmartShop Backend API",
+    "version": "1.0.0",
+    "description": "Documentazione Swagger per le route del backend SmartShop Mobile. Usa \"Try it out\" per eseguire le chiamate verso il server Express."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Server locale (default PORT)"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "Stato del server"
+          }
+        }
+      }
+    },
+    "/api/categorie": {
+      "get": {
+        "summary": "Elenco categorie",
+        "description": "Ritorna tutte le categorie con sovracategoria e conteggio prodotti.",
+        "responses": {
+          "200": {
+            "description": "Lista categorie"
+          }
+        }
+      }
+    },
+    "/api/categorie/macro": {
+      "get": {
+        "summary": "Elenco macro categorie",
+        "responses": {
+          "200": {
+            "description": "Lista macro categorie"
+          }
+        }
+      }
+    },
+    "/api/categorie/{parentId}/sottocategorie": {
+      "get": {
+        "summary": "Sottocategorie per sovracategoria",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "parentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID della sovracategoria"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista sottocategorie"
+          }
+        }
+      }
+    },
+    "/api/prodotti": {
+      "get": {
+        "summary": "Elenco prodotti",
+        "responses": {
+          "200": {
+            "description": "Lista prodotti"
+          }
+        }
+      }
+    },
+    "/api/prodotti/categoria/{categoryId}": {
+      "get": {
+        "summary": "Prodotti per categoria",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "categoryId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID categoria"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista prodotti filtrati"
+          }
+        }
+      }
+    },
+    "/api/prodotti/search": {
+      "get": {
+        "summary": "Cerca prodotti",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Termine di ricerca (nome o marca)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista prodotti corrispondenti"
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Login utente",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Dati utente autenticato"
+          },
+          "401": {
+            "description": "Credenziali non valide"
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "summary": "Registrazione utente",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nome": {
+                    "type": "string"
+                  },
+                  "cognome": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  },
+                  "telefono": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "ruolo": {
+                    "type": "string",
+                    "description": "Default Cliente"
+                  }
+                },
+                "required": [
+                  "nome",
+                  "cognome",
+                  "email",
+                  "password"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Utente creato"
+          },
+          "409": {
+            "description": "Email già registrata"
+          }
+        }
+      }
+    },
+    "/api/auth/profile/{userId}": {
+      "patch": {
+        "summary": "Aggiorna profilo utente",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nome": {
+                    "type": "string"
+                  },
+                  "cognome": {
+                    "type": "string"
+                  },
+                  "telefono": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profilo aggiornato"
+          }
+        }
+      }
+    },
+    "/api/auth/profile/{userId}/photo": {
+      "post": {
+        "summary": "Carica foto profilo",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "photo": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "photo"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "URL avatar aggiornato"
+          }
+        }
+      }
+    }

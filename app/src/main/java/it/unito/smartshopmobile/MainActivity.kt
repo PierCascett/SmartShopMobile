@@ -78,31 +78,30 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import it.unito.smartshopmobile.data.datastore.AccountPreferences
-import it.unito.smartshopmobile.domain.UserRole
 import it.unito.smartshopmobile.data.entity.User
-import it.unito.smartshopmobile.ui.screens.CatalogScreen
-import it.unito.smartshopmobile.ui.screens.LoginScreenMVVM
-import it.unito.smartshopmobile.ui.screens.LoginScreen
-import it.unito.smartshopmobile.ui.screens.EmployeeScreen
-import it.unito.smartshopmobile.ui.screens.ManagerScreen
-import it.unito.smartshopmobile.ui.screens.SideMenuOverlay
-import it.unito.smartshopmobile.ui.screens.AppCartOverlay
-import it.unito.smartshopmobile.ui.screens.OrderHistoryPanel
+import it.unito.smartshopmobile.data.remote.RetrofitInstance
+import it.unito.smartshopmobile.domain.UserRole
+import it.unito.smartshopmobile.ui.components.NavBarDivider
 import it.unito.smartshopmobile.ui.screens.AccountSettingsScreen
+import it.unito.smartshopmobile.ui.screens.AppCartOverlay
+import it.unito.smartshopmobile.ui.screens.AppFavoritesOverlay
+import it.unito.smartshopmobile.ui.screens.CatalogScreen
+import it.unito.smartshopmobile.ui.screens.EmployeeScreen
+import it.unito.smartshopmobile.ui.screens.LoginScreen
+import it.unito.smartshopmobile.ui.screens.LoginScreenMVVM
+import it.unito.smartshopmobile.ui.screens.ManagerScreen
+import it.unito.smartshopmobile.ui.screens.OrderHistoryPanel
+import it.unito.smartshopmobile.ui.screens.SideMenuOverlay
 import it.unito.smartshopmobile.ui.theme.SmartShopMobileTheme
 import it.unito.smartshopmobile.viewModel.AccountPreferencesViewModel
-import it.unito.smartshopmobile.viewModel.CatalogViewModel
 import it.unito.smartshopmobile.viewModel.CatalogUiState
+import it.unito.smartshopmobile.viewModel.CatalogViewModel
+import it.unito.smartshopmobile.viewModel.CustomerTab
 import it.unito.smartshopmobile.viewModel.LoginViewModel
 import it.unito.smartshopmobile.viewModel.MainViewModel
-import it.unito.smartshopmobile.viewModel.CustomerTab
-
-import it.unito.smartshopmobile.ui.components.NavBarDivider
-import it.unito.smartshopmobile.ui.screens.AppFavoritesOverlay
 import kotlinx.coroutines.launch
-import coil.compose.AsyncImage
-import it.unito.smartshopmobile.data.remote.RetrofitInstance
 
 class MainActivity : ComponentActivity() {
     private val mainViewModel: MainViewModel by viewModels()
@@ -140,8 +139,7 @@ class MainActivity : ComponentActivity() {
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     Scaffold(
-                        modifier = Modifier.fillMaxSize(),
-                        contentWindowInsets = WindowInsets(0.dp)
+                        modifier = Modifier.fillMaxSize(), contentWindowInsets = WindowInsets(0.dp)
                     ) { innerPadding ->
                         val contentModifier = Modifier
                             .padding(innerPadding)
@@ -153,8 +151,7 @@ class MainActivity : ComponentActivity() {
                                 modifier = contentModifier,
                                 onLoginSuccess = { user, role ->
                                     mainViewModel.onLoginSuccess(user, role)
-                                }
-                            )
+                                })
                         } else {
                             ContentWithSessionBar(
                                 modifier = contentModifier,
@@ -178,15 +175,17 @@ class MainActivity : ComponentActivity() {
                                 onCartClick = { mainViewModel.setShowCart(true) },
                                 accountPrefs = accountPrefs,
                                 onSaveProfile = { nome, cognome, email, indirizzo, telefono ->
-                                    val result = catalogViewModel.updateUserProfile(nome, cognome, email, telefono.ifBlank { null })
+                                    val result = catalogViewModel.updateUserProfile(
+                                        nome, cognome, email, telefono.ifBlank { null })
                                     result.onSuccess {
-                                        accountPreferencesViewModel.updateProfile(nome, cognome, indirizzo, telefono)
+                                        accountPreferencesViewModel.updateProfile(
+                                            nome, cognome, indirizzo, telefono
+                                        )
                                     }
                                     result
                                 },
                                 customerTab = mainState.currentTab,
-                                onCustomerTabChange = { mainViewModel.setCurrentTab(it) }
-                            )
+                                onCustomerTabChange = { mainViewModel.setCurrentTab(it) })
                         }
                     }
 
@@ -202,8 +201,7 @@ class MainActivity : ComponentActivity() {
                                 mainViewModel.setShowMenu(false)
                                 catalogViewModel.onCategorySelected(selection)
                                 catalogViewModel.onSearchQueryChange("")
-                            }
-                        )
+                            })
                     }
 
                     if (mainState.showCart) {
@@ -223,8 +221,7 @@ class MainActivity : ComponentActivity() {
                             onDecrease = { id -> catalogViewModel.onDecreaseCartItem(id) },
                             onRemove = { id -> catalogViewModel.onRemoveFromCart(id) },
                             onSubmitOrder = { catalogViewModel.submitOrder() },
-                            onDeliveryMethodChange = { catalogViewModel.onDeliveryMethodSelected(it) }
-                        )
+                            onDeliveryMethodChange = { catalogViewModel.onDeliveryMethodSelected(it) })
                     }
 
                     if (mainState.showFavorites) {
@@ -235,8 +232,7 @@ class MainActivity : ComponentActivity() {
                             onIncrease = { catalogViewModel.onAddToCart(it) },
                             onDecrease = { catalogViewModel.onDecreaseCartItem(it) },
                             onToggleFavorite = { catalogViewModel.onBookmark(it) },
-                            onProductClick = { catalogViewModel.onProductSelected(it) }
-                        )
+                            onProductClick = { catalogViewModel.onProductSelected(it) })
                     }
 
                 }
@@ -268,17 +264,14 @@ private fun ContentWithSessionBar(
     val resolvedEmail = catalogState.loggedUser?.email ?: email
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
-        contentWindowInsets = WindowInsets(0.dp),
-        topBar = {
+        modifier = modifier.fillMaxSize(), contentWindowInsets = WindowInsets(0.dp), topBar = {
             SessionBar(
                 email = resolvedEmail,
                 avatarUrl = avatarUrl,
                 onLogout = onLogout,
                 onOpenAccount = onOpenAccount
             )
-        }
-    ) { innerPadding ->
+        }) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -305,10 +298,11 @@ private fun ContentWithSessionBar(
                     avatarUrl = catalogState.loggedUser?.avatarUrl,
                     openProfileTrigger = employeeProfileTrigger,
                     onSaveProfile = { nome, cognome, emailInput, indirizzo, telefono ->
-                        catalogViewModel.updateUserProfile(nome, cognome, emailInput, telefono.ifBlank { null })
+                        catalogViewModel.updateUserProfile(
+                            nome, cognome, emailInput, telefono.ifBlank { null })
                     },
-                    onUploadPhoto = { uri -> catalogViewModel.uploadProfilePhoto(uri) }
-                )
+                    onUploadPhoto = { uri -> catalogViewModel.uploadProfilePhoto(uri) })
+
                 UserRole.MANAGER -> ManagerScreen(
                     modifier = Modifier.fillMaxSize(),
                     accountPrefs = accountPrefs,
@@ -316,10 +310,11 @@ private fun ContentWithSessionBar(
                     avatarUrl = catalogState.loggedUser?.avatarUrl,
                     openProfileTrigger = managerProfileTrigger,
                     onSaveProfile = { nome, cognome, emailInput, indirizzo, telefono ->
-                        catalogViewModel.updateUserProfile(nome, cognome, emailInput, telefono.ifBlank { null })
+                        catalogViewModel.updateUserProfile(
+                            nome, cognome, emailInput, telefono.ifBlank { null })
                     },
-                    onUploadPhoto = { uri -> catalogViewModel.uploadProfilePhoto(uri) }
-                )
+                    onUploadPhoto = { uri -> catalogViewModel.uploadProfilePhoto(uri) })
+
                 null -> Unit
             }
         }
@@ -353,14 +348,12 @@ private fun CustomerHome(
     val resolvedPrefs = accountPrefs.copy(
         nome = accountPrefs.nome.ifBlank { state.loggedUser?.nome.orEmpty() },
         cognome = accountPrefs.cognome.ifBlank { state.loggedUser?.cognome.orEmpty() },
-        telefono = accountPrefs.telefono.ifBlank { state.loggedUser?.telefono.orEmpty() }
-    )
+        telefono = accountPrefs.telefono.ifBlank { state.loggedUser?.telefono.orEmpty() })
 
     LaunchedEffect(resolvedPrefs.indirizzoSpedizione, resolvedPrefs.telefono) {
         catalogViewModel.setCustomerContacts(
             indirizzo = resolvedPrefs.indirizzoSpedizione,
-            telefono = resolvedPrefs.telefono.ifBlank { null }
-        )
+            telefono = resolvedPrefs.telefono.ifBlank { null })
     }
 
     LaunchedEffect(profileError) {
@@ -391,41 +384,41 @@ private fun CustomerHome(
             ) {
                 NavBarDivider()
                 NavigationBar(
-                     modifier = Modifier
-                         .fillMaxWidth()
-                         .navigationBarsPadding(),
-                     containerColor = MaterialTheme.colorScheme.surface,
-                     contentColor = MaterialTheme.colorScheme.onSurface,
-                     windowInsets = WindowInsets(0.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding(),
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    windowInsets = WindowInsets(0.dp)
                 ) {
-                     NavigationBarItem(
-                         selected = selectedTab == CustomerTab.SHOP,
-                         onClick = { onTabChange(CustomerTab.SHOP) },
-                         icon = { Icon(Icons.Filled.Home, contentDescription = "Catalogo") },
-                         label = { Text("Ordina") }
-                     )
-                     NavigationBarItem(
-                         selected = selectedTab == CustomerTab.ORDERS,
-                         onClick = { onTabChange(CustomerTab.ORDERS) },
-                         icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Ordini") },
-                         label = { Text("Storico") }
-                     )
-                     NavigationBarItem(
-                         selected = selectedTab == CustomerTab.ACCOUNT,
-                         onClick = { onTabChange(CustomerTab.ACCOUNT) },
-                         icon = { Icon(Icons.Filled.Settings, contentDescription = "Account") },
-                         label = { Text("Account") }
-                     )
-                 }
-             }
-         }
-     ) { innerPadding ->
-         val contentPadding = PaddingValues(
-             start = innerPadding.calculateLeftPadding(LayoutDirection.Ltr),
-             end = innerPadding.calculateRightPadding(LayoutDirection.Ltr),
-             top = innerPadding.calculateTopPadding(),
-             bottom = innerPadding.calculateBottomPadding()
-         )
+                    NavigationBarItem(
+                        selected = selectedTab == CustomerTab.SHOP,
+                        onClick = { onTabChange(CustomerTab.SHOP) },
+                        icon = { Icon(Icons.Filled.Home, contentDescription = "Catalogo") },
+                        label = { Text("Ordina") })
+                    NavigationBarItem(
+                        selected = selectedTab == CustomerTab.ORDERS,
+                        onClick = { onTabChange(CustomerTab.ORDERS) },
+                        icon = {
+                            Icon(
+                                Icons.AutoMirrored.Filled.List, contentDescription = "Ordini"
+                            )
+                        },
+                        label = { Text("Storico") })
+                    NavigationBarItem(
+                        selected = selectedTab == CustomerTab.ACCOUNT,
+                        onClick = { onTabChange(CustomerTab.ACCOUNT) },
+                        icon = { Icon(Icons.Filled.Settings, contentDescription = "Account") },
+                        label = { Text("Account") })
+                }
+            }
+        }) { innerPadding ->
+        val contentPadding = PaddingValues(
+            start = innerPadding.calculateLeftPadding(LayoutDirection.Ltr),
+            end = innerPadding.calculateRightPadding(LayoutDirection.Ltr),
+            top = innerPadding.calculateTopPadding(),
+            bottom = innerPadding.calculateBottomPadding()
+        )
         when (selectedTab) {
             CustomerTab.SHOP -> CatalogScreen(
                 state = state,
@@ -520,52 +513,45 @@ private fun SessionBar(
 ) {
     val avatarModel = remember(avatarUrl) {
         avatarUrl?.let { url ->
-            RetrofitInstance.buildAssetUrl(url)?.let { built -> "$built?ts=${System.currentTimeMillis()}" }
+            RetrofitInstance.buildAssetUrl(url)
+                ?.let { built -> "$built?ts=${System.currentTimeMillis()}" }
         }
     }
     TopAppBar(
-        modifier = modifier,
-        title = {
-            Text(
-                text = email.ifBlank { "Account" },
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.clickable { onOpenAccount() }
-            )
-        },
-        navigationIcon = {
-            if (!avatarModel.isNullOrBlank()) {
-                AsyncImage(
-                    model = avatarModel,
-                    contentDescription = "Avatar",
-                    modifier = Modifier
-                        .padding(start = 8.dp)
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .clickable { onOpenAccount() }
+        modifier = modifier, title = {
+        Text(
+            text = email.ifBlank { "Account" },
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.clickable { onOpenAccount() })
+    }, navigationIcon = {
+        if (!avatarModel.isNullOrBlank()) {
+            AsyncImage(
+                model = avatarModel,
+                contentDescription = "Avatar",
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .clickable { onOpenAccount() })
+        } else {
+            IconButton(onClick = onOpenAccount) {
+                Icon(
+                    imageVector = Icons.Filled.AccountCircle, contentDescription = "Account"
                 )
-            } else {
-                IconButton(onClick = onOpenAccount) {
-                    Icon(
-                        imageVector = Icons.Filled.AccountCircle,
-                        contentDescription = "Account"
-                    )
-                }
             }
-        },
-        actions = {
-            TextButton(onClick = onLogout) {
-                Text("Esci")
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-            titleContentColor = MaterialTheme.colorScheme.onSurface,
-            navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
-            actionIconContentColor = MaterialTheme.colorScheme.primary
-        ),
-        windowInsets = WindowInsets(0.dp)
+        }
+    }, actions = {
+        TextButton(onClick = onLogout) {
+            Text("Esci")
+        }
+    }, colors = TopAppBarDefaults.topAppBarColors(
+        containerColor = MaterialTheme.colorScheme.surface,
+        titleContentColor = MaterialTheme.colorScheme.onSurface,
+        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+        actionIconContentColor = MaterialTheme.colorScheme.primary
+    ), windowInsets = WindowInsets(0.dp)
     )
 }
 
