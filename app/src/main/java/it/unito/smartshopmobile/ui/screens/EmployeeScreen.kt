@@ -657,6 +657,7 @@ private fun SelectedAislePanel(selected: StoreAisle?, onProductClick: (AisleProd
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun ProductChip(product: AisleProduct, onProductClick: (AisleProduct) -> Unit) {
     Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), modifier = Modifier.width(190.dp).clickable { onProductClick(product) }) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -687,6 +688,7 @@ private fun ProductDetailDialog(product: AisleProduct, onDismiss: () -> Unit) {
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun OrderPickingPanel(
     order: Order,
     pickedLines: Set<Int>,

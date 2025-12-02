@@ -283,4 +283,322 @@
           }
         }
       }
+    },"/api/ordini": {
+      "get": {
+        "summary": "Elenco ordini",
+        "responses": {
+          "200": {
+            "description": "Lista ordini con righe"
+          }
+        }
+      },
+      "post": {
+        "summary": "Crea ordine cliente",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "idUtente": {
+                    "type": "integer"
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "idProdotto": {
+                          "type": "integer"
+                        },
+                        "quantita": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "idProdotto",
+                        "quantita"
+                      ]
+                    }
+                  },
+                  "metodoConsegna": {
+                    "type": "string",
+                    "description": "LOCKER o DOMICILIO"
+                  },
+                  "indirizzoSpedizione": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "idUtente",
+                  "items"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Ordine creato"
+          },
+          "409": {
+            "description": "Stock insufficiente o errore"
+          }
+        }
+      }
+    },
+    "/api/ordini/{orderId}": {
+      "patch": {
+        "summary": "Aggiorna stato ordine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "stato": {
+                    "type": "string",
+                    "description": "CREATO, SPEDITO, CONSEGNATO, ANNULLATO, CONCLUSO"
+                  },
+                  "idRider": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "stato"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ordine aggiornato"
+          }
+        }
+      }
+    },
+    "/api/riordini": {
+      "get": {
+        "summary": "Elenco riordini magazzino",
+        "responses": {
+          "200": {
+            "description": "Lista riordini"
+          }
+        }
+      },
+      "post": {
+        "summary": "Crea riordino",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "idProdotto": {
+                    "type": "integer"
+                  },
+                  "idFornitore": {
+                    "type": "integer"
+                  },
+                  "quantitaOrdinata": {
+                    "type": "integer"
+                  },
+                  "dataArrivoPrevista": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "idResponsabile": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "idProdotto",
+                  "idFornitore",
+                  "quantitaOrdinata"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Riordino creato"
+          }
+        }
+      }
+    },
+    "/api/riordini/processa-arrivi": {
+      "post": {
+        "summary": "Processa arrivi previsti",
+        "responses": {
+          "200": {
+            "description": "Elaborazione completata"
+          }
+        }
+      }
+    },
+    "/api/riordini/{id}/arrivo": {
+      "patch": {
+        "summary": "Marca riordino come arrivato",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "arrivedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Timestamp di arrivo (opzionale, default NOW)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Riordino aggiornato"
+          }
+        }
+      }
+    },
+    "/api/fornitori": {
+      "get": {
+        "summary": "Elenco fornitori",
+        "responses": {
+          "200": {
+            "description": "Lista fornitori"
+          }
+        }
+      }
+    },
+    "/api/scaffali": {
+      "get": {
+        "summary": "Elenco scaffali",
+        "responses": {
+          "200": {
+            "description": "Lista scaffali"
+          }
+        }
+      }
+    },
+    "/api/scaffali/{id}": {
+      "get": {
+        "summary": "Dettaglio scaffale",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dati scaffale"
+          },
+          "404": {
+            "description": "Scaffale non trovato"
+          }
+        }
+      }
+    },
+    "/api/scaffali/{id}/prodotti": {
+      "get": {
+        "summary": "Prodotti per scaffale",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista prodotti sullo scaffale"
+          }
+        }
+      }
+    },
+    "/api/magazzino/trasferisci": {
+      "post": {
+        "summary": "Trasferisci stock dal magazzino allo scaffale",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "idProdotto": {
+                    "type": "string"
+                  },
+                  "quantita": {
+                    "type": "integer"
+                  },
+                  "idScaffale": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "idProdotto",
+                  "quantita",
+                  "idScaffale"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Trasferimento completato"
+          },
+          "409": {
+            "description": "Quantita insufficiente"
+          }
+        }
+      }
+    },
+    "/api/magazzino/riconcilia-arrivi": {
+      "post": {
+        "summary": "Riconcilia magazzino con arrivi",
+        "responses": {
+          "200": {
+            "description": "Riconciliazione completata"
+          }
+        }
+      }
     }
+  }
+}
