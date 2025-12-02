@@ -39,6 +39,9 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
 }
 
 dependencies {
@@ -60,6 +63,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
     implementation(libs.androidx.compose.runtime)
+    implementation(libs.core.ktx)
 
     // Room Database
     val roomVersion = "2.6.1"
@@ -81,6 +85,12 @@ dependencies {
 
     // DataStore per sessione utente
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+    // Test
+    testImplementation("io.mockk:mockk:1.13.12")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    testImplementation("org.robolectric:robolectric:4.12.2")
+    testImplementation("androidx.test:core:1.6.1")
 
     // QR generation
     implementation("com.google.zxing:core:3.5.3")
