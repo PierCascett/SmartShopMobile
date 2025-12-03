@@ -2,11 +2,10 @@
 -- PostgreSQL database dump
 --
 
-
 -- Dumped from database version 18.1
 -- Dumped by pg_dump version 18.1
 
--- Started on 2025-11-23 16:01:08
+-- Started on 2025-12-02 16:57:08
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -664,30 +663,40 @@ ALTER TABLE ONLY public.utenti ALTER COLUMN id_utente SET DEFAULT nextval('publi
 -- Data for Name: catalogo; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-INSERT INTO public.catalogo VALUES (8, 'prd-07', 25, 2.49, 2.89, 6);
+INSERT INTO public.catalogo VALUES (26, 'prd-05', 3, 3.49, 3.99, 13);
+INSERT INTO public.catalogo VALUES (3, 'prd-03', 0, 1.99, NULL, 3);
+INSERT INTO public.catalogo VALUES (16, 'prd-15', 13, 1.79, 2.09, 3);
+INSERT INTO public.catalogo VALUES (21, 'prd-03', 0, 1.99, 2.20, 10);
+INSERT INTO public.catalogo VALUES (32, 'prd-03', 0, 1.99, NULL, 1);
+INSERT INTO public.catalogo VALUES (13, 'prd-12', 0, 7.99, 8.49, 9);
+INSERT INTO public.catalogo VALUES (24, 'prd-12', 0, 7.99, 8.49, 8);
+INSERT INTO public.catalogo VALUES (30, 'prd-11', 0, 4.49, 4.99, 13);
+INSERT INTO public.catalogo VALUES (12, 'prd-11', 0, 4.49, 4.99, 8);
 INSERT INTO public.catalogo VALUES (10, 'prd-09', 18, 4.99, 5.49, 7);
-INSERT INTO public.catalogo VALUES (11, 'prd-10', 12, 4.79, 5.29, 7);
-INSERT INTO public.catalogo VALUES (14, 'prd-13', 8, 9.99, 10.49, 9);
-INSERT INTO public.catalogo VALUES (16, 'prd-15', 16, 1.79, 2.09, 3);
-INSERT INTO public.catalogo VALUES (17, 'prd-16', 14, 1.99, 2.29, 2);
 INSERT INTO public.catalogo VALUES (18, 'prd-17', 24, 1.49, 1.79, 10);
 INSERT INTO public.catalogo VALUES (19, 'prd-18', 30, 1.39, 1.69, 10);
-INSERT INTO public.catalogo VALUES (12, 'prd-11', 19, 4.49, 4.99, 8);
-INSERT INTO public.catalogo VALUES (9, 'prd-08', 14, 5.99, 6.49, 7);
+INSERT INTO public.catalogo VALUES (33, 'prd-11', 1, 4.49, 4.99, 1);
 INSERT INTO public.catalogo VALUES (4, 'prd-01', 0, 2.49, 2.99, 2);
-INSERT INTO public.catalogo VALUES (15, 'prd-14', 16, 1.59, 1.89, 3);
-INSERT INTO public.catalogo VALUES (20, 'prd-19', 21, 1.29, 1.59, 10);
-INSERT INTO public.catalogo VALUES (7, 'prd-06', 24, 2.79, 3.19, 6);
+INSERT INTO public.catalogo VALUES (11, 'prd-10', 0, 4.79, 5.29, 7);
+INSERT INTO public.catalogo VALUES (9, 'prd-08', 0, 5.99, 6.49, 7);
+INSERT INTO public.catalogo VALUES (27, 'prd-08', 0, 5.99, 6.49, 1);
+INSERT INTO public.catalogo VALUES (25, 'prd-12', 0, 7.99, 8.49, 1);
+INSERT INTO public.catalogo VALUES (8, 'prd-07', 18, 2.49, 2.89, 6);
+INSERT INTO public.catalogo VALUES (20, 'prd-19', 20, 1.29, 1.59, 10);
 INSERT INTO public.catalogo VALUES (6, 'prd-05', 27, 3.49, 3.99, 5);
-INSERT INTO public.catalogo VALUES (13, 'prd-12', 9, 7.99, 8.49, 9);
-INSERT INTO public.catalogo VALUES (5, 'prd-04', 16, 1.99, 2.29, 4);
-INSERT INTO public.catalogo VALUES (2, 'prd-02', 7, 3.10, 3.49, 1);
-INSERT INTO public.catalogo VALUES (21, 'prd-03', 2, 1.99, 2.20, 10);
-INSERT INTO public.catalogo VALUES (22, 'prd-02', 1, 3.10, 3.49, 18);
-INSERT INTO public.catalogo VALUES (3, 'prd-03', 5, 1.99, 2.20, 3);
-INSERT INTO public.catalogo VALUES (1, 'prd-01', 53, 2.49, 2.99, 1);
+INSERT INTO public.catalogo VALUES (2, 'prd-02', 20, 3.10, 3.49, 1);
+INSERT INTO public.catalogo VALUES (29, 'prd-01', 0, 2.49, NULL, 16);
+INSERT INTO public.catalogo VALUES (7, 'prd-06', 18, 2.79, 3.19, 6);
+INSERT INTO public.catalogo VALUES (15, 'prd-14', 5, 1.59, 1.89, 3);
 INSERT INTO public.catalogo VALUES (23, 'prd-05', 2, 3.49, 3.99, 1);
-INSERT INTO public.catalogo VALUES (24, 'prd-12', 1, 7.99, 8.49, 8);
+INSERT INTO public.catalogo VALUES (17, 'prd-16', 8, 1.99, 2.29, 2);
+INSERT INTO public.catalogo VALUES (1, 'prd-01', 88, 2.49, NULL, 1);
+INSERT INTO public.catalogo VALUES (5, 'prd-04', 8, 1.99, 2.29, 4);
+INSERT INTO public.catalogo VALUES (28, 'prd-13', 0, 9.99, 10.49, 4);
+INSERT INTO public.catalogo VALUES (31, 'prd-13', 0, 9.99, 10.49, 1);
+INSERT INTO public.catalogo VALUES (14, 'prd-13', 6, 9.99, 10.49, 9);
+INSERT INTO public.catalogo VALUES (34, 'prd-02', 5, 3.10, 3.49, 2);
+INSERT INTO public.catalogo VALUES (22, 'prd-02', 0, 3.10, 3.49, 18);
 
 
 --
@@ -729,6 +738,11 @@ INSERT INTO public.consegna_domicilio VALUES (1, NULL, '2025-11-22 01:35:24.7563
 INSERT INTO public.consegna_domicilio VALUES (26, NULL, '2025-11-22 09:23:53.197526', NULL);
 INSERT INTO public.consegna_domicilio VALUES (23, NULL, '2025-11-22 09:23:53.197526', NULL);
 INSERT INTO public.consegna_domicilio VALUES (67, NULL, '2025-11-22 10:01:05.842074', '2025-11-22 10:03:33.183892');
+INSERT INTO public.consegna_domicilio VALUES (72, NULL, '2025-11-25 12:22:59.372225', '2025-11-25 12:24:24.307184');
+INSERT INTO public.consegna_domicilio VALUES (73, NULL, '2025-11-25 12:25:12.029489', NULL);
+INSERT INTO public.consegna_domicilio VALUES (80, NULL, '2025-11-26 19:11:54.616111', '2025-11-26 19:15:31.13072');
+INSERT INTO public.consegna_domicilio VALUES (93, NULL, '2025-11-27 18:58:39.841377', NULL);
+INSERT INTO public.consegna_domicilio VALUES (97, NULL, '2025-11-29 23:56:06.38674', '2025-11-29 23:59:10.671565');
 
 
 --
@@ -753,8 +767,6 @@ INSERT INTO public.fornitori VALUES (8, 'GustoZero Srl', '+39 02 4455667', 'acqu
 -- Data for Name: locker; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-INSERT INTO public.locker VALUES (2, 'LCK-002', false);
-INSERT INTO public.locker VALUES (3, 'LCK-003', false);
 INSERT INTO public.locker VALUES (4, 'LCK-004', false);
 INSERT INTO public.locker VALUES (5, 'LCK-005', false);
 INSERT INTO public.locker VALUES (6, 'LCK-006', false);
@@ -762,9 +774,11 @@ INSERT INTO public.locker VALUES (7, 'LCK-007', false);
 INSERT INTO public.locker VALUES (8, 'LCK-008', false);
 INSERT INTO public.locker VALUES (9, 'LCK-009', false);
 INSERT INTO public.locker VALUES (10, 'LCK-010', false);
-INSERT INTO public.locker VALUES (11, 'LCK-011', false);
+INSERT INTO public.locker VALUES (11, 'LCK-011', true);
 INSERT INTO public.locker VALUES (12, 'LCK-012', false);
-INSERT INTO public.locker VALUES (1, 'LCK-001', false);
+INSERT INTO public.locker VALUES (1, 'LCK-001', true);
+INSERT INTO public.locker VALUES (2, 'LCK-002', true);
+INSERT INTO public.locker VALUES (3, 'LCK-003', true);
 
 
 --
@@ -773,12 +787,19 @@ INSERT INTO public.locker VALUES (1, 'LCK-001', false);
 -- Data for Name: magazzino; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-INSERT INTO public.magazzino VALUES (1, 'prd-01', 140, 10);
-INSERT INTO public.magazzino VALUES (5, 'prd-05', 5, 13);
-INSERT INTO public.magazzino VALUES (6, 'prd-12', 8, 15);
-INSERT INTO public.magazzino VALUES (3, 'prd-03', 50, 3);
-INSERT INTO public.magazzino VALUES (2, 'prd-02', 26, 11);
-INSERT INTO public.magazzino VALUES (4, 'prd-07', 2, 12);
+INSERT INTO public.magazzino VALUES (6, 'prd-12', 3, 30);
+INSERT INTO public.magazzino VALUES (12, 'prd-10', 55, 31);
+INSERT INTO public.magazzino VALUES (1, 'prd-01', 71, 8);
+INSERT INTO public.magazzino VALUES (2, 'prd-02', 57, 34);
+INSERT INTO public.magazzino VALUES (5, 'prd-05', 2, 13);
+INSERT INTO public.magazzino VALUES (7, 'prd-09', 5, 7);
+INSERT INTO public.magazzino VALUES (8, 'prd-04', 3, 9);
+INSERT INTO public.magazzino VALUES (4, 'prd-07', 0, 12);
+INSERT INTO public.magazzino VALUES (9, 'prd-13', 9, 16);
+INSERT INTO public.magazzino VALUES (13, 'prd-18', 11, 25);
+INSERT INTO public.magazzino VALUES (3, 'prd-03', 23, 3);
+INSERT INTO public.magazzino VALUES (11, 'prd-11', 1, 21);
+INSERT INTO public.magazzino VALUES (10, 'prd-08', 0, 20);
 
 
 --
@@ -821,9 +842,44 @@ INSERT INTO public.ordini VALUES (6, 4, '2025-11-17 12:02:19.427122', 'ANNULLATO
 INSERT INTO public.ordini VALUES (1, 1, '2025-11-13 10:30:00', 'CONCLUSO', 31.10, 'LOCKER', 12, 'RAJTU0', '');
 INSERT INTO public.ordini VALUES (33, 4, '2025-11-21 23:55:35.73576', 'CONCLUSO', 3.98, 'LOCKER', 6, 'R8BZLN', '');
 INSERT INTO public.ordini VALUES (34, 4, '2025-11-22 02:03:22.308117', 'CONSEGNATO', 3.10, 'LOCKER', NULL, NULL, '');
+INSERT INTO public.ordini VALUES (92, 4, '2025-11-27 18:57:57.01058', 'CREATO', 15.98, 'LOCKER', NULL, NULL, 'Via Milone 4, Torino');
 INSERT INTO public.ordini VALUES (67, 4, '2025-11-22 10:01:05.842074', 'CONSEGNATO', 3.10, 'DOMICILIO', NULL, NULL, 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (93, 4, '2025-11-27 18:58:39.841377', 'CREATO', 58.90, 'DOMICILIO', NULL, NULL, 'Via Milone 4, Torino');
 INSERT INTO public.ordini VALUES (68, 4, '2025-11-22 10:04:38.080118', 'CONCLUSO', 3.10, 'LOCKER', 7, 'R4Z633', 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (94, 4, '2025-11-27 19:01:03.458353', 'CREATO', 7.99, 'LOCKER', NULL, NULL, 'Via Milone 4, Torino');
 INSERT INTO public.ordini VALUES (69, 4, '2025-11-22 10:20:29.698974', 'CONCLUSO', 1.99, 'LOCKER', 1, 'JOD47X', 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (70, 4, '2025-11-25 12:03:56.071297', 'CREATO', 11.94, 'LOCKER', NULL, NULL, 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (71, 4, '2025-11-25 12:17:30.026979', 'CONCLUSO', 51.48, 'LOCKER', 2, 'GO4I8I', 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (96, 4, '2025-11-29 23:26:38.543464', 'CREATO', 4.98, 'LOCKER', NULL, NULL, 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (72, 4, '2025-11-25 12:22:59.372225', 'CONSEGNATO', 8.48, 'DOMICILIO', NULL, NULL, 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (73, 4, '2025-11-25 12:25:12.029489', 'CREATO', 2.49, 'DOMICILIO', NULL, NULL, 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (74, 4, '2025-11-25 12:29:49.797626', 'CONCLUSO', 7.58, 'LOCKER', 3, '2F7MJ1', 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (76, 4, '2025-11-25 17:34:06.745686', 'CREATO', 13.76, 'LOCKER', NULL, NULL, 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (75, 4, '2025-11-25 12:36:18.84471', 'CONCLUSO', 3.10, 'LOCKER', 4, 'WS1A7B', 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (97, 4, '2025-11-29 23:56:06.38674', 'CONSEGNATO', 7.47, 'DOMICILIO', NULL, NULL, 'Via Milone 4, Miglionico');
+INSERT INTO public.ordini VALUES (77, 4, '2025-11-25 18:31:45.397281', 'CONCLUSO', 16.23, 'LOCKER', 5, 'O406OA', 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (98, 4, '2025-11-30 10:58:36.458375', 'CREATO', 1.29, 'LOCKER', NULL, NULL, 'Via Milone 4, Miglionico');
+INSERT INTO public.ordini VALUES (80, 4, '2025-11-26 19:11:54.616111', 'CONSEGNATO', 2.79, 'DOMICILIO', NULL, NULL, 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (95, 4, '2025-11-27 19:03:40.358254', 'SPEDITO', 39.95, 'LOCKER', 1, 'KS02CQ', 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (79, 4, '2025-11-25 18:52:53.094662', 'CONCLUSO', 19.16, 'LOCKER', 6, 'W88BC4', 'Via Milone 4');
+INSERT INTO public.ordini VALUES (99, 4, '2025-11-30 20:01:40.91178', 'CREATO', 5.97, 'LOCKER', NULL, NULL, 'Via Milone 4, Miglionico');
+INSERT INTO public.ordini VALUES (78, 4, '2025-11-25 18:52:44.311104', 'CONCLUSO', 3.58, 'LOCKER', 7, 'ZQ7JHO', 'Via Milone 4');
+INSERT INTO public.ordini VALUES (100, 4, '2025-12-01 18:17:43.862533', 'CREATO', 9.96, 'LOCKER', NULL, NULL, 'Via Milone 4, Miglionico');
+INSERT INTO public.ordini VALUES (81, 4, '2025-11-26 19:27:34.926222', 'CONCLUSO', 3.98, 'LOCKER', 8, '36P2CC', 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (82, 4, '2025-11-26 23:13:00.286942', 'CREATO', 18.84, 'LOCKER', NULL, NULL, 'Via Milone 4');
+INSERT INTO public.ordini VALUES (101, 4, '2025-12-01 20:13:46.977771', 'CREATO', 2.79, 'LOCKER', NULL, NULL, 'Via Milone 4, Miglionico');
+INSERT INTO public.ordini VALUES (83, 4, '2025-11-26 23:56:04.305746', 'CONCLUSO', 5.99, 'LOCKER', 9, '9XALSQ', 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (102, 4, '2025-12-01 22:55:15.078038', 'CREATO', 17.49, 'LOCKER', NULL, NULL, 'Via Milone 4, Miglionico');
+INSERT INTO public.ordini VALUES (85, 4, '2025-11-27 15:25:57.101009', 'CONCLUSO', 11.95, 'LOCKER', 10, 'C0T2A7', 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (84, 5, '2025-11-27 12:13:05.628042', 'SPEDITO', 2.49, 'LOCKER', 11, 'YUAKEW', 'Via Milone 4');
+INSERT INTO public.ordini VALUES (86, 4, '2025-11-27 18:46:45.974815', 'CONCLUSO', 19.90, 'LOCKER', 12, 'ZKK8ZS', 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (87, 4, '2025-11-27 18:48:47.258395', 'CREATO', 95.88, 'LOCKER', NULL, NULL, 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (88, 4, '2025-11-27 18:49:40.37521', 'CREATO', 98.78, 'LOCKER', NULL, NULL, 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (89, 4, '2025-11-27 18:53:47.412377', 'CREATO', 4.49, 'LOCKER', NULL, NULL, 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (90, 4, '2025-11-27 18:54:50.158145', 'CREATO', 28.74, 'LOCKER', NULL, NULL, 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (91, 4, '2025-11-27 18:55:25.108168', 'CREATO', 59.90, 'LOCKER', NULL, NULL, 'Via Milone 4, Torino');
+INSERT INTO public.ordini VALUES (104, 4, '2025-12-02 00:44:06.631654', 'SPEDITO', 49.95, 'LOCKER', 2, '8TA135', NULL);
+INSERT INTO public.ordini VALUES (103, 4, '2025-12-01 23:10:25.691339', 'SPEDITO', 12.44, 'LOCKER', 3, 'J8FQEO', 'Via Milone 4, Miglionico');
 
 
 --
@@ -933,6 +989,58 @@ INSERT INTO public.righe_ordine VALUES (42, 34, 'prd-02', 1, 3.10, 3.10);
 INSERT INTO public.righe_ordine VALUES (75, 67, 'prd-02', 1, 3.10, 3.10);
 INSERT INTO public.righe_ordine VALUES (76, 68, 'prd-02', 1, 3.10, 3.10);
 INSERT INTO public.righe_ordine VALUES (77, 69, 'prd-03', 1, 1.99, 1.99);
+INSERT INTO public.righe_ordine VALUES (78, 70, 'prd-16', 6, 1.99, 11.94);
+INSERT INTO public.righe_ordine VALUES (79, 71, 'prd-01', 2, 2.49, 4.98);
+INSERT INTO public.righe_ordine VALUES (80, 71, 'prd-06', 2, 2.79, 5.58);
+INSERT INTO public.righe_ordine VALUES (81, 71, 'prd-07', 2, 2.49, 4.98);
+INSERT INTO public.righe_ordine VALUES (82, 71, 'prd-08', 6, 5.99, 35.94);
+INSERT INTO public.righe_ordine VALUES (83, 72, 'prd-01', 1, 2.49, 2.49);
+INSERT INTO public.righe_ordine VALUES (84, 72, 'prd-08', 1, 5.99, 5.99);
+INSERT INTO public.righe_ordine VALUES (85, 73, 'prd-01', 1, 2.49, 2.49);
+INSERT INTO public.righe_ordine VALUES (86, 74, 'prd-01', 1, 2.49, 2.49);
+INSERT INTO public.righe_ordine VALUES (87, 74, 'prd-02', 1, 3.10, 3.10);
+INSERT INTO public.righe_ordine VALUES (88, 74, 'prd-03', 1, 1.99, 1.99);
+INSERT INTO public.righe_ordine VALUES (89, 75, 'prd-02', 1, 3.10, 3.10);
+INSERT INTO public.righe_ordine VALUES (90, 76, 'prd-01', 1, 2.49, 2.49);
+INSERT INTO public.righe_ordine VALUES (91, 76, 'prd-06', 1, 2.79, 2.79);
+INSERT INTO public.righe_ordine VALUES (92, 76, 'prd-07', 1, 2.49, 2.49);
+INSERT INTO public.righe_ordine VALUES (93, 76, 'prd-08', 1, 5.99, 5.99);
+INSERT INTO public.righe_ordine VALUES (94, 77, 'prd-01', 3, 2.49, 7.47);
+INSERT INTO public.righe_ordine VALUES (95, 77, 'prd-03', 3, 1.99, 5.97);
+INSERT INTO public.righe_ordine VALUES (96, 77, 'prd-06', 1, 2.79, 2.79);
+INSERT INTO public.righe_ordine VALUES (97, 78, 'prd-15', 2, 1.79, 3.58);
+INSERT INTO public.righe_ordine VALUES (98, 79, 'prd-10', 4, 4.79, 19.16);
+INSERT INTO public.righe_ordine VALUES (99, 80, 'prd-06', 1, 2.79, 2.79);
+INSERT INTO public.righe_ordine VALUES (100, 81, 'prd-03', 2, 1.99, 3.98);
+INSERT INTO public.righe_ordine VALUES (101, 82, 'prd-01', 3, 2.49, 7.47);
+INSERT INTO public.righe_ordine VALUES (102, 82, 'prd-10', 2, 4.79, 9.58);
+INSERT INTO public.righe_ordine VALUES (103, 82, 'prd-15', 1, 1.79, 1.79);
+INSERT INTO public.righe_ordine VALUES (104, 83, 'prd-08', 1, 5.99, 5.99);
+INSERT INTO public.righe_ordine VALUES (105, 84, 'prd-01', 1, 2.49, 2.49);
+INSERT INTO public.righe_ordine VALUES (106, 85, 'prd-01', 2, 2.49, 4.98);
+INSERT INTO public.righe_ordine VALUES (107, 85, 'prd-07', 2, 2.49, 4.98);
+INSERT INTO public.righe_ordine VALUES (108, 85, 'prd-03', 1, 1.99, 1.99);
+INSERT INTO public.righe_ordine VALUES (109, 86, 'prd-03', 10, 1.99, 19.90);
+INSERT INTO public.righe_ordine VALUES (110, 87, 'prd-12', 12, 7.99, 95.88);
+INSERT INTO public.righe_ordine VALUES (111, 88, 'prd-11', 22, 4.49, 98.78);
+INSERT INTO public.righe_ordine VALUES (112, 89, 'prd-11', 1, 4.49, 4.49);
+INSERT INTO public.righe_ordine VALUES (113, 90, 'prd-10', 6, 4.79, 28.74);
+INSERT INTO public.righe_ordine VALUES (114, 91, 'prd-08', 10, 5.99, 59.90);
+INSERT INTO public.righe_ordine VALUES (115, 92, 'prd-12', 2, 7.99, 15.98);
+INSERT INTO public.righe_ordine VALUES (116, 93, 'prd-02', 19, 3.10, 58.90);
+INSERT INTO public.righe_ordine VALUES (117, 94, 'prd-12', 1, 7.99, 7.99);
+INSERT INTO public.righe_ordine VALUES (118, 95, 'prd-12', 5, 7.99, 39.95);
+INSERT INTO public.righe_ordine VALUES (119, 96, 'prd-01', 2, 2.49, 4.98);
+INSERT INTO public.righe_ordine VALUES (120, 97, 'prd-07', 2, 2.49, 4.98);
+INSERT INTO public.righe_ordine VALUES (121, 97, 'prd-01', 1, 2.49, 2.49);
+INSERT INTO public.righe_ordine VALUES (122, 98, 'prd-19', 1, 1.29, 1.29);
+INSERT INTO public.righe_ordine VALUES (123, 99, 'prd-04', 3, 1.99, 5.97);
+INSERT INTO public.righe_ordine VALUES (124, 100, 'prd-01', 4, 2.49, 9.96);
+INSERT INTO public.righe_ordine VALUES (125, 101, 'prd-06', 1, 2.79, 2.79);
+INSERT INTO public.righe_ordine VALUES (126, 102, 'prd-14', 11, 1.59, 17.49);
+INSERT INTO public.righe_ordine VALUES (127, 103, 'prd-01', 1, 2.49, 2.49);
+INSERT INTO public.righe_ordine VALUES (128, 103, 'prd-04', 5, 1.99, 9.95);
+INSERT INTO public.righe_ordine VALUES (129, 104, 'prd-13', 5, 9.99, 49.95);
 
 
 --
@@ -942,20 +1050,39 @@ INSERT INTO public.righe_ordine VALUES (77, 69, 'prd-03', 1, 1.99, 1.99);
 --
 
 INSERT INTO public.riordini_magazzino VALUES (1, 'prd-01', 1, 100, '2025-11-10 09:00:00', '2025-11-12', '2025-11-12', true, 2);
-INSERT INTO public.riordini_magazzino VALUES (2, 'prd-02', 2, 80, '2025-11-11 10:15:00', '2025-11-13', NULL, false, 2);
 INSERT INTO public.riordini_magazzino VALUES (3, 'prd-03', 3, 50, '2025-11-09 14:30:00', '2025-11-11', '2025-11-11', true, 2);
 INSERT INTO public.riordini_magazzino VALUES (4, 'prd-01', 1, 2, '2025-11-16 23:30:22.205855', '2026-01-01', NULL, false, NULL);
 INSERT INTO public.riordini_magazzino VALUES (5, 'prd-02', 2, 2, '2025-11-17 01:13:50.891229', NULL, NULL, false, NULL);
 INSERT INTO public.riordini_magazzino VALUES (6, 'prd-02', 1, 2, '2025-11-17 11:15:31.808906', NULL, NULL, false, NULL);
-INSERT INTO public.riordini_magazzino VALUES (7, 'prd-09', 3, 5, '2025-11-19 22:00:13.97219', '2025-11-19', NULL, false, NULL);
-INSERT INTO public.riordini_magazzino VALUES (8, 'prd-01', 1, 4, '2025-11-19 23:24:46.115003', '2025-11-19', NULL, false, NULL);
-INSERT INTO public.riordini_magazzino VALUES (9, 'prd-04', 2, 3, '2025-11-21 00:13:18.260816', '2025-11-20', NULL, false, NULL);
 INSERT INTO public.riordini_magazzino VALUES (10, 'prd-01', 1, 50, '2025-11-21 20:03:24.90334', '2025-11-21', NULL, true, NULL);
 INSERT INTO public.riordini_magazzino VALUES (11, 'prd-02', 2, 3, '2025-11-22 00:01:54.25533', '2025-11-21', NULL, true, NULL);
 INSERT INTO public.riordini_magazzino VALUES (12, 'prd-07', 2, 2, '2025-11-23 14:13:02.104156', '2025-11-22', NULL, true, NULL);
 INSERT INTO public.riordini_magazzino VALUES (13, 'prd-05', 2, 7, '2025-11-23 14:15:19.965496', '2025-11-22', NULL, true, 2);
-INSERT INTO public.riordini_magazzino VALUES (14, 'prd-13', 2, 10, '2025-11-23 15:40:53.281816', '2025-11-22', NULL, false, NULL);
 INSERT INTO public.riordini_magazzino VALUES (15, 'prd-12', 2, 9, '2025-11-23 15:50:14.174667', '2025-11-22', NULL, true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (17, 'prd-02', 3, 4, '2025-11-26 19:20:54.226626', '2025-11-26', NULL, true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (2, 'prd-02', 2, 80, '2025-11-11 10:15:00', '2025-11-13', '2025-11-26', true, 2);
+INSERT INTO public.riordini_magazzino VALUES (7, 'prd-09', 3, 5, '2025-11-19 22:00:13.97219', '2025-11-19', '2025-11-26', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (8, 'prd-01', 1, 4, '2025-11-19 23:24:46.115003', '2025-11-19', '2025-11-26', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (9, 'prd-04', 2, 3, '2025-11-21 00:13:18.260816', '2025-11-20', '2025-11-26', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (14, 'prd-13', 2, 10, '2025-11-23 15:40:53.281816', '2025-11-22', '2025-11-26', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (16, 'prd-13', 2, 2, '2025-11-25 20:09:50.056893', '2025-11-22', '2025-11-26', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (18, 'prd-08', 2, 2, '2025-11-26 23:59:04.550631', '2025-11-22', '2025-11-26', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (19, 'prd-08', 2, 4, '2025-11-26 23:59:47.958539', '2025-11-22', '2025-11-26', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (20, 'prd-08', 2, 9, '2025-11-27 00:00:13.904673', '2025-11-22', '2025-11-27', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (21, 'prd-11', 2, 4, '2025-11-27 12:09:05.236064', '2025-11-22', '2025-11-27', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (22, 'prd-02', 8, 2, '2025-11-27 12:11:55.931928', '2025-11-22', '2025-11-27', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (23, 'prd-10', 2, 5, '2025-11-27 15:17:31.432069', '2025-11-22', '2025-11-27', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (24, 'prd-18', 2, 3, '2025-11-27 17:59:32.565589', '2025-11-23', '2025-11-27', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (25, 'prd-18', 8, 8, '2025-11-27 18:42:59.484392', '2025-11-27', '2025-11-27', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (26, 'prd-02', 2, 2, '2025-11-27 18:45:25.478084', '2025-11-27', '2025-11-27', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (27, 'prd-10', 2, 10, '2025-11-27 18:59:37.720557', '2025-11-27', '2025-11-27', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (28, 'prd-02', 2, 1, '2025-11-27 19:00:16.029187', '2025-11-27', '2025-11-27', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (29, 'prd-12', 2, 2, '2025-11-27 19:01:15.037973', '2025-11-27', '2025-11-27', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (30, 'prd-12', 2, 2, '2025-11-27 19:01:28.807657', '2025-11-27', '2025-11-27', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (31, 'prd-10', 8, 45, '2025-11-29 23:57:35.840954', '2025-11-23', '2025-11-29', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (32, 'prd-02', 2, 1, '2025-11-29 23:57:41.406104', '2025-11-23', '2025-11-29', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (33, 'prd-02', 6, 2, '2025-11-30 20:02:06.141998', '2025-11-23', '2025-11-30', true, NULL);
+INSERT INTO public.riordini_magazzino VALUES (34, 'prd-02', 1, 2, '2025-12-02 00:47:51.708344', '2025-12-01', '2025-12-02', true, NULL);
 
 
 --
@@ -1022,11 +1149,12 @@ INSERT INTO public.tag VALUES (9, 'Eco Friendly');
 -- Data for Name: utenti; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-INSERT INTO public.utenti VALUES (5, 'pier', 'pier', 'pier', NULL, '2025-11-16 21:16:02.060789', 'Cliente', '$2b$10$CwzxRZ5r3HF9UCVGAk0LCuAr7OKURA23nYxsk6TOaIJrPuK8j65Oi');
+INSERT INTO public.utenti VALUES (3, 'casc', 'cascett', 'giulia@gmail.com', '388', '2025-11-15 13:39:21.504754', 'Dipendente', '$2b$10$Y91rLZQ4wsyWuVdBLCQqfuuvruJ1huGIDERtr96GnDP7qtdwUgmp6');
+INSERT INTO public.utenti VALUES (6, 'prova', 'prova', 'prova@mail.com', '3', '2025-11-30 12:03:08.446479', 'Cliente', '$2b$10$HLxBX/UsK7zoF2JLAXvabe/SwLy//kWhJsAvCbo42oYKY52ENJH5y');
+INSERT INTO public.utenti VALUES (2, 'cascett', 'cascione', 'laura@gmail.com', '388', '2025-11-15 13:39:21.504754', 'Responsabile', '$2b$10$Y91rLZQ4wsyWuVdBLCQqfuuvruJ1huGIDERtr96GnDP7qtdwUgmp6');
+INSERT INTO public.utenti VALUES (4, 'cascett', 'cascione', 'casc@gmail.com', '388', '2025-11-16 18:16:44.962946', 'Cliente', '$2b$10$Y91rLZQ4wsyWuVdBLCQqfuuvruJ1huGIDERtr96GnDP7qtdwUgmp6');
 INSERT INTO public.utenti VALUES (1, 'Mario', 'Rossi', 'mario', '+390612345678', '2025-11-15 13:39:21.504754', 'Cliente', '$2b$10$Y91rLZQ4wsyWuVdBLCQqfuuvruJ1huGIDERtr96GnDP7qtdwUgmp6');
-INSERT INTO public.utenti VALUES (2, 'Laura', 'Bianchi', 'laura', '+390212345679', '2025-11-15 13:39:21.504754', 'Responsabile', '$2b$10$Y91rLZQ4wsyWuVdBLCQqfuuvruJ1huGIDERtr96GnDP7qtdwUgmp6');
-INSERT INTO public.utenti VALUES (3, 'Giulia', 'Verdi', 'giulia', '+390112345680', '2025-11-15 13:39:21.504754', 'Dipendente', '$2b$10$Y91rLZQ4wsyWuVdBLCQqfuuvruJ1huGIDERtr96GnDP7qtdwUgmp6');
-INSERT INTO public.utenti VALUES (4, 'cascett', 'cascione', 'casc', '388', '2025-11-16 18:16:44.962946', 'Cliente', '$2b$10$Y91rLZQ4wsyWuVdBLCQqfuuvruJ1huGIDERtr96GnDP7qtdwUgmp6');
+INSERT INTO public.utenti VALUES (5, 'casc', 'cascett', 'pier@gmail.com', '388', '2025-11-16 21:16:02.060789', 'Cliente', '$2b$10$CwzxRZ5r3HF9UCVGAk0LCuAr7OKURA23nYxsk6TOaIJrPuK8j65Oi');
 
 
 --
@@ -1035,7 +1163,7 @@ INSERT INTO public.utenti VALUES (4, 'cascett', 'cascione', 'casc', '388', '2025
 -- Name: catalogo_id_catalogo_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.catalogo_id_catalogo_seq', 24, true);
+SELECT pg_catalog.setval('public.catalogo_id_catalogo_seq', 34, true);
 
 
 --
@@ -1071,7 +1199,7 @@ SELECT pg_catalog.setval('public.locker_id_locker_seq', 6, true);
 -- Name: magazzino_id_magazzino_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.magazzino_id_magazzino_seq', 6, true);
+SELECT pg_catalog.setval('public.magazzino_id_magazzino_seq', 13, true);
 
 
 --
@@ -1080,7 +1208,7 @@ SELECT pg_catalog.setval('public.magazzino_id_magazzino_seq', 6, true);
 -- Name: ordini_id_ordine_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.ordini_id_ordine_seq', 69, true);
+SELECT pg_catalog.setval('public.ordini_id_ordine_seq', 104, true);
 
 
 --
@@ -1089,7 +1217,7 @@ SELECT pg_catalog.setval('public.ordini_id_ordine_seq', 69, true);
 -- Name: righe_ordine_id_riga_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.righe_ordine_id_riga_seq', 77, true);
+SELECT pg_catalog.setval('public.righe_ordine_id_riga_seq', 129, true);
 
 
 --
@@ -1098,7 +1226,7 @@ SELECT pg_catalog.setval('public.righe_ordine_id_riga_seq', 77, true);
 -- Name: riordini_magazzino_id_riordino_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.riordini_magazzino_id_riordino_seq', 15, true);
+SELECT pg_catalog.setval('public.riordini_magazzino_id_riordino_seq', 34, true);
 
 
 --
@@ -1134,7 +1262,7 @@ SELECT pg_catalog.setval('public.tag_id_tag_seq', 9, true);
 -- Name: utenti_id_utente_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.utenti_id_utente_seq', 5, true);
+SELECT pg_catalog.setval('public.utenti_id_utente_seq', 6, true);
 
 
 --
@@ -1443,7 +1571,7 @@ ALTER TABLE ONLY public.riordini_magazzino
     ADD CONSTRAINT riordini_magazzino_id_responsabile_fkey FOREIGN KEY (id_responsabile) REFERENCES public.utenti(id_utente);
 
 
--- Completed on 2025-11-23 16:01:08
+-- Completed on 2025-12-02 16:57:09
 
 --
 -- PostgreSQL database dump complete

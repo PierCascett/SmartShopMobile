@@ -21,10 +21,10 @@ import android.util.Log
 import it.unito.smartshopmobile.data.entity.UpdateUserRequest
 import it.unito.smartshopmobile.data.entity.User
 import it.unito.smartshopmobile.data.remote.SmartShopApiService
-import org.json.JSONObject
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 
 class UserRepository(
     private val apiService: SmartShopApiService

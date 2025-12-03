@@ -44,22 +44,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.IntOffset
-import kotlinx.coroutines.delay
+import androidx.compose.ui.unit.IntSize
 import it.unito.smartshopmobile.ui.map.ShelfPolygon
 import it.unito.smartshopmobile.ui.map.rememberPolygonsFromJson
 import it.unito.smartshopmobile.ui.map.toShelfPolygon
+import kotlinx.coroutines.delay
 
 // Helper: point-in-polygon usando vertici trasformati nello spazio schermo
 private fun isPointInPolygonScreen(

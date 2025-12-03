@@ -25,10 +25,10 @@ import androidx.lifecycle.viewModelScope
 import it.unito.smartshopmobile.data.database.SmartShopDatabase
 import it.unito.smartshopmobile.data.entity.Order
 import it.unito.smartshopmobile.data.remote.RetrofitInstance
+import it.unito.smartshopmobile.data.repository.CategoryRepository
 import it.unito.smartshopmobile.data.repository.OrderRepository
 import it.unito.smartshopmobile.data.repository.ProductRepository
 import it.unito.smartshopmobile.data.repository.ShelfRepository
-import it.unito.smartshopmobile.data.repository.CategoryRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

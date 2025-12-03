@@ -25,6 +25,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import it.unito.smartshopmobile.data.dao.CategoryDao
 import it.unito.smartshopmobile.data.dao.OrderDao
 import it.unito.smartshopmobile.data.dao.ProductDao
@@ -38,8 +39,6 @@ import it.unito.smartshopmobile.data.entity.Product
 import it.unito.smartshopmobile.data.entity.Restock
 import it.unito.smartshopmobile.data.entity.Shelf
 import it.unito.smartshopmobile.data.entity.Supplier
-import androidx.room.TypeConverters
-import it.unito.smartshopmobile.data.database.Converters
 
 @Database(
     entities = [Category::class, Product::class, Order::class, OrderLine::class, Restock::class, Shelf::class, Supplier::class],

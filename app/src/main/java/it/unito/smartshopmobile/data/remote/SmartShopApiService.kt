@@ -20,29 +20,29 @@ package it.unito.smartshopmobile.data.remote
 
 
 import it.unito.smartshopmobile.data.entity.Category
-import it.unito.smartshopmobile.data.entity.Product
-import it.unito.smartshopmobile.data.entity.User
-import it.unito.smartshopmobile.data.entity.Order
 import it.unito.smartshopmobile.data.entity.CreateOrderRequest
-import it.unito.smartshopmobile.data.entity.OrderCreated
-import it.unito.smartshopmobile.data.entity.UpdateOrderStatusRequest
-import it.unito.smartshopmobile.data.entity.Restock
 import it.unito.smartshopmobile.data.entity.CreateRestockRequest
+import it.unito.smartshopmobile.data.entity.Order
+import it.unito.smartshopmobile.data.entity.OrderCreated
+import it.unito.smartshopmobile.data.entity.Product
+import it.unito.smartshopmobile.data.entity.Restock
 import it.unito.smartshopmobile.data.entity.Shelf
-import it.unito.smartshopmobile.data.entity.Supplier
 import it.unito.smartshopmobile.data.entity.StockTransferRequest
 import it.unito.smartshopmobile.data.entity.StockTransferResult
+import it.unito.smartshopmobile.data.entity.Supplier
+import it.unito.smartshopmobile.data.entity.UpdateOrderStatusRequest
 import it.unito.smartshopmobile.data.entity.UpdateUserRequest
+import it.unito.smartshopmobile.data.entity.User
 import okhttp3.MultipartBody
 import retrofit2.Response
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Multipart
+import retrofit2.http.PATCH
+import retrofit2.http.POST
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
-import retrofit2.http.Body
-import retrofit2.http.POST
-import retrofit2.http.PATCH
-import retrofit2.http.Multipart
-import retrofit2.http.Part
 
 interface SmartShopApiService {
 

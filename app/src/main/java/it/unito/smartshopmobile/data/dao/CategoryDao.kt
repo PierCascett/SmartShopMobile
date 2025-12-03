@@ -17,7 +17,10 @@
  */
 package it.unito.smartshopmobile.data.dao
 
-import androidx.room.*
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
 import it.unito.smartshopmobile.data.entity.Category
 import kotlinx.coroutines.flow.Flow
 

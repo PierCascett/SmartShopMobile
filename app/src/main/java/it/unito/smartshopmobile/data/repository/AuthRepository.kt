@@ -18,8 +18,8 @@
 package it.unito.smartshopmobile.data.repository
 
 import android.util.Log
-import it.unito.smartshopmobile.data.remote.SmartShopApiService
 import it.unito.smartshopmobile.data.entity.User
+import it.unito.smartshopmobile.data.remote.SmartShopApiService
 
 class AuthRepository(
     private val apiService: SmartShopApiService

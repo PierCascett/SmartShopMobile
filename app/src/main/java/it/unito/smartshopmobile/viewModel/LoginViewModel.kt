@@ -30,15 +30,14 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import it.unito.smartshopmobile.data.datastore.SessionDataStore
+import it.unito.smartshopmobile.data.entity.User
 import it.unito.smartshopmobile.data.remote.RetrofitInstance
 import it.unito.smartshopmobile.data.repository.AuthRepository
-import kotlinx.coroutines.launch
-import it.unito.smartshopmobile.data.entity.User
-import it.unito.smartshopmobile.data.datastore.SessionDataStore
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.launch
 
 // ViewModel che gestisce lo stato di login dell'app
 // - espone campi osservabili (email, password, loading, error, successo)

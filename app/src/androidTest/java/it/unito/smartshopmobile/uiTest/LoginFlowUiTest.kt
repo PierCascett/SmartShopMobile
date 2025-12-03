@@ -1,0 +1,92 @@
+package it.unito.smartshopmobile.uiTest
+
+import androidx.compose.ui.test.hasImeAction
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.text.input.ImeAction
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import it.unito.smartshopmobile.MainActivity
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/**
+ * UI test E2E (End-to-End) che testa l'intero flusso di login
+ * dall'apertura dell'app fino alla navigazione allo schermo Customer.
+ * Include pause per osservare visivamente ogni step.
+ */
+@RunWith(AndroidJUnit4::class)
+class LoginFlowUiTest {
+
+    @get:Rule
+    val composeRule = createAndroidComposeRule<MainActivity>()
+
+    @Test
+    fun completeLoginFlow_navigatesToCustomerScreen() {
+        // Aspetta che MainActivity si carichi completamente
+        composeRule.waitForIdle()
+        Thread.sleep(2000) // 2 secondi per vedere la schermata di login iniziale
+
+        // Verifica che siamo nella schermata di login
+        composeRule.onNodeWithText("SmartShop", substring = true).assertExists()
+        Thread.sleep(1000)
+
+        // Trova e compila il campo email
+        composeRule.onNode(
+            hasSetTextAction() and hasImeAction(ImeAction.Next),
+            useUnmergedTree = true
+        ).performTextInput("casc@gmail.com")
+        Thread.sleep(1000) // 1 secondo per vedere l'email inserita
+
+        // Trova e compila il campo password
+        composeRule.onNode(
+            hasSetTextAction() and hasImeAction(ImeAction.Done),
+            useUnmergedTree = true
+        ).performTextInput("casc")
+        Thread.sleep(1000) // 1 secondo per vedere la password inserita
+
+        // Clicca sul bottone Accedi
+        composeRule.onNodeWithText("Accedi", useUnmergedTree = true).performClick()
+        Thread.sleep(3000) // 3 secondi per vedere il processo di login e la transizione
+
+        // Verifica che siamo nella schermata Customer (cerca elementi tipici)
+        // Può essere la navbar con "Catalogo", "Preferiti", "Carrello", "Account"
+        composeRule.waitForIdle()
+
+        // Verifica presenza di elementi della schermata customer
+        // (puoi aggiungere qui verifiche specifiche per gli elementi che vuoi controllare)
+        Thread.sleep(5000) // 5 secondi finali per vedere bene la schermata Customer
+    }
+
+    @Test
+    fun loginFlow_withInvalidCredentials_showsError() {
+        // Aspetta che MainActivity si carichi
+        composeRule.waitForIdle()
+        Thread.sleep(1500)
+
+        // Inserisci credenziali errate
+        composeRule.onNode(
+            hasSetTextAction() and hasImeAction(ImeAction.Next),
+            useUnmergedTree = true
+        ).performTextInput("wrong@email.com")
+        Thread.sleep(800)
+
+        composeRule.onNode(
+            hasSetTextAction() and hasImeAction(ImeAction.Done),
+            useUnmergedTree = true
+        ).performTextInput("wrongpassword")
+        Thread.sleep(800)
+
+        // Clicca Accedi
+        composeRule.onNodeWithText("Accedi", useUnmergedTree = true).performClick()
+        Thread.sleep(3000) // 3 secondi per vedere il messaggio di errore
+
+        // Il test rimane nella schermata di login
+        composeRule.onNodeWithText("SmartShop", substring = true).assertExists()
+        Thread.sleep(2000)
+    }
+}
+

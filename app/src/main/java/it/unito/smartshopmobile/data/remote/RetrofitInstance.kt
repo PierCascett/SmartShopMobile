@@ -19,11 +19,11 @@
 package it.unito.smartshopmobile.data.remote
 
 
-import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 
 object RetrofitInstance {
     private const val BACKEND_HOST = "192.168.1.51"
