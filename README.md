@@ -36,7 +36,7 @@
 
 ## Authors
 <p align="center">
-  <a href="https://github.com/cascett2002">Michele Cascione</a> &nbsp;â€¢&nbsp;
+  <a href="https://github.com/cascett2002">Michele Cascione</a> &nbsp; • &nbsp;
   <a href="https://github.com/Pier2690">Pierluigi Boscaglia</a>
 </p>
 
@@ -50,7 +50,7 @@
   - [Installation](#backend-setup-express--postgresql)
   - [Usage](#android-app-configuration)
   - [Testing](#build-and-test)
-- [Authors](#authors)
+- [Notes](#useful-notes)
 
 ---
 
@@ -139,12 +139,13 @@ Android application built with Jetpack Compose for a smart supermarket, featurin
   ./gradlew jacocoAllTestsReport
   ```
   - Combined: `app/build/reports/jacoco/allTests/html/index.html`
-
+ 
 ## Useful notes
 - Roles and routing are defined in `ui/domain/UserRole.kt` and orchestrated by `MainActivity`/`MainViewModel`.
 - User data persists in `SessionDataStore`; Room caches orders and products.
 - Retrofit calls target `/api/...` (base URL `http://<HOST>:<PORT>/api/`); images use `http://<HOST>:<PORT>/`.
 - For production consider disabling HTTP logging and using HTTPS/BuildConfig for configurable host/port.
+- For more functional details, download and read `Project_Description.pdf` in the repo root.
 
 
 
