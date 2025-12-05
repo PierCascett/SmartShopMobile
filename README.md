@@ -1,11 +1,11 @@
-<h1 align="center">SmartShop Mobile</h1>
+﻿<h1 align="center">SmartShop Mobile</h1>
 
 <p align="center">
-  <em>Empowering smarter shopping — faster, seamless, secure.</em>
+  <em>Mobile Programming Project 2024-25</em>
   <br><br>
-  <img alt="Last commit" src="https://img.shields.io/badge/last_commit-local-blue">
-  <img alt="Kotlin share" src="https://img.shields.io/badge/kotlin-91%25-7F52FF">
-  <img alt="Languages" src="https://img.shields.io/badge/languages-android%20%7C%20node-6E7781">
+  <a href="https://github.com/PierCascett/SmartShopMobile/commits"><img alt="Last commit" src="https://img.shields.io/github/last-commit/PierCascett/SmartShopMobile?logo=github&label=last%20commit&display_date=relative"></a>
+  <a href="#features"><img alt="Android app" src="https://img.shields.io/badge/app-Android-3DDC84?logo=android&logoColor=fff"></a>
+  <a href="#backend-setup-express--postgresql"><img alt="Backend API" src="https://img.shields.io/badge/backend-Node.js%20%7C%20Express-000?logo=node.js&logoColor=fff"></a>
   <br><br>
   Built with the tools and technologies:
   <br><br>
@@ -36,7 +36,7 @@
 
 ## Authors
 <p align="center">
-  <a href="https://github.com/cascett2002">Michele Cascione</a> &nbsp;•&nbsp;
+  <a href="https://github.com/cascett2002">Michele Cascione</a> &nbsp;â€¢&nbsp;
   <a href="https://github.com/Pier2690">Pierluigi Boscaglia</a>
 </p>
 
@@ -145,3 +145,6 @@ Android application built with Jetpack Compose for a smart supermarket, featurin
 - User data persists in `SessionDataStore`; Room caches orders and products.
 - Retrofit calls target `/api/...` (base URL `http://<HOST>:<PORT>/api/`); images use `http://<HOST>:<PORT>/`.
 - For production consider disabling HTTP logging and using HTTPS/BuildConfig for configurable host/port.
+
+
+
