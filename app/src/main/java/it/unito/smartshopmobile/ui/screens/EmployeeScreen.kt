@@ -37,7 +37,6 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -71,8 +70,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -96,13 +93,11 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import it.unito.smartshopmobile.data.datastore.AccountPreferences
 import it.unito.smartshopmobile.data.entity.Order
 import it.unito.smartshopmobile.data.entity.User
-import it.unito.smartshopmobile.ui.components.NavBarDivider
 import it.unito.smartshopmobile.ui.components.StoreMapCanvas
 import it.unito.smartshopmobile.ui.map.rememberAssetImage
 import it.unito.smartshopmobile.viewModel.AisleProduct
@@ -113,7 +108,7 @@ import it.unito.smartshopmobile.viewModel.StoreAisle
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-private enum class EmployeeTab(val label: String, val icon: ImageVector) {
+enum class EmployeeTab(val label: String, val icon: ImageVector) {
     PICKING("Mappa", Icons.Filled.Map),
     ORDERS("Storico", Icons.AutoMirrored.Filled.List),
     CLAIM("Assegna", Icons.AutoMirrored.Filled.Assignment),
@@ -144,6 +139,8 @@ fun EmployeeScreen(
     openProfileTrigger: Int = 0,
     onSaveProfile: suspend (String, String, String, String, String) -> Result<User> = { _, _, _, _, _ -> Result.failure(Exception("Non configurato")) },
     onUploadPhoto: suspend (Uri) -> Result<String> = { Result.failure(Exception("Non configurato")) },
+    selectedTab: EmployeeTab,
+    onTabChange: (EmployeeTab) -> Unit,
     viewModel: EmployeeViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -155,10 +152,9 @@ fun EmployeeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val backgroundImage = rememberAssetImage("map/supermarket_resized.png")
     val aislesError = state.aislesError
-    var selectedTab by rememberSaveable { mutableStateOf(EmployeeTab.PICKING) }
     LaunchedEffect(openProfileTrigger) {
         if (openProfileTrigger > 0) {
-            selectedTab = EmployeeTab.PROFILE
+            onTabChange(EmployeeTab.PROFILE)
         }
     }
     LaunchedEffect(profileError) {
@@ -180,34 +176,12 @@ fun EmployeeScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        bottomBar = {
-            Column(modifier = Modifier.fillMaxWidth().navigationBarsPadding()) {
-                NavBarDivider()
-                NavigationBar(
-                    modifier = Modifier.fillMaxWidth(),
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    windowInsets = WindowInsets(0.dp)
-                ) {
-                    EmployeeTab.entries.forEach { tab ->
-                        NavigationBarItem(
-                            selected = selectedTab == tab,
-                            onClick = { selectedTab = tab },
-                            icon = { Icon(tab.icon, contentDescription = tab.label) },
-                            label = { Text(tab.label) }
-                        )
-                    }
-                }
-            }
-        }
+        contentWindowInsets = WindowInsets(0.dp),
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { innerPadding ->
-        val contentModifier = Modifier.padding(
-            start = innerPadding.calculateLeftPadding(LayoutDirection.Ltr) + 16.dp,
-            end = innerPadding.calculateRightPadding(LayoutDirection.Ltr) + 16.dp,
-            top = innerPadding.calculateTopPadding(),
-            bottom = innerPadding.calculateBottomPadding()
-        )
+        val contentModifier = Modifier
+            .padding(innerPadding)
+            .padding(horizontal = 16.dp)
         when (selectedTab) {
             EmployeeTab.PICKING -> PickingTab(
                 state = state,
@@ -219,11 +193,11 @@ fun EmployeeScreen(
                 onMarkShipped = viewModel::markOrderShipped,
                 onMarkCanceled = viewModel::markOrderCanceled,
                 onProductClick = viewModel::showProductDetail,
-                onOpenSelection = { selectedTab = EmployeeTab.CLAIM },
+                onOpenSelection = { onTabChange(EmployeeTab.CLAIM) },
                 onRefreshOrders = viewModel::refreshOrders,
                 onReleaseOrder = {
                     viewModel.dropActiveOrder()
-                    selectedTab = EmployeeTab.CLAIM
+                    onTabChange(EmployeeTab.CLAIM)
                 },
                 modifier = contentModifier
             )
@@ -240,7 +214,7 @@ fun EmployeeScreen(
             EmployeeTab.CLAIM -> ClaimTab(
                 state = state,
                 onTakeOrder = viewModel::startOrder,
-                onSelectTab = { selectedTab = EmployeeTab.PICKING },
+                onSelectTab = { onTabChange(EmployeeTab.PICKING) },
                 onRefreshOrders = viewModel::refreshOrders,
                 modifier = contentModifier
             )

@@ -34,7 +34,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -66,8 +65,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.colorScheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -92,7 +89,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -100,7 +96,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import it.unito.smartshopmobile.data.datastore.AccountPreferences
 import it.unito.smartshopmobile.data.entity.Category
 import it.unito.smartshopmobile.data.entity.User
-import it.unito.smartshopmobile.ui.components.NavBarDivider
 import it.unito.smartshopmobile.ui.components.StoreMapCanvas
 import it.unito.smartshopmobile.ui.map.rememberAssetImage
 import it.unito.smartshopmobile.viewModel.ManagerUiState
@@ -108,7 +103,7 @@ import it.unito.smartshopmobile.viewModel.ManagerViewModel
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-private enum class ManagerTab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+enum class ManagerTab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     RESTOCK("Riordine", Icons.AutoMirrored.Filled.Assignment),
     LIST("Storico", Icons.AutoMirrored.Filled.List),
     TRANSFER("Trasferisci", Icons.Filled.Refresh),
@@ -141,6 +136,8 @@ fun ManagerScreen(
     openProfileTrigger: Int = 0,
     onSaveProfile: suspend (String, String, String, String, String) -> Result<User> = { _, _, _, _, _ -> Result.failure(Exception("Non configurato")) },
     onUploadPhoto: suspend (Uri) -> Result<String> = { Result.failure(Exception("Non configurato")) },
+    selectedTab: ManagerTab,
+    onTabChange: (ManagerTab) -> Unit,
     viewModel: ManagerViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -165,10 +162,9 @@ fun ManagerScreen(
             viewModel.clearTransferSuccess()
         }
     }
-    var selectedTab by rememberSaveable { mutableStateOf(ManagerTab.RESTOCK) }
     LaunchedEffect(openProfileTrigger) {
         if (openProfileTrigger > 0) {
-            selectedTab = ManagerTab.PROFILE
+            onTabChange(ManagerTab.PROFILE)
         }
     }
     LaunchedEffect(profileError) {
@@ -186,34 +182,12 @@ fun ManagerScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        bottomBar = {
-            Column(modifier = Modifier.fillMaxWidth().navigationBarsPadding()) {
-                NavBarDivider()
-                NavigationBar(
-                    modifier = Modifier.fillMaxWidth(),
-                    containerColor = colorScheme.surface,
-                    contentColor = colorScheme.onSurface,
-                    windowInsets = WindowInsets(0.dp)
-                ) {
-                    ManagerTab.entries.forEach { tab ->
-                        NavigationBarItem(
-                            selected = tab == selectedTab,
-                            onClick = { selectedTab = tab },
-                            icon = { Icon(tab.icon, contentDescription = tab.label) },
-                            label = { Text(tab.label) }
-                        )
-                    }
-                }
-            }
-        }
+        contentWindowInsets = WindowInsets(0.dp),
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { innerPadding ->
-        val basePadding = Modifier.padding(
-            start = innerPadding.calculateLeftPadding(LayoutDirection.Ltr) + 16.dp,
-            end = innerPadding.calculateRightPadding(LayoutDirection.Ltr) + 16.dp,
-            top = innerPadding.calculateTopPadding() + 8.dp,
-            bottom = innerPadding.calculateBottomPadding()
-        )
+        val basePadding = Modifier
+            .padding(innerPadding)
+            .padding(start = 16.dp, end = 16.dp, top = 8.dp)
         when (selectedTab) {
             ManagerTab.RESTOCK -> LazyColumn(
                 modifier = Modifier
@@ -1225,21 +1199,14 @@ private fun formatRestockDate(raw: String?): String {
 
 private fun buildSideMenuSectionsFromCategories(categories: List<Category>): List<SideMenuSection> {
     if (categories.isEmpty()) return emptyList()
-    val parentNameFallback = mapOf(
-        "1" to "Casa",
-        "2" to "Cura Personale",
-        "3" to "Carne",
-        "4" to "Pesce",
-        "5" to "Verdura",
-        "6" to "Frutta",
-        "7" to "Bevande"
-    )
     val grouped = categories.groupBy { it.parentId }
     return grouped
         .toSortedMap(Comparator.nullsFirst(String.CASE_INSENSITIVE_ORDER))
         .map { (parentId, cats) ->
-            val title = cats.firstOrNull { !it.parentName.isNullOrBlank() }?.parentName
-                ?: parentNameFallback[parentId]
+            val title = cats
+                .mapNotNull { it.parentName?.takeIf { name -> name.isNotBlank() } }
+                .firstOrNull()
+                ?: parentId
                 ?: "Altro"
             SideMenuSection(
                 id = parentId ?: "parent-none",

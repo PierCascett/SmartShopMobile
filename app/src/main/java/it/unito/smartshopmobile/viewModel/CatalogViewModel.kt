@@ -587,24 +587,16 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         val total = cartItems.sumOf { (it.product.price * it.quantity).toDouble() }
         val count = cartItems.sumOf { it.quantity }
 
-        val parentNameFallback = mapOf(
-            "1" to "Casa",
-            "2" to "Cura Personale",
-            "3" to "Carne",
-            "4" to "Pesce",
-            "5" to "Verdura",
-            "6" to "Frutta",
-            "7" to "Bevande"
-        )
-
         val groupedCategories = state.allCategories
             .groupBy { it.parentId }
 
         val menuSections = groupedCategories
             .toSortedMap(Comparator.nullsFirst(String.CASE_INSENSITIVE_ORDER))
             .map { (parentId, categories) ->
-                val title = categories.firstOrNull { !it.parentName.isNullOrBlank() }?.parentName
-                    ?: parentNameFallback[parentId]
+                val title = categories
+                    .mapNotNull { it.parentName?.takeIf { name -> name.isNotBlank() } }
+                    .firstOrNull()
+                    ?: parentId
                     ?: "Altro"
                 SideMenuSection(
                     id = parentId ?: "parent-none",

@@ -89,9 +89,11 @@ import it.unito.smartshopmobile.ui.screens.AppCartOverlay
 import it.unito.smartshopmobile.ui.screens.AppFavoritesOverlay
 import it.unito.smartshopmobile.ui.screens.CatalogScreen
 import it.unito.smartshopmobile.ui.screens.EmployeeScreen
+import it.unito.smartshopmobile.ui.screens.EmployeeTab
 import it.unito.smartshopmobile.ui.screens.LoginScreen
 import it.unito.smartshopmobile.ui.screens.LoginScreenMVVM
 import it.unito.smartshopmobile.ui.screens.ManagerScreen
+import it.unito.smartshopmobile.ui.screens.ManagerTab
 import it.unito.smartshopmobile.ui.screens.OrderHistoryPanel
 import it.unito.smartshopmobile.ui.screens.SideMenuOverlay
 import it.unito.smartshopmobile.ui.theme.SmartShopMobileTheme
@@ -136,6 +138,39 @@ import kotlinx.coroutines.launch
  * @property catalogViewModel ViewModel per catalogo e carrello
  * @property accountPreferencesViewModel ViewModel per preferenze locali
  */
+/**
+ * Activity principale dell'applicazione SmartShop Mobile.
+ *
+ * Entry point dell'app che gestisce:
+ * - Inizializzazione ViewModels con lifecycle-aware delegation
+ * - Navigazione condizionale basata su UserRole (Customer/Employee/Manager)
+ * - Applicazione del tema Material Design 3
+ * - Gestione overlay (menu, carrello, preferiti)
+ * - Sincronizzazione sessione tra ViewModels
+ *
+ * Architettura MVVM:
+ * - Activity come Controller che coordina View (Compose) e ViewModels
+ * - State hoisting: stato UI osservato tramite collectAsState()
+ * - Unidirectional data flow: eventi → ViewModel → State → UI
+ * - Separation of concerns: business logic nei ViewModels
+ *
+ * ViewModels gestiti:
+ * - MainViewModel: stato globale app, sessione, navigazione
+ * - LoginViewModel: autenticazione utente
+ * - CatalogViewModel: catalogo prodotti, carrello, ordini (Customer)
+ * - AccountPreferencesViewModel: preferenze profilo locale
+ *
+ * Routing basato su ruolo:
+ * - null → LoginScreenMVVM
+ * - CUSTOMER → CatalogScreen con bottom navigation
+ * - EMPLOYEE → EmployeeScreen (mappa, picking ordini)
+ * - MANAGER → ManagerScreen (inventario, riordini)
+ *
+ * @property mainViewModel ViewModel per stato globale e navigazione
+ * @property loginViewModel ViewModel per login/registrazione
+ * @property catalogViewModel ViewModel per catalogo e carrello
+ * @property accountPreferencesViewModel ViewModel per preferenze locali
+ */
 class MainActivity : ComponentActivity() {
     private val mainViewModel: MainViewModel by viewModels()
     private val loginViewModel: LoginViewModel by viewModels()
@@ -144,7 +179,14 @@ class MainActivity : ComponentActivity() {
     /**
      * On Create.
      */
+    /**
+     * On Create.
+     */
 
+    /**
+     * Inizializza la MainActivity impostando tema, ViewModel e routing in base alla sessione.
+     * Gestisce toast, sincronizzazione sessione con CatalogViewModel e overlay principali.
+     */
     /**
      * Inizializza la MainActivity impostando tema, ViewModel e routing in base alla sessione.
      * Gestisce toast, sincronizzazione sessione con CatalogViewModel e overlay principali.
@@ -283,7 +325,14 @@ class MainActivity : ComponentActivity() {
 /**
  * Content With Session Bar.
  */
+/**
+ * Content With Session Bar.
+ */
 
+/**
+ * Layout condiviso che avvolge i flussi Customer/Employee/Manager con barra sessione.
+ * Applica TopAppBar con avatar/email e delega il contenuto al ruolo corrente.
+ */
 /**
  * Layout condiviso che avvolge i flussi Customer/Employee/Manager con barra sessione.
  * Applica TopAppBar con avatar/email e delega il contenuto al ruolo corrente.
@@ -309,16 +358,41 @@ private fun ContentWithSessionBar(
     onCustomerTabChange: (CustomerTab) -> Unit
 ) {
     val resolvedEmail = catalogState.loggedUser?.email ?: email
+    var employeeTab by rememberSaveable { mutableStateOf(EmployeeTab.PICKING) }
+    var managerTab by rememberSaveable { mutableStateOf(ManagerTab.RESTOCK) }
 
     Scaffold(
-        modifier = modifier.fillMaxSize(), contentWindowInsets = WindowInsets(0.dp), topBar = {
+        modifier = modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0.dp),
+        topBar = {
             SessionBar(
                 email = resolvedEmail,
                 avatarUrl = avatarUrl,
                 onLogout = onLogout,
                 onOpenAccount = onOpenAccount
             )
-        }) { innerPadding ->
+        },
+        bottomBar = {
+            when (role) {
+                UserRole.CUSTOMER -> CustomerBottomBar(
+                    selectedTab = customerTab,
+                    onTabChange = onCustomerTabChange
+                )
+
+                UserRole.EMPLOYEE -> EmployeeBottomBar(
+                    selectedTab = employeeTab,
+                    onTabChange = { employeeTab = it }
+                )
+
+                UserRole.MANAGER -> ManagerBottomBar(
+                    selectedTab = managerTab,
+                    onTabChange = { managerTab = it }
+                )
+
+                null -> Unit
+            }
+        }
+    ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -348,7 +422,9 @@ private fun ContentWithSessionBar(
                         catalogViewModel.updateUserProfile(
                             nome, cognome, emailInput, telefono.ifBlank { null })
                     },
-                    onUploadPhoto = { uri -> catalogViewModel.uploadProfilePhoto(uri) })
+                    onUploadPhoto = { uri -> catalogViewModel.uploadProfilePhoto(uri) },
+                    selectedTab = employeeTab,
+                    onTabChange = { employeeTab = it })
 
                 UserRole.MANAGER -> ManagerScreen(
                     modifier = Modifier.fillMaxSize(),
@@ -360,7 +436,9 @@ private fun ContentWithSessionBar(
                         catalogViewModel.updateUserProfile(
                             nome, cognome, emailInput, telefono.ifBlank { null })
                     },
-                    onUploadPhoto = { uri -> catalogViewModel.uploadProfilePhoto(uri) })
+                    onUploadPhoto = { uri -> catalogViewModel.uploadProfilePhoto(uri) },
+                    selectedTab = managerTab,
+                    onTabChange = { managerTab = it })
 
                 null -> Unit
             }
@@ -370,7 +448,14 @@ private fun ContentWithSessionBar(
 /**
  * Customer Home.
  */
+/**
+ * Customer Home.
+ */
 
+/**
+ * Contenuto principale per il ruolo Customer con bottom navigation (Shop/Orders/Account).
+ * Coordina snackbar, tab correnti e delega alle schermate Catalog, Storico e Account.
+ */
 /**
  * Contenuto principale per il ruolo Customer con bottom navigation (Shop/Orders/Account).
  * Coordina snackbar, tab correnti e delega alle schermate Catalog, Storico e Account.
@@ -385,7 +470,8 @@ private fun CustomerHome(
     onMenuClick: () -> Unit,
     onFavoritesClick: () -> Unit,
     onCartClick: () -> Unit,
-    onSaveProfile: suspend (String, String, String, String, String) -> Result<it.unito.smartshopmobile.data.entity.User>
+    onSaveProfile: suspend (String, String, String, String, String) -> Result<it.unito.smartshopmobile.data.entity.User>,
+    modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
     var savingProfile by rememberSaveable { mutableStateOf(false) }
@@ -430,43 +516,10 @@ private fun CustomerHome(
     }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        bottomBar = {
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                NavBarDivider()
-                NavigationBar(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding(),
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    windowInsets = WindowInsets(0.dp)
-                ) {
-                    NavigationBarItem(
-                        selected = selectedTab == CustomerTab.SHOP,
-                        onClick = { onTabChange(CustomerTab.SHOP) },
-                        icon = { Icon(Icons.Filled.Home, contentDescription = "Catalogo") },
-                        label = { Text("Ordina") })
-                    NavigationBarItem(
-                        selected = selectedTab == CustomerTab.ORDERS,
-                        onClick = { onTabChange(CustomerTab.ORDERS) },
-                        icon = {
-                            Icon(
-                                Icons.AutoMirrored.Filled.List, contentDescription = "Ordini"
-                            )
-                        },
-                        label = { Text("Storico") })
-                    NavigationBarItem(
-                        selected = selectedTab == CustomerTab.ACCOUNT,
-                        onClick = { onTabChange(CustomerTab.ACCOUNT) },
-                        icon = { Icon(Icons.Filled.Settings, contentDescription = "Account") },
-                        label = { Text("Account") })
-                }
-            }
-        }) { innerPadding ->
+        modifier = modifier.fillMaxSize(),
+        contentWindowInsets = WindowInsets(0.dp),
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { innerPadding ->
         val contentPadding = PaddingValues(
             start = innerPadding.calculateLeftPadding(LayoutDirection.Ltr),
             end = innerPadding.calculateRightPadding(LayoutDirection.Ltr),
@@ -558,7 +611,14 @@ private fun CustomerHome(
 /**
  * Session Bar.
  */
+/**
+ * Session Bar.
+ */
 
+/**
+ * Barra superiore della sessione con avatar/email e pulsante logout.
+ * Mostra l'avatar da backend (cache-busted) o un'icona di fallback.
+ */
 /**
  * Barra superiore della sessione con avatar/email e pulsante logout.
  * Mostra l'avatar da backend (cache-busted) o un'icona di fallback.
@@ -617,6 +677,98 @@ private fun SessionBar(
 }
 
 /**
+ * Bottom bar per il ruolo Customer.
+ */
+@Composable
+private fun CustomerBottomBar(selectedTab: CustomerTab, onTabChange: (CustomerTab) -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        NavBarDivider()
+        NavigationBar(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding(),
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            windowInsets = WindowInsets(0.dp)
+        ) {
+            NavigationBarItem(
+                selected = selectedTab == CustomerTab.SHOP,
+                onClick = { onTabChange(CustomerTab.SHOP) },
+                icon = { Icon(Icons.Filled.Home, contentDescription = "Catalogo") },
+                label = { Text("Ordina") })
+            NavigationBarItem(
+                selected = selectedTab == CustomerTab.ORDERS,
+                onClick = { onTabChange(CustomerTab.ORDERS) },
+                icon = {
+                    Icon(
+                        Icons.AutoMirrored.Filled.List, contentDescription = "Ordini"
+                    )
+                },
+                label = { Text("Storico") })
+            NavigationBarItem(
+                selected = selectedTab == CustomerTab.ACCOUNT,
+                onClick = { onTabChange(CustomerTab.ACCOUNT) },
+                icon = { Icon(Icons.Filled.Settings, contentDescription = "Account") },
+                label = { Text("Account") })
+        }
+    }
+}
+
+/**
+ * Bottom bar per il ruolo Employee.
+ */
+@Composable
+private fun EmployeeBottomBar(selectedTab: EmployeeTab, onTabChange: (EmployeeTab) -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        NavBarDivider()
+        NavigationBar(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding(),
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            windowInsets = WindowInsets(0.dp)
+        ) {
+            EmployeeTab.entries.forEach { tab ->
+                NavigationBarItem(
+                    selected = tab == selectedTab,
+                    onClick = { onTabChange(tab) },
+                    icon = { Icon(tab.icon, contentDescription = tab.label) },
+                    label = { Text(tab.label) }
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Bottom bar per il ruolo Manager.
+ */
+@Composable
+private fun ManagerBottomBar(selectedTab: ManagerTab, onTabChange: (ManagerTab) -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        NavBarDivider()
+        NavigationBar(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding(),
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            windowInsets = WindowInsets(0.dp)
+        ) {
+            ManagerTab.entries.forEach { tab ->
+                NavigationBarItem(
+                    selected = tab == selectedTab,
+                    onClick = { onTabChange(tab) },
+                    icon = { Icon(tab.icon, contentDescription = tab.label) },
+                    label = { Text(tab.label) }
+                )
+            }
+        }
+    }
+}
+
+/**
  * Composable per gestire main preview.
  */
 @Preview(showBackground = true)
@@ -630,7 +782,11 @@ fun MainPreview() {
 /**
  * Map Role.
  */
+/**
+ * Map Role.
+ */
 
+/** Converte il ruolo stringa del backend in enum `UserRole`. */
 /** Converte il ruolo stringa del backend in enum `UserRole`. */
 private fun mapRole(user: User?): UserRole? {
     return UserRole.fromDbRole(user?.ruolo)
