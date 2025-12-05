@@ -24,11 +24,20 @@
  *     exportSchema = false
  * )
  * abstract class AppDatabase : RoomDatabase() {
+ /**
+  * Helper per gestire product dao.
+  */
  *     abstract fun productDao(): ProductDao
+ /**
+  * Helper per gestire cart dao.
+  */
  *     abstract fun cartDao(): CartDao
  *
  *     companion object {
  *         @Volatile private var INSTANCE: AppDatabase? = null
+ /**
+  * Helper per gestire get instance.
+  */
  *         fun getInstance(context: Context): AppDatabase {
  *             return INSTANCE ?: synchronized(this) {
  *                 Room.databaseBuilder(
@@ -42,4 +51,3 @@
 package it.unito.smartshopmobile.data.database
 
 // AppDatabase - database Room principale dell'applicazione
-

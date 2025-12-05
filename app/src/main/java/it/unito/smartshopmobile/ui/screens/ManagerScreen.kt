@@ -89,6 +89,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.LayoutDirection
@@ -117,6 +118,21 @@ private enum class ManagerTab(val label: String, val icon: androidx.compose.ui.g
 private enum class RestockFilter { INBOUND, ARRIVED }
 
 @Composable
+/**
+ * Schermata principale per il ruolo Responsabile (riordini, inventario e profilo).
+ *
+ * Collega la UI al `ManagerViewModel`, mostra tab per riordini, storico, trasferimenti
+ * e profilo, e inoltra i callback di salvataggio profilo e upload foto.
+ *
+ * @param accountPrefs Preferenze locali per precompilare il profilo
+ * @param loggedUserEmail Email dell'utente loggato
+ * @param avatarUrl URL dell'avatar se presente
+ * @param openProfileTrigger Intero usato per forzare l'apertura del tab profilo
+ * @param onSaveProfile Callback sospeso per salvare i dati profilo
+ * @param onUploadPhoto Callback sospeso per caricare una nuova foto
+ * @param viewModel ViewModel manager fornito da Compose di default
+ * @param modifier Modificatore Compose opzionale
+ */
 fun ManagerScreen(
     modifier: Modifier = Modifier,
     accountPrefs: AccountPreferences = AccountPreferences(),
@@ -302,6 +318,9 @@ fun ManagerScreen(
         )
     }
 }
+/**
+ * Composable per il form restock.
+ */
 
 @Composable
 private fun RestockForm(
@@ -421,7 +440,7 @@ private fun RestockForm(
             value = state.quantity,
             onValueChange = onQuantityChange,
             label = { Text("Quantita") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().testTag("quantityField")
         )
         Text("Arrivo previsto automatico in circa 30 secondi", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
         Button(
@@ -466,6 +485,9 @@ private fun RestockForm(
         )
     }
 }
+/**
+ * Composable per il form transfer.
+ */
 
 @Composable
 private fun TransferForm(
@@ -619,6 +641,9 @@ private fun TransferForm(
         }
     }
 }
+/**
+ * Composable per la chip summary.
+ */
 
 @Composable
 private fun SummaryChip(text: String) {
@@ -630,6 +655,9 @@ private fun SummaryChip(text: String) {
         Text(text, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium, color = colorScheme.primary)
     }
 }
+/**
+ * Composable per l'header product picker.
+ */
 
 @Composable
 private fun ProductPickerHeader(
@@ -668,6 +696,9 @@ private fun ProductPickerHeader(
         }
     }
 }
+/**
+ * Composable per la lista product compact.
+ */
 
 @Composable
 private fun ProductCompactList(
@@ -727,6 +758,9 @@ private fun ProductCompactList(
         }
     }
 }
+/**
+ * Composable per mostrare la dialog category product.
+ */
 
 @Composable
 private fun CategoryProductDialog(
@@ -852,6 +886,9 @@ private data class CategoryChildUi(
     val id: String,
     val name: String
 )
+/**
+ * Composable per mostrare la dialog supplier picker.
+ */
 
 @Composable
 private fun SupplierPickerDialog(
@@ -901,6 +938,9 @@ private fun SupplierPickerDialog(
         }
     }
 }
+/**
+ * Composable per gestire product transfer grid.
+ */
 
 @Composable
 private fun ProductTransferGrid(
@@ -948,6 +988,9 @@ private fun ProductTransferGrid(
         }
     }
 }
+/**
+ * Composable per la riga quick quantity.
+ */
 
 @Composable
 private fun QuickQuantityRow(
@@ -973,6 +1016,9 @@ private fun QuickQuantityRow(
         }
     }
 }
+/**
+ * Composable per la lista restock.
+ */
 
 @Composable
 private fun RestockList(
@@ -1078,6 +1124,9 @@ private fun RestockList(
         }
     }
 }
+/**
+ * Composable per la card restock history.
+ */
 
 @Composable
 private fun RestockHistoryCard(restock: it.unito.smartshopmobile.data.entity.Restock, onShowProduct: (String) -> Unit) {
@@ -1142,6 +1191,9 @@ private fun RestockHistoryCard(restock: it.unito.smartshopmobile.data.entity.Res
         }
     }
 }
+/**
+ * Composable per gestire restock filter chips.
+ */
 
 @Composable
 private fun RestockFilterChips(selected: RestockFilter, onSelect: (RestockFilter) -> Unit, modifier: Modifier = Modifier) {
@@ -1159,11 +1211,17 @@ private fun RestockFilterChips(selected: RestockFilter, onSelect: (RestockFilter
         }
     }
 }
+/**
+ * Helper per gestire format restock date.
+ */
 
 private fun formatRestockDate(raw: String?): String {
     if (raw.isNullOrBlank()) return "n/d"
     return raw.replace('T', ' ').replace("Z", "").trim()
 }
+/**
+ * Helper per gestire build side menu sections from categories.
+ */
 
 private fun buildSideMenuSectionsFromCategories(categories: List<Category>): List<SideMenuSection> {
     if (categories.isEmpty()) return emptyList()

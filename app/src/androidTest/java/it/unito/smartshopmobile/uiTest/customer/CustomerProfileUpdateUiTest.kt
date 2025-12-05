@@ -1,3 +1,9 @@
+/**
+ * CustomerProfileUpdateUiTest.kt
+ *
+ * Test UI end-to-end per aggiornamento profilo cliente.
+ * Header KDoc per completare la copertura documentale dei file di test strumentali.
+ */
 package it.unito.smartshopmobile.uiTest.customer
 
 import androidx.compose.ui.test.hasImeAction
@@ -16,6 +22,17 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
+/**
+ * Test UI per l'aggiornamento del profilo cliente.
+ *
+ * Questa classe verifica le funzionalità di modifica dei dati del profilo cliente,
+ * inclusi nome, cognome e telefono. Testa anche la persistenza dei dati
+ * attraverso la navigazione tra diverse schermate.
+ *
+ * @property composeRule Regola di test Compose per interagire con l'UI dell'app
+ * @property customerEmail Email di test per il login del cliente
+ * @property customerPassword Password di test per il login del cliente
+ */
 @RunWith(AndroidJUnit4::class)
 class CustomerProfileUpdateUiTest {
 
@@ -25,6 +42,21 @@ class CustomerProfileUpdateUiTest {
     private val customerEmail = "casc@gmail.com"
     private val customerPassword = "casc"
 
+    /**
+     * Test che verifica l'aggiornamento del profilo cliente con nome, cognome e telefono.
+     *
+     * Il test esegue i seguenti passaggi:
+     * 1. Effettua il login come cliente se necessario
+     * 2. Naviga alla sezione "Account"
+     * 3. Modifica il nome in "Mario"
+     * 4. Modifica il cognome in "Rossi"
+     * 5. Salva le modifiche
+     * 6. Naviga via e torna alla sezione Account per verificare la persistenza
+     * 7. Aggiunge/modifica il numero di telefono "3331112222"
+     * 8. Salva nuovamente le modifiche
+     *
+     * Include pause strategiche per permettere l'osservazione visiva.
+     */
     @Test
     fun customer_updates_profile_name_and_surname() {
         pause(800)
@@ -87,6 +119,13 @@ class CustomerProfileUpdateUiTest {
         pause(1500)
     }
 
+    /**
+     * Effettua il login se necessario.
+     *
+     * Controlla se il catalogo è già visibile. Se non lo è, cerca i campi di login
+     * e li compila con le credenziali del cliente, poi attende la visualizzazione
+     * del catalogo.
+     */
     private fun performLoginIfNeeded() {
         composeRule.waitForIdle()
         pause(600)
@@ -114,12 +153,22 @@ class CustomerProfileUpdateUiTest {
         pause(800)
     }
 
+    /**
+     * Verifica se il catalogo è visibile.
+     *
+     * @return true se almeno uno dei chip "Mostra offerte" o "Offerte attive" è presente
+     */
     private fun isCatalogVisible(): Boolean {
         val offers = composeRule.onAllNodesWithText("Mostra offerte", useUnmergedTree = true)
         val activeOffers = composeRule.onAllNodesWithText("Offerte attive", useUnmergedTree = true)
         return offers.fetchSemanticsNodes().isNotEmpty() || activeOffers.fetchSemanticsNodes().isNotEmpty()
     }
 
+    /**
+     * Mette in pausa l'esecuzione del test per permettere l'osservazione visiva.
+     *
+     * @param ms Durata della pausa in millisecondi (default: 1200ms)
+     */
     private fun pause(ms: Long = 1200) {
         Thread.sleep(ms)
     }

@@ -26,6 +26,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
+/**
+ * Divider decorativo per la NavigationBar con gradiente orizzontale.
+ *
+ * @param modifier Modificatore opzionale
+ * @param color Colore base del gradiente (default: primary del tema)
+ */
 @Composable
 fun NavBarDivider(
     modifier: Modifier = Modifier,

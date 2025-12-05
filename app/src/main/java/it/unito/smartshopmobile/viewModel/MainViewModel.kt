@@ -49,6 +49,13 @@ data class MainUiState(
     val managerProfileTrigger: Int = 0
 )
 
+/**
+ * ViewModel di coordinamento globale usato da `MainActivity`.
+ *
+ * Tiene traccia della sessione, del ruolo utente e dei flag UI (menu, cart, preferiti, tab),
+ * ripristina automaticamente l'utente da `SessionDataStore` e fornisce intent per login/logout
+ * e per aprire le sezioni account dei vari ruoli.
+ */
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val sessionDataStore = SessionDataStore(application)
 
@@ -71,6 +78,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * Imposta stato di login riuscito aggiornando utente e ruolo correnti.
+     * Mostra anche un toast sintetico con l'email loggata.
+     */
     fun onLoginSuccess(user: User, role: UserRole) {
         _uiState.update {
             it.copy(
@@ -81,6 +92,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Effettua logout logico resettando stato UI e rimuovendo user persistito. */
     fun onLogout() {
         viewModelScope.launch {
             sessionDataStore.clear()
@@ -90,22 +102,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Mostra/nasconde il menu laterale. */
     fun setShowMenu(show: Boolean) {
         _uiState.update { it.copy(showMenu = show) }
     }
 
+    /** Mostra/nasconde il carrello overlay. */
     fun setShowCart(show: Boolean) {
         _uiState.update { it.copy(showCart = show) }
     }
 
+    /** Mostra/nasconde l'overlay preferiti. */
     fun setShowFavorites(show: Boolean) {
         _uiState.update { it.copy(showFavorites = show) }
     }
 
+    /** Cambia il tab corrente della home cliente. */
     fun setCurrentTab(tab: CustomerTab) {
         _uiState.update { it.copy(currentTab = tab) }
     }
 
+    /**
+     * Forza l'apertura della schermata profilo per il ruolo corrente.
+     * Incrementa un trigger dedicato usato dalle schermate per navigare.
+     */
     fun openAccountForRole(role: UserRole?) {
         when (role) {
             UserRole.CUSTOMER -> setCurrentTab(CustomerTab.ACCOUNT)
@@ -119,8 +139,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Consuma il toast corrente azzerando messaggio e flag. */
     fun consumeToast() {
         _uiState.update { it.copy(toastMessage = null) }
     }
 }
-

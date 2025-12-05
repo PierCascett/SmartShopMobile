@@ -121,6 +121,21 @@ private enum class EmployeeTab(val label: String, val icon: ImageVector) {
 }
 
 @Composable
+/**
+ * Schermata principale per il ruolo Dipendente (picking, storico e profilo).
+ *
+ * Collega la UI allo `EmployeeViewModel`, mostra tabs per mappa picking, storico ordini,
+ * assegnazioni e profilo, e propaga i callback di salvataggio/upload profilo.
+ *
+ * @param accountPrefs Preferenze locali per precompilare il profilo
+ * @param loggedUserEmail Email dell'utente loggato
+ * @param avatarUrl URL foto profilo, se disponibile
+ * @param openProfileTrigger Intero incrementale per forzare apertura tab profilo
+ * @param onSaveProfile Callback sospeso per salvare i dati del profilo
+ * @param onUploadPhoto Callback sospeso per caricare una nuova foto
+ * @param viewModel ViewModel di riferimento (iniettato di default da Compose)
+ * @param modifier Modificatore Compose opzionale
+ */
 fun EmployeeScreen(
     modifier: Modifier = Modifier,
     accountPrefs: AccountPreferences = AccountPreferences(),
@@ -264,6 +279,9 @@ fun EmployeeScreen(
 
     state.selectedProduct?.let { product -> ProductDetailDialog(product = product, onDismiss = viewModel::dismissProductDetail) }
 }
+/**
+ * Composable per il tab picking.
+ */
 
 @Composable
 private fun PickingTab(
@@ -365,6 +383,9 @@ private fun PickingTab(
         }
     }
 }
+/**
+ * Composable per il tab orders.
+ */
 
 @Composable
 private fun OrdersTab(
@@ -511,6 +532,9 @@ private fun OrdersTab(
         }
     }
 }
+/**
+ * Composable per il tab claim.
+ */
 
 @Composable
 private fun ClaimTab(
@@ -573,6 +597,9 @@ private fun ClaimTab(
         }
     }
 }
+/**
+ * Composable per il pannello orders.
+ */
 
 @Composable
 private fun OrdersPanel(
@@ -632,6 +659,9 @@ private fun OrdersPanel(
         }
     }
 }
+/**
+ * Composable per il pannello selected aisle.
+ */
 
 @Composable
 private fun SelectedAislePanel(selected: StoreAisle?, onProductClick: (AisleProduct) -> Unit) {
@@ -655,6 +685,9 @@ private fun SelectedAislePanel(selected: StoreAisle?, onProductClick: (AisleProd
         }
     }
 }
+/**
+ * Helper per la chip product.
+ */
 
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
@@ -674,6 +707,9 @@ private fun ProductChip(product: AisleProduct, onProductClick: (AisleProduct) ->
         }
     }
 }
+/**
+ * Composable per mostrare la dialog product detail.
+ */
 
 @Composable
 private fun ProductDetailDialog(product: AisleProduct, onDismiss: () -> Unit) {
@@ -686,6 +722,9 @@ private fun ProductDetailDialog(product: AisleProduct, onDismiss: () -> Unit) {
         }
     })
 }
+/**
+ * Helper per il pannello order picking.
+ */
 
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
@@ -796,6 +835,9 @@ private fun OrderPickingPanel(
         }
     }
 }
+/**
+ * Composable per gestire order checklist.
+ */
 
 @Composable
 private fun OrderChecklist(
@@ -837,6 +879,9 @@ private fun OrderChecklist(
         }
     }
 }
+/**
+ * Composable per la card claim order.
+ */
 
 @Composable
 private fun ClaimOrderCard(order: Order, isActive: Boolean, onTake: () -> Unit) {
@@ -869,6 +914,9 @@ private fun ClaimOrderCard(order: Order, isActive: Boolean, onTake: () -> Unit) 
         }
     }
 }
+/**
+ * Composable per gestire order section.
+ */
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -889,6 +937,9 @@ private fun OrderSection(title: String, orders: List<Order>, expandedOrderId: In
         }
     }
 }
+/**
+ * Composable per la card order cluster.
+ */
 
 @Composable
 private fun OrderClusterCard(orders: List<Order>, expandedOrderId: Int?, updatingOrderId: Int?, showActions: Boolean, actionError: String?, onOrderClick: (Int) -> Unit, onMarkShipped: (Int) -> Unit, onMarkCompleted: (Int) -> Unit, onMarkCanceled: (Int) -> Unit) {
@@ -900,6 +951,9 @@ private fun OrderClusterCard(orders: List<Order>, expandedOrderId: Int?, updatin
         }
     }
 }
+/**
+ * Composable per gestire order entry.
+ */
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -965,6 +1019,9 @@ private fun OrderEntry(order: Order, isExpanded: Boolean, updatingOrderId: Int?,
         }
     }
 }
+/**
+ * Composable per la card simple order.
+ */
 
 @Composable
 private fun SimpleOrderCard(
@@ -1049,11 +1106,17 @@ private fun SimpleOrderCard(
         }
     }
 }
+/**
+ * Helper per gestire order is final.
+ */
 
 private fun orderIsFinal(status: String): Boolean = when (status.uppercase()) {
     "CONCLUSO", "CONSEGNATO", "ANNULLATO" -> true
     else -> false
 }
+/**
+ * Helper per gestire order status label.
+ */
 
 private fun orderStatusLabel(status: String, method: String? = null): String = when {
     method.equals("LOCKER", true) && status.equals("SPEDITO", true) -> "Da ritirare al locker"
@@ -1066,8 +1129,14 @@ private fun orderStatusLabel(status: String, method: String? = null): String = w
     status.uppercase() == "ANNULLATO" -> "Annullato"
     else -> status
 }
+/**
+ * Helper per gestire format euro.
+ */
 
 private fun formatEuro(value: Double): String = "\u20AC ${String.format(Locale.ROOT, "%.2f", value)}"
+/**
+ * Composable per gestire order filter toggle.
+ */
 
 @Composable
 private fun OrderFilterToggle(

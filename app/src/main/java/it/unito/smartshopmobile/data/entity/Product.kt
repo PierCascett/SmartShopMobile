@@ -32,6 +32,39 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+/**
+ * Entity Room che rappresenta un prodotto nel catalogo SmartShop.
+ *
+ * Questa entità gestisce sia i dati provenienti dall'API backend che
+ * la persistenza locale tramite Room Database. Supporta la gestione
+ * di inventario multi-livello (scaffale + magazzino) e traccia le
+ * informazioni di categoria e prezzi con supporto per sconti.
+ *
+ * Caratteristiche principali:
+ * - Chiave primaria univoca per riga catalogo (catalogId)
+ * - ID prodotto logico (id) che può ripetersi su più scaffali
+ * - Foreign key verso Category per integrità referenziale
+ * - Indici su categoria_id e id per ottimizzare le query
+ * - Supporto per immagini, tag e prezzi scontati
+ *
+ * @property catalogId Chiave primaria univoca per questa riga di catalogo
+ * @property id ID logico del prodotto (può ripetersi su scaffali diversi)
+ * @property name Nome commerciale del prodotto
+ * @property brand Marca/produttore del prodotto
+ * @property categoryId ID della categoria di appartenenza
+ * @property categoryName Nome della categoria (denormalizzato per performance)
+ * @property categoryDescription Descrizione della categoria (opzionale)
+ * @property catalogQuantity Quantità disponibile sullo scaffale
+ * @property warehouseQuantity Quantità disponibile in magazzino
+ * @property totalQuantity Quantità totale disponibile (scaffale + magazzino)
+ * @property price Prezzo corrente di vendita
+ * @property oldPrice Prezzo precedente (usato per mostrare sconti)
+ * @property availability Stato disponibilità (es. "OK", "ESAURITO")
+ * @property tags Lista di tag per categorizzazione aggiuntiva
+ * @property description Descrizione dettagliata del prodotto
+ * @property imageUrl URL dell'immagine del prodotto
+ * @property shelfId ID dello scaffale fisico dove si trova il prodotto
+ */
 @Entity(
     tableName = "prodotti_catalogo",
     foreignKeys = [

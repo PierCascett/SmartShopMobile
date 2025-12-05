@@ -24,15 +24,40 @@ import androidx.room.Query
 import it.unito.smartshopmobile.data.entity.Restock
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Data Access Object per l'accesso ai riordini magazzino nel database Room.
+ *
+ * Gestisce la cache locale dei riordini creati dal manager,
+ * fornendo uno storico completo delle operazioni di rifornimento.
+ *
+ * Caratteristiche principali:
+ * - Ordinamento per data ordine decrescente (più recenti prima)
+ * - Flow reattivo per UI manager
+ * - Tracking completo del ciclo di vita dei riordini
+ */
 @Dao
 interface RestockDao {
+    /**
+     * Osserva tutti i riordini ordinati per data decrescente.
+     *
+     * I riordini più recenti appaiono per primi nella lista.
+     *
+     * @return Flow che emette lista di tutti i riordini ordinati per data
+     */
     @Query("SELECT * FROM riordini_cache ORDER BY data_ordine DESC")
     fun getRestocks(): Flow<List<Restock>>
 
+    /**
+     * Inserisce o aggiorna una lista di riordini.
+     *
+     * @param items Lista di riordini da inserire/aggiornare
+     */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(items: List<Restock>)
 
+    /**
+     * Elimina tutti i riordini dalla cache.
+     */
     @Query("DELETE FROM riordini_cache")
     suspend fun deleteAll()
 }
-

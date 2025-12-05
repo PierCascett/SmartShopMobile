@@ -39,6 +39,14 @@ import org.json.JSONException
 // - polygons: assets/map/supermarket.json (array di array di punti x,y)
 // Poligono n -> id_scaffale n (1-based, coerente col dump scaffali).
 
+/**
+ * Carica un'immagine dagli assets riducendone le dimensioni se necessario.
+ *
+ * @param path Path relativo nella cartella assets
+ * @param maxSide Lato massimo consentito dopo il downsampling
+ * @param maxPixels Budget massimo di pixel totali per evitare OOM
+ * @return `ImageBitmap` pronto per Compose o null in caso di errore
+ */
 @Composable
 fun rememberAssetImage(
     path: String,
@@ -86,7 +94,11 @@ fun rememberAssetImage(
         }
     }
 }
-
+/**
+ * Calcola il fattore di downsampling (potenza di 2) in base ai limiti di lato e pixel.
+ *
+ * @return inSampleSize da usare nelle BitmapFactory.Options
+ */
 private fun calculateInSampleSize(outW: Int, outH: Int, maxSide: Int, maxPixels: Int): Int {
     var sample = 1
     // Riduci finché eccede i limiti
@@ -104,6 +116,12 @@ private fun calculateInSampleSize(outW: Int, outH: Int, maxSide: Int, maxPixels:
     return sample.coerceAtLeast(1)
 }
 
+/**
+ * Carica e memoizza i poligoni della mappa da un file JSON negli assets.
+ *
+ * @param path Path relativo del JSON (es. "map/supermarket.json")
+ * @return Lista di `MapPolygon` o lista vuota in caso di errore
+ */
 @Composable
 fun rememberPolygonsFromJson(path: String): List<MapPolygon> {
     val context = LocalContext.current
@@ -117,7 +135,12 @@ fun rememberPolygonsFromJson(path: String): List<MapPolygon> {
         }
     }
 }
-
+/**
+ * Effettua il parsing del JSON dei poligoni e lo mappa in `MapPolygon`.
+ *
+ * @param jsonText Contenuto del file JSON con array di poligoni
+ * @return Lista di poligoni con coordinate convertite in float
+ */
 private fun parsePolygons(jsonText: String): List<MapPolygon> {
     val result = mutableListOf<MapPolygon>()
     try {

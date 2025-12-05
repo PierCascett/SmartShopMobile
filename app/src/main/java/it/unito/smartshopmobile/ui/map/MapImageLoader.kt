@@ -49,11 +49,6 @@ import androidx.compose.ui.platform.LocalContext
  * - L'immagine viene caricata in memoria: ottimizza dimensioni se troppo grande
  * - Il composable remember() cachea il risultato per evitare reload
  */
-
-/**
- * Load an ImageBitmap from the app assets folder.
- * Place your file under app/src/main/assets and pass the relative path, e.g. "map/supermarket.jpg".
- */
 @Composable
 fun rememberAssetImage(assetPath: String, maxDimension: Int = 2048): ImageBitmap? {
     val context = LocalContext.current

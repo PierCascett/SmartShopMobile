@@ -26,9 +26,25 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 
+/**
+ * Repository per la gestione del profilo utente.
+ *
+ * Fornisce operazioni per aggiornare i dati profilo e caricare l'avatar.
+ * Non utilizza cache locale: le modifiche vengono inviate direttamente all'API
+ * e il ViewModel aggiorna SessionDataStore con i dati ritornati.
+ *
+ * @property apiService Servizio API per operazioni profilo utente
+ */
 class UserRepository(
     private val apiService: SmartShopApiService
     ) {
+    /**
+     * Aggiorna i dati del profilo utente.
+     *
+     * @param userId ID dell'utente da aggiornare
+     * @param request Dati da aggiornare (campi nullable per update parziali)
+     * @return Result<User> con utente aggiornato o errore
+     */
     suspend fun updateProfile(userId: Int, request: UpdateUserRequest): Result<User> {
         return try {
             val response = apiService.updateProfile(userId, request)
@@ -51,6 +67,9 @@ class UserRepository(
             Result.failure(e)
         }
     }
+    /**
+     * Helper per gestire upload avatar.
+     */
 
     suspend fun uploadAvatar(userId: Int, data: ByteArray, mimeType: String): Result<String> {
         return try {

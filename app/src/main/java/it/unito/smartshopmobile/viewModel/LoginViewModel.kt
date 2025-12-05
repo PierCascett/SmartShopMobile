@@ -39,8 +39,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-// ViewModel che gestisce lo stato di login dell'app
-// - espone campi osservabili (email, password, loading, error, successo)
+/**
+ * ViewModel che gestisce autenticazione e stato di login.
+ *
+ * Espone i campi input e flag di stato come `MutableState` per Compose, valida i dati,
+ * invoca l'`AuthRepository` per login/registrazione e salva l'utente in `SessionDataStore`,
+ * notificando la UI tramite `loginSuccessUser`.
+ */
 class LoginViewModel(application: Application) : AndroidViewModel(application) {
     private val authRepository = AuthRepository(RetrofitInstance.api)
     private val sessionDataStore = SessionDataStore(application)
@@ -57,23 +62,30 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
     val sessionUser: StateFlow<User?> =
         sessionDataStore.userFlow.stateIn(viewModelScope, SharingStarted.Lazily, null)
 
+    /** Imposta l'email inserita dall'utente. */
     fun setEmail(value: String) {
         email.value = value
     }
 
+    /** Imposta la password inserita dall'utente. */
     fun setPassword(value: String) {
         password.value = value
     }
 
+    /** Pulisce l'ultimo errore mostrato in UI. */
     fun clearError() {
         errorMessage.value = null
     }
 
+    /** Resetta il flag di successo login per evitare trigger multipli. */
     fun clearLoginSuccess() {
         loginSuccessUser.value = null
     }
 
-    // Metodo di login (simulato): valida campi, simula chiamata di rete e imposta stato di successo
+    /**
+     * Esegue il login tramite AuthRepository dopo una validazione minima.
+     * Aggiorna loading/error e, su successo, salva la sessione e notifica la UI.
+     */
     fun login() {
         if (email.value.isBlank() || password.value.isBlank()) {
             errorMessage.value = "Inserisci email e password"
@@ -93,6 +105,10 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /**
+     * Registra un nuovo utente con i campi inseriti e salva la sessione su successo.
+     * Esegue validazione basica dei campi obbligatori.
+     */
     fun register() {
         if (email.value.isBlank() || password.value.isBlank() || nome.value.isBlank() || cognome.value.isBlank()) {
             errorMessage.value = "Nome, cognome, email e password sono obbligatori"
@@ -118,12 +134,14 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** Salva l'utente autenticato in DataStore (persistenza sessione). */
     private fun saveSession(user: User) {
         viewModelScope.launch {
             sessionDataStore.saveUser(user)
         }
     }
 
+    /** Cancella la sessione persistita (logout locale). */
     fun clearSession() {
         viewModelScope.launch {
             sessionDataStore.clear()

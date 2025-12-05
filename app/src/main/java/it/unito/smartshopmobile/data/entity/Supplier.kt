@@ -22,6 +22,25 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.google.gson.annotations.SerializedName
 
+/**
+ * Entity Room che rappresenta un fornitore nel sistema SmartShop.
+ *
+ * I fornitori sono utilizzati dal manager per effettuare riordini di merce
+ * quando le scorte in magazzino si esauriscono. Contiene informazioni
+ * di contatto complete per comunicazioni dirette.
+ *
+ * Caratteristiche principali:
+ * - Cache locale per UI manager (form riordini)
+ * - Contatti opzionali (telefono, email, indirizzo)
+ * - Usato in combinazione con Restock entity
+ * - Persistenza tra sessioni
+ *
+ * @property id ID univoco del fornitore (chiave primaria)
+ * @property name Nome commerciale del fornitore
+ * @property phone Numero di telefono (opzionale)
+ * @property email Indirizzo email (opzionale)
+ * @property address Indirizzo fisico (opzionale)
+ */
 @Entity(tableName = "fornitori_cache")
 data class Supplier(
     @PrimaryKey

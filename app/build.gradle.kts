@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.devtools.ksp") version "2.0.21-1.0.28"
+    id("jacoco")
 }
 
 android {
@@ -21,6 +22,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            enableUnitTestCoverage = true
+            enableAndroidTestCoverage = true
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -41,6 +46,12 @@ android {
     }
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        unitTests.all {
+            it.configure<JacocoTaskExtension> {
+                isIncludeNoLocationClasses = true
+                excludes = listOf("jdk.internal.*")
+            }
+        }
     }
 }
 
@@ -91,6 +102,7 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation("org.robolectric:robolectric:4.12.2")
     testImplementation("androidx.test:core:1.6.1")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 
     // QR generation
     implementation("com.google.zxing:core:3.5.3")
@@ -102,4 +114,312 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+// JaCoCo Configuration - 3 Separate Reports
+val fileFilter = listOf(
+    "**/R.class",
+    "**/R$*.class",
+    "**/BuildConfig.*",
+    "**/Manifest*.*",
+    "**/*Test*.*",
+    "android/**/*.*",
+    "**/*\$ViewInjector*.*",
+    "**/*\$ViewBinder*.*",
+    "**/databinding/*",
+    "**/android/databinding/*",
+    "**/androidx/databinding/*",
+    "**/di/module/*",
+    "**/*MapperImpl*.*",
+    "**/*\$Lambda$*.*",
+    "**/*Companion*.*",
+    "**/*Module*.*",
+    "**/*Dagger*.*",
+    "**/*MembersInjector*.*",
+    "**/*_Factory*.*",
+    "**/*_Provide*.*",
+    "**/*Extensions*.*"
+)
+
+// 1️⃣ UNIT TESTS - src/test/java/*/unitTest/**
+tasks.register<JacocoReport>("jacocoUnitTestReport") {
+    dependsOn("testDebugUnitTest")
+
+    group = "Coverage Reports"
+    description = "Coverage report for Unit Tests (src/test/*/unitTest/**)"
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        csv.required.set(false)
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/unitTest/html"))
+        xml.outputLocation.set(layout.buildDirectory.file("reports/jacoco/unitTest/jacocoTestReport.xml"))
+    }
+
+    val debugTree = fileTree("${layout.buildDirectory.asFile.get()}/tmp/kotlin-classes/debug") {
+        exclude(fileFilter)
+    }
+    val mainSrc = "${project.projectDir}/src/main/java"
+
+    sourceDirectories.setFrom(files(mainSrc))
+    classDirectories.setFrom(files(debugTree))
+    executionData.setFrom(fileTree(layout.buildDirectory.asFile.get()) {
+        include("jacoco/testDebugUnitTest.exec")
+    })
+}
+
+// --- Aggiunto: alias per compatibilità con nomi usati altrove ---
+// Questo evita errori quando altri task (generate*) riferiscono
+// `jacocoUnitViewModelTestReport` che non era stato creato.
+tasks.register<JacocoReport>("jacocoUnitViewModelTestReport") {
+    // replica il comportamento di `jacocoUnitTestReport` ma scrive
+    // l'output in una cartella `unitViewModelTest` per compatibilità
+    dependsOn("testDebugUnitTest")
+
+    group = "Coverage Reports"
+    description = "Coverage report for Unit ViewModel Tests (src/test/*/unitViewModelTest/**)"
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        csv.required.set(false)
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/unitViewModelTest/html"))
+        xml.outputLocation.set(layout.buildDirectory.file("reports/jacoco/unitViewModelTest/jacocoTestReport.xml"))
+    }
+
+    val debugTree = fileTree("${layout.buildDirectory.asFile.get()}/tmp/kotlin-classes/debug") {
+        exclude(fileFilter)
+    }
+    val mainSrc = "${project.projectDir}/src/main/java"
+
+    sourceDirectories.setFrom(files(mainSrc))
+    classDirectories.setFrom(files(debugTree))
+    executionData.setFrom(fileTree(layout.buildDirectory.asFile.get()) {
+        include("jacoco/testDebugUnitTest.exec")
+    })
+}
+
+// 2️⃣ INTEGRATION TESTS - src/test/java/*/integrationTest/**
+// ⚠️ NOTA: Condivide execution data con unitViewModelTest perché entrambi fanno parte
+// dello stesso source set "test". Per separarli completamente servirebbero source sets separati.
+tasks.register<JacocoReport>("jacocoIntegrationTestReport") {
+    dependsOn("testDebugUnitTest")
+
+    group = "Coverage Reports"
+    description = "Coverage report for Integration Tests (src/test/*/integrationTest/**)"
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        csv.required.set(false)
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/integrationTest/html"))
+        xml.outputLocation.set(layout.buildDirectory.file("reports/jacoco/integrationTest/jacocoTestReport.xml"))
+    }
+
+    val debugTree = fileTree("${layout.buildDirectory.asFile.get()}/tmp/kotlin-classes/debug") {
+        exclude(fileFilter)
+    }
+    val mainSrc = "${project.projectDir}/src/main/java"
+
+    sourceDirectories.setFrom(files(mainSrc))
+    classDirectories.setFrom(files(debugTree))
+    executionData.setFrom(fileTree(layout.buildDirectory.asFile.get()) {
+        include("jacoco/testDebugUnitTest.exec")
+    })
+}
+
+// 3️⃣ UI TESTS - src/androidTest/java/*/uiTest/**
+tasks.register<JacocoReport>("jacocoUITestReport") {
+    dependsOn("createDebugCoverageReport")
+
+    group = "Coverage Reports"
+    description = "Coverage report for UI Tests (src/androidTest/*/uiTest/**)"
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        csv.required.set(false)
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/uiTest/html"))
+        xml.outputLocation.set(layout.buildDirectory.file("reports/jacoco/uiTest/jacocoTestReport.xml"))
+    }
+
+    val debugTree = fileTree("${layout.buildDirectory.asFile.get()}/tmp/kotlin-classes/debug") {
+        exclude(fileFilter)
+    }
+    val mainSrc = "${project.projectDir}/src/main/java"
+
+    sourceDirectories.setFrom(files(mainSrc))
+    classDirectories.setFrom(files(debugTree))
+    executionData.setFrom(fileTree(layout.buildDirectory.asFile.get()) {
+        include("outputs/code_coverage/debugAndroidTest/connected/**/*.ec")
+    })
+}
+
+// 🎯 ALL COVERAGE COMBINED
+tasks.register<JacocoReport>("jacocoAllTestsReport") {
+    dependsOn("testDebugUnitTest", "createDebugCoverageReport")
+
+    group = "Coverage Reports"
+    description = "Combined coverage report for ALL tests"
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        csv.required.set(false)
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco/allTests/html"))
+        xml.outputLocation.set(layout.buildDirectory.file("reports/jacoco/allTests/jacocoTestReport.xml"))
+    }
+
+    val debugTree = fileTree("${layout.buildDirectory.asFile.get()}/tmp/kotlin-classes/debug") {
+        exclude(fileFilter)
+    }
+    val mainSrc = "${project.projectDir}/src/main/java"
+
+    sourceDirectories.setFrom(files(mainSrc))
+    classDirectories.setFrom(files(debugTree))
+    executionData.setFrom(fileTree(layout.buildDirectory.asFile.get()) {
+        include(
+            "jacoco/testDebugUnitTest.exec",
+            "outputs/code_coverage/debugAndroidTest/connected/**/*.ec"
+        )
+    })
+}
+
+// 📊 GENERATE UNIT + INTEGRATION COVERAGE REPORTS (NO EMULATOR NEEDED)
+tasks.register("generateBasicCoverageReports") {
+    dependsOn("jacocoUnitViewModelTestReport", "jacocoIntegrationTestReport")
+
+    group = "Coverage Reports"
+    description = "Generate Unit ViewModel and Integration coverage reports (NO emulator needed)"
+
+    doLast {
+        println("""
+        
+        ╔═══════════════════════════════════════════════════════════════════╗
+        ║            📊 BASIC COVERAGE REPORTS GENERATED                    ║
+        ╠═══════════════════════════════════════════════════════════════════╣
+        ║                                                                   ║
+        ║  🔬 UNIT VIEWMODEL TESTS                                         ║
+        ║     📂 app/build/reports/jacoco/unitViewModelTest/html/index.html║
+        ║                                                                   ║
+        ║  🔗 INTEGRATION TESTS                                            ║
+        ║     📂 app/build/reports/jacoco/integrationTest/html/index.html  ║
+        ║                                                                   ║
+        ║  ⚠️  NOTA: Entrambi i report mostrano gli stessi valori perché   ║
+        ║     condividono lo stesso file di execution data (.exec).        ║
+        ║     Questo è normale - entrambi fanno parte dello stesso         ║
+        ║     source set "test" di Gradle.                                 ║
+        ║                                                                   ║
+        ║  ℹ️  Per i report UI, esegui prima i test con emulatore:         ║
+        ║     Gradle → app → verification → connectedDebugAndroidTest      ║
+        ║     Poi: Gradle → app → Coverage Reports → jacocoUITestReport    ║
+        ║                                                                   ║
+        ╚═══════════════════════════════════════════════════════════════════╝
+        
+        """.trimIndent())
+    }
+}
+
+// 📊 GENERATE ALL COVERAGE REPORTS IN ONE COMMAND (REQUIRES EMULATOR)
+tasks.register("generateAllCoverageReports") {
+    dependsOn("jacocoUnitViewModelTestReport", "jacocoIntegrationTestReport", "jacocoUITestReport", "jacocoAllTestsReport")
+
+    group = "Coverage Reports"
+    description = "Generate ALL coverage reports: Unit ViewModel, Integration, UI, and Combined (requires emulator)"
+
+    doLast {
+        println("""
+        
+        ╔═══════════════════════════════════════════════════════════════════╗
+        ║                    📊 COVERAGE REPORTS GENERATED                  ║
+        ╠═══════════════════════════════════════════════════════════════════╣
+        ║                                                                   ║
+        ║  🔬 UNIT VIEWMODEL TESTS                                         ║
+        ║     📂 app/build/reports/jacoco/unitViewModelTest/html/index.html║
+        ║                                                                   ║
+        ║  🔗 INTEGRATION TESTS                                            ║
+        ║     📂 app/build/reports/jacoco/integrationTest/html/index.html  ║
+        ║                                                                   ║
+        ║  📱 UI TESTS                                                     ║
+        ║     📂 app/build/reports/jacoco/uiTest/html/index.html           ║
+        ║                                                                   ║
+        ║  🎯 ALL COMBINED                                                 ║
+        ║     📂 app/build/reports/jacoco/allTests/html/index.html         ║
+        ║                                                                   ║
+        ║  ⚠️  NOTA: unitViewModelTest e integrationTest mostrano gli      ║
+        ║     stessi valori perché condividono lo stesso execution data.   ║
+        ║     Questo è normale in Gradle.                                  ║
+        ║                                                                   ║
+        ╚═══════════════════════════════════════════════════════════════════╝
+        
+        """.trimIndent())
+    }
+}
+
+// 🔧 UTILITY: Run all tests and generate combined report (continue on test failures)
+tasks.register("testAllAndReport") {
+    group = "Coverage Reports"
+    description = "Run ALL tests and generate reports (continues even if some tests fail)"
+
+    doLast {
+        println("🚀 Starting comprehensive test execution...")
+
+        // Run Unit/Integration tests
+        try {
+            println("📝 Running Unit & Integration Tests...")
+            project.exec {
+                commandLine("./gradlew", "testDebugUnitTest", "--continue")
+                isIgnoreExitValue = true
+            }
+        } catch (e: Exception) {
+            println("⚠️  Some unit/integration tests failed, but continuing...")
+        }
+
+        // Run UI tests
+        try {
+            println("📱 Running UI Tests...")
+            project.exec {
+                commandLine("./gradlew", "connectedDebugAndroidTest", "--continue")
+                isIgnoreExitValue = true
+            }
+        } catch (e: Exception) {
+            println("⚠️  Some UI tests failed, but continuing...")
+        }
+
+        // Generate all reports
+        println("📊 Generating coverage reports...")
+        try {
+            project.exec {
+                commandLine("./gradlew", "jacocoUnitTestReport", "jacocoIntegrationTestReport")
+            }
+            println("✅ Unit & Integration reports generated")
+        } catch (e: Exception) {
+            println("⚠️  Error generating basic reports")
+        }
+
+        try {
+            project.exec {
+                commandLine("./gradlew", "jacocoUITestReport", "jacocoAllTestsReport")
+            }
+            println("✅ UI & Combined reports generated")
+        } catch (e: Exception) {
+            println("⚠️  Error generating UI reports (may need UI test execution data)")
+        }
+
+        println("""
+        
+        ╔═══════════════════════════════════════════════════════════════════╗
+        ║                    ✅ TEST EXECUTION COMPLETED                    ║
+        ╠═══════════════════════════════════════════════════════════════════╣
+        ║                                                                   ║
+        ║  Check test results at:                                          ║
+        ║  📂 app/build/reports/tests/                                     ║
+        ║                                                                   ║
+        ║  Check coverage reports at:                                      ║
+        ║  📂 app/build/reports/jacoco/                                    ║
+        ║                                                                   ║
+        ╚═══════════════════════════════════════════════════════════════════╝
+        
+        """.trimIndent())
+    }
 }

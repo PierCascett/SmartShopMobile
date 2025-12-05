@@ -63,6 +63,21 @@ import it.unito.smartshopmobile.data.remote.RetrofitInstance
 import java.util.UUID
 
 @Composable
+/**
+ * Schermata di impostazioni account per clienti/dipendenti/manager.
+ *
+ * Mostra il form profilo, permette di caricare una nuova foto e salva i dati
+ * delegando le operazioni esterne ai callback forniti (onSaveProfile, onPickNewPhoto).
+ *
+ * @param preferences Preferenze locali (cache) da precompilare
+ * @param email Email corrente mostrata come info non editabile
+ * @param avatarUrl URL avatar attuale, se presente
+ * @param isSaving Flag per mostrare progresso salvataggio
+ * @param isUploadingPhoto Flag per progresso upload foto
+ * @param onSaveProfile Callback sospeso per salvare i dati
+ * @param onPickNewPhoto Callback per selezionare e caricare nuova foto
+ * @param modifier Modificatore Compose
+ */
 fun AccountSettingsScreen(
     preferences: AccountPreferences,
     email: String,
@@ -125,6 +140,9 @@ fun AccountSettingsScreen(
         )
     }
 }
+/**
+ * Composable per la card profile.
+ */
 
 @Composable
 private fun ProfileCard(

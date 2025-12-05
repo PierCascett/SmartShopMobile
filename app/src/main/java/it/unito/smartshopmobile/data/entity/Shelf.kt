@@ -24,8 +24,25 @@ import androidx.room.PrimaryKey
 import com.google.gson.annotations.SerializedName
 
 /**
- * Scaffale del supermercato (usato per mappa e catalogo).
- * In DB: tabella scaffali, già popolata da dump.
+ * Entity Room che rappresenta uno scaffale fisico del supermercato.
+ *
+ * Gli scaffali sono utilizzati per:
+ * - Visualizzare la mappa interattiva del negozio (employee)
+ * - Localizzare prodotti durante il picking degli ordini
+ * - Gestire l'inventario (manager può spostare merce da magazzino a scaffale)
+ *
+ * Caratteristiche principali:
+ * - Corrisponde ai poligoni sulla mappa del negozio
+ * - Relazione 1-N con Product (un scaffale contiene molti prodotti)
+ * - ID numerico progressivo (corrisponde all'ID del poligono mappa)
+ * - Descrizione opzionale per dettagli aggiuntivi
+ *
+ * Esempio:
+ * - id: 1, nome: "Scaffale A1", descrizione: "Corsia alimentari - lato sinistro"
+ *
+ * @property id ID univoco dello scaffale (chiave primaria, corrisponde a polygon ID)
+ * @property nome Nome identificativo dello scaffale (es. "A1", "B3")
+ * @property descrizione Descrizione testuale opzionale della posizione
  */
 @Entity(tableName = "scaffali")
 data class Shelf(

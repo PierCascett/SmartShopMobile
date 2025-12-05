@@ -79,6 +79,13 @@ data class EmployeeUiState(
 
 enum class OrderFilter { ACTIVE, COMPLETED }
 
+/**
+ * ViewModel per il flusso dipendente (picking, consegne e navigazione corsie).
+ *
+ * Osserva ordini/scaffali/prodotti dai repository, mappa le corsie per la mappa interattiva
+ * e gestisce intent UI come selezione corsia, marcatura righe evase e avanzamento stato ordine,
+ * fornendo alla UI uno `StateFlow<EmployeeUiState>` unico e coerente.
+ */
 class EmployeeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val database = SmartShopDatabase.getDatabase(application)
@@ -108,6 +115,9 @@ class EmployeeViewModel(application: Application) : AndroidViewModel(application
         refreshShelvesAndProducts()
         refreshOrders()
     }
+    /**
+     * Helper per gestire observe orders.
+     */
 
     private fun observeOrders() {
         viewModelScope.launch {
@@ -128,6 +138,9 @@ class EmployeeViewModel(application: Application) : AndroidViewModel(application
             }
         }
     }
+    /**
+     * Helper per gestire observe aisles.
+     */
 
     private fun observeAisles() {
         viewModelScope.launch {
@@ -176,19 +189,23 @@ class EmployeeViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    /** Seleziona una corsia sulla mappa e aggiorna lo stato UI. */
     fun selectAisle(aisleId: String) {
         Log.d("EmployeeVM", "selectAisle -> $aisleId")
         _uiState.update { it.copy(selectedAisleId = aisleId) }
     }
 
+    /** Imposta l'ordine attivo su cui l'operatore sta lavorando. */
     fun startOrder(orderId: Int) {
         _uiState.update { it.copy(activeOrderId = orderId, pickedLines = emptySet()) }
     }
 
+    /** Annulla l'ordine attivo e svuota la checklist di picking. */
     fun dropActiveOrder() {
         _uiState.update { it.copy(activeOrderId = null, pickedLines = emptySet()) }
     }
 
+    /** Aggiunge/rimuove una riga ordine dalla checklist di picking. */
     fun togglePicked(lineId: Int) {
         _uiState.update { state ->
             val updated = state.pickedLines.toMutableSet().apply {
@@ -198,6 +215,7 @@ class EmployeeViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    /** Espande o comprime i dettagli di un ordine nella lista. */
     fun toggleOrder(orderId: Int) {
         _uiState.update { state ->
             state.copy(
@@ -207,14 +225,17 @@ class EmployeeViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    /** Applica il filtro di stato (attivi/completati) agli ordini. */
     fun setOrderFilter(filter: OrderFilter) {
         _uiState.update { it.copy(orderFilter = filter, expandedOrderId = null, orderActionError = null) }
     }
 
+    /** Segna un ordine come spedito. */
     fun markOrderShipped(orderId: Int) {
         updateOrderStatus(orderId, "SPEDITO")
     }
 
+    /** Segna un ordine come completato (consegna o locker a seconda del metodo). */
     fun markOrderCompleted(orderId: Int) {
         val order = _uiState.value.orders.firstOrNull { it.idOrdine == orderId }
         val targetStatus = if (order?.metodoConsegna.equals("DOMICILIO", true)) {
@@ -225,15 +246,21 @@ class EmployeeViewModel(application: Application) : AndroidViewModel(application
         updateOrderStatus(orderId, targetStatus)
     }
 
+    /** Segna un ordine come annullato. */
     fun markOrderCanceled(orderId: Int) = updateOrderStatus(orderId, "ANNULLATO")
 
+    /** Mostra il dettaglio di un prodotto della corsia selezionata. */
     fun showProductDetail(product: AisleProduct) {
         _uiState.update { it.copy(selectedProduct = product) }
     }
 
+    /** Chiude il dettaglio prodotto. */
     fun dismissProductDetail() {
         _uiState.update { it.copy(selectedProduct = null) }
     }
+    /**
+     * Helper per gestire update order status.
+     */
 
     private fun updateOrderStatus(orderId: Int, newStatus: String) {
         viewModelScope.launch {
@@ -247,6 +274,7 @@ class EmployeeViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    /** Ricarica gli ordini dal backend e aggiorna i flag di loading/errore. */
     fun refreshOrders() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingOrders = true, ordersError = null, orderActionError = null) }
@@ -259,6 +287,7 @@ class EmployeeViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    /** Ricarica scaffali e prodotti dal backend/Room e resetta eventuali errori. */
     fun refreshShelvesAndProducts() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingAisles = true, aislesError = null) }

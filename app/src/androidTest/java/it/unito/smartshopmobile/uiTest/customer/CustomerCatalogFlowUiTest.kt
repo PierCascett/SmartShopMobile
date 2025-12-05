@@ -1,3 +1,9 @@
+/**
+ * CustomerCatalogFlowUiTest.kt
+ *
+ * Test UI end-to-end per il catalogo clienti (androidTest).
+ * Introdotto header KDoc per allineare la documentazione dei file della suite.
+ */
 package it.unito.smartshopmobile.uiTest.customer
 
 import androidx.compose.ui.test.hasImeAction
@@ -22,11 +28,21 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * UI test E2E per il flusso del cliente:
- * - Login con credenziali casc@gmail.com / casc
+ * Test UI End-to-End per il flusso di navigazione del catalogo cliente.
+ *
+ * Questa classe verifica le funzionalità del catalogo prodotti per il cliente:
+ * - Login con credenziali di test
  * - Navigazione nel catalogo
- * - Selezione tag "Offerte attive"
- * - Selezione del secondo prodotto (detersivo per piatti limone)
+ * - Selezione e applicazione di filtri (Offerte attive)
+ * - Selezione di prodotti specifici
+ * - Aggiunta prodotti al carrello e gestione quantità
+ * - Invio ordini
+ *
+ * Include pause strategiche per permettere l'osservazione visiva di ogni step.
+ *
+ * @property composeRule Regola di test Compose per interagire con l'UI dell'app
+ * @property customerEmail Email di test per il login del cliente (casc@gmail.com)
+ * @property customerPassword Password di test per il login del cliente (casc)
  */
 @RunWith(AndroidJUnit4::class)
 class CustomerCatalogFlowUiTest {
@@ -36,6 +52,16 @@ class CustomerCatalogFlowUiTest {
     private val customerEmail = "casc@gmail.com"
     private val customerPassword = "casc"
 
+    /**
+     * Test che verifica la selezione di prodotti con il filtro "Offerte attive".
+     *
+     * Il test esegue i seguenti passaggi:
+     * 1. Effettua il login come cliente se necessario
+     * 2. Abilita il filtro "Offerte attive"
+     * 3. Attende la visualizzazione di prodotti con "detersivo" nel nome
+     * 4. Scorre fino al prodotto specifico (limone/piatti)
+     * 5. Seleziona il prodotto
+     */
     @Test
     fun customerFlow_selectActiveOffers_andSelectDishwashingProduct() {
         pause(1200)
@@ -65,6 +91,16 @@ class CustomerCatalogFlowUiTest {
         pause(1800)
     }
 
+    /**
+     * Test che verifica la navigazione tra le tab del catalogo e i filtri.
+     *
+     * Il test esegue i seguenti passaggi:
+     * 1. Effettua il login come cliente se necessario
+     * 2. Verifica la presenza della tab "Catalogo"
+     * 3. Abilita il filtro "Offerte attive"
+     * 4. Clicca nuovamente sul chip per disattivarlo
+     * 5. Verifica che ritorni a "Mostra offerte"
+     */
     @Test
     fun customerFlow_navigateThroughCatalogTabs() {
         pause(800)
@@ -89,6 +125,21 @@ class CustomerCatalogFlowUiTest {
         pause(1200)
     }
 
+    /**
+     * Test completo che verifica l'aggiunta di un prodotto al carrello e l'invio dell'ordine.
+     *
+     * Il test esegue i seguenti passaggi:
+     * 1. Effettua il login come cliente se necessario
+     * 2. Abilita il filtro offerte
+     * 3. Cerca e seleziona un prodotto (detersivo/limone)
+     * 4. Aggiunge il prodotto al carrello
+     * 5. Apre l'overlay del carrello
+     * 6. Aumenta la quantità del prodotto di 2 unità usando il pulsante +
+     * 7. Procede con l'invio dell'ordine
+     * 8. Verifica che l'ordine sia stato creato (Ordine #)
+     *
+     * Include pause estese per permettere l'osservazione visiva di ogni azione.
+     */
     @Test
     fun customerFlow_addProductToCart() {
         pause(800)
@@ -158,6 +209,13 @@ class CustomerCatalogFlowUiTest {
         pause(800)
     }
 
+    /**
+     * Effettua il login se necessario.
+     *
+     * Controlla se il catalogo è già visibile. Se non lo è, cerca i campi di login,
+     * li compila con le credenziali del cliente ed esegue il login.
+     * Attende poi la visualizzazione del catalogo.
+     */
     private fun performLoginIfNeeded() {
         composeRule.waitForIdle()
         pause(600)
@@ -185,6 +243,15 @@ class CustomerCatalogFlowUiTest {
         pause(800)
     }
 
+    /**
+     * Assicura che il filtro offerte sia abilitato.
+     *
+     * Attende la visualizzazione del catalogo e verifica lo stato del chip offerte.
+     * Se il chip "Mostra offerte" è presente, lo clicca per attivarlo.
+     * Se il chip "Offerte attive" è presente, significa che è già attivo.
+     *
+     * @throws AssertionError se nessun chip offerte è presente
+     */
     private fun ensureOffersFilterEnabled() {
         composeRule.waitUntil(timeoutMillis = 15_000) { isCatalogVisible() }
         pause(600)
@@ -205,12 +272,23 @@ class CustomerCatalogFlowUiTest {
         pause(600)
     }
 
+    /**
+     * Verifica se il catalogo è visibile.
+     *
+     * @return true se almeno uno dei chip "Mostra offerte" o "Offerte attive" è presente
+     */
     private fun isCatalogVisible(): Boolean {
         val offers = composeRule.onAllNodesWithText("Mostra offerte", useUnmergedTree = true)
         val activeOffers = composeRule.onAllNodesWithText("Offerte attive", useUnmergedTree = true)
         return offers.fetchSemanticsNodes().isNotEmpty() || activeOffers.fetchSemanticsNodes().isNotEmpty()
     }
 
+    /**
+     * Apre l'overlay del carrello.
+     *
+     * Attende che il catalogo sia visibile, poi clicca sull'icona del carrello
+     * e attende che l'overlay si apra completamente.
+     */
     private fun openCartOverlay() {
         composeRule.waitUntil(timeoutMillis = 10_000) { isCatalogVisible() }
         composeRule.onNodeWithContentDescription("Apri carrello", useUnmergedTree = true).performClick()
@@ -222,7 +300,14 @@ class CustomerCatalogFlowUiTest {
         pause(600)
     }
 
-    // Piccola utility per rallentare visivamente i passaggi
+    /**
+     * Utility per rallentare visivamente i passaggi del test.
+     *
+     * Mette in pausa l'esecuzione per permettere l'osservazione visiva
+     * del comportamento dell'interfaccia utente.
+     *
+     * @param ms Durata della pausa in millisecondi (default: 1200ms)
+     */
     private fun pause(ms: Long = 1200) {
         Thread.sleep(ms)
     }
