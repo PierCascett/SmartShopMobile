@@ -136,7 +136,9 @@ fun ProductImageSimple(
 }
 
 /**
- * Esempio di utilizzo in una Card di prodotto
+ * Esempio di utilizzo: card prodotto con immagine, nome e prezzo.
+ *
+ * Utile come sample/preview per l'uso di `ProductImage`.
  */
 @Composable
 fun ProductCardWithImage(
@@ -176,4 +178,3 @@ fun ProductCardWithImage(
         }
     }
 }
-

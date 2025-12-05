@@ -135,6 +135,9 @@ import android.graphics.Color as AndroidColor
 
 val Product.tagsList: List<String> get() = tags ?: emptyList()
 val Product.isOutOfStock: Boolean get() = catalogQuantity <= 0
+/**
+ * Helper per gestire product.
+ */
 
 private fun Product.assetImageUrl(): String {
     val remote = imageUrl?.takeIf { it.isNotBlank() }
@@ -245,6 +248,9 @@ fun CatalogScreen(
         }
     }
 }
+/**
+ * Composable per il contenuto catalog.
+ */
 
 @Composable
 private fun CatalogContent(
@@ -286,6 +292,9 @@ private fun CatalogContent(
         }
     }
 }
+/**
+ * Composable per la card product.
+ */
 
 @Composable
 private fun ProductCard(
@@ -371,6 +380,9 @@ private fun ProductCard(
         }
     }
 }
+/**
+ * Composable per gestire quantity stepper.
+ */
 
 @Composable
 private fun QuantityStepper(
@@ -411,6 +423,9 @@ private fun QuantityStepper(
         }
     }
 }
+/**
+ * Composable per la riga price.
+ */
 
 @Composable
 private fun PriceRow(product: Product) {
@@ -444,6 +459,9 @@ private fun PriceRow(product: Product) {
         }
     }
 }
+/**
+ * Composable per la chip tag.
+ */
 
 @Composable
 private fun TagChip(text: String, background: Color = MaterialTheme.colorScheme.secondaryContainer) {
@@ -456,6 +474,9 @@ private fun TagChip(text: String, background: Color = MaterialTheme.colorScheme.
             .padding(horizontal = 8.dp, vertical = 2.dp)
     )
 }
+/**
+ * Composable per mostrare la dialog product detail.
+ */
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -676,6 +697,12 @@ private fun ProductDetailDialog(
         }
     }
 }
+/**
+ * Riga etichetta/valore mostrata nel dialog di dettaglio prodotto.
+ *
+ * @param label Etichetta (es. categoria, disponibilità)
+ * @param value Testo associato da visualizzare
+ */
 
 @Composable
 private fun ProductDetailRow(label: String, value: String) {
@@ -692,6 +719,9 @@ private fun ProductDetailRow(label: String, value: String) {
         )
     }
 }
+/**
+ * Composable per il badge availability.
+ */
 
 @Composable
 private fun AvailabilityBadge(modifier: Modifier = Modifier) {
@@ -703,6 +733,9 @@ private fun AvailabilityBadge(modifier: Modifier = Modifier) {
         Text("Non disponibile", style = MaterialTheme.typography.labelSmall)
     }
 }
+/**
+ * Composable per il pannello cart.
+ */
 
 @Composable
 private fun CartPanel(
@@ -853,6 +886,9 @@ private fun CartPanel(
         )
     }
 }
+/**
+ * Composable per la riga cart item.
+ */
 
 
 
@@ -916,6 +952,9 @@ private fun CartItemRow(
         )
     }
 }
+/**
+ * Composable per gestire empty state.
+ */
 
 @Composable
 private fun EmptyState(query: String, filteredByCategory: Boolean = false) {
@@ -941,6 +980,9 @@ private fun EmptyState(query: String, filteredByCategory: Boolean = false) {
         )
     }
 }
+/**
+ * Composable per gestire error state.
+ */
 
 @Composable
 private fun ErrorState(message: String) {
@@ -958,6 +1000,9 @@ private fun ErrorState(message: String) {
         )
     }
 }
+/**
+ * Composable per la lista catalog.
+ */
 
 @Composable
 private fun CatalogList(
@@ -990,6 +1035,9 @@ private fun CatalogList(
         }
     }
 }
+/**
+ * Composable per la riga filter.
+ */
 
 @Composable
 private fun FilterRow(
@@ -1031,6 +1079,9 @@ private fun FilterRow(
         }
     }
 }
+/**
+ * Composable per l'header catalog.
+ */
 
 
 @Composable
@@ -1072,6 +1123,9 @@ private fun CatalogHeader(
         )
     }
 }
+/**
+ * Composable per la riga top action.
+ */
 
 @Composable
 private fun TopActionRow(
@@ -1100,6 +1154,9 @@ private fun TopActionRow(
         }
     }
 }
+/**
+ * Composable per gestire cart action button.
+ */
 
 @Composable
 private fun CartActionButton(
@@ -1118,6 +1175,9 @@ private fun CartActionButton(
         }
     }
 }
+/**
+ * Composable per il pannello favorites.
+ */
 
 @Composable
 private fun FavoritesPanel(
@@ -1175,6 +1235,9 @@ private fun FavoritesPanel(
         }
     }
 }
+/**
+ * Composable per la riga favorite item.
+ */
 
 @Composable
 private fun FavoriteItemRow(
@@ -1227,6 +1290,9 @@ private fun FavoriteItemRow(
         )
     }
 }
+/**
+ * Composable per gestire favorites action button.
+ */
 
 @Composable
 private fun FavoritesActionButton(
@@ -1236,6 +1302,9 @@ private fun FavoritesActionButton(
         Icon(Icons.Rounded.Favorite, contentDescription = "Apri preferiti")
     }
 }
+/**
+ * Composable per mostrare l'overlay cart.
+ */
 
 @Composable
 private fun CartOverlay(
@@ -1275,6 +1344,9 @@ private fun CartOverlay(
         )
     }
 }
+/**
+ * Composable per mostrare l'overlay container.
+ */
 
 
 @Composable
@@ -1295,6 +1367,9 @@ private fun OverlayContainer(
         }
     }
 }
+/**
+ * Composable per gestire side menu.
+ */
 
 @Composable
 private fun SideMenu(
@@ -1358,6 +1433,9 @@ private fun SideMenu(
         }
     }
 }
+/**
+ * Composable per gestire side accordion.
+ */
 
 @Composable
 private fun SideAccordion(
@@ -1435,13 +1513,22 @@ private enum class CustomerOrderFilter { ACTIVE, COMPLETED }
 
 // La lista supermarketSideMenu è stata rimossa: ora le categorie vengono caricate dal DB
 // tramite CatalogViewModel.sideMenuSections
+/**
+ * Helper per gestire format price.
+ */
 
 private fun formatPrice(value: Double): String = "\u20AC ${String.format(java.util.Locale.ROOT, "%.2f", value)}"
+/**
+ * Helper per gestire order is final.
+ */
 
 private fun orderIsFinal(status: String): Boolean = when (status.uppercase()) {
     "CONCLUSO", "CONSEGNATO", "ANNULLATO" -> true
     else -> false
 }
+/**
+ * Helper per gestire order status label.
+ */
 
 private fun orderStatusLabel(status: String, method: String? = null): String = when {
     method.equals("LOCKER", true) && status.equals("SPEDITO", true) -> "Da ritirare"
@@ -1454,9 +1541,15 @@ private fun orderStatusLabel(status: String, method: String? = null): String = w
     status.uppercase() == "ANNULLATO" -> "Annullato"
     else -> status.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
 }
+/**
+ * Helper per gestire delivery method label.
+ */
 
 private fun deliveryMethodLabel(method: String): String =
     if (method.equals("DOMICILIO", ignoreCase = true)) "Spesa a domicilio" else "Ritiro nel locker"
+/**
+ * Helper per gestire format order date.
+ */
 
 private fun formatOrderDate(raw: String?): String {
     if (raw.isNullOrBlank()) return "-"
@@ -1536,6 +1629,9 @@ fun AppCartOverlay(
     }
 }
 
+/**
+ * Composable per mostrare l'overlay app favorites.
+ */
 @Composable
 fun AppFavoritesOverlay(
     onDismiss: () -> Unit,
@@ -1566,6 +1662,9 @@ fun AppFavoritesOverlay(
 }
 
 
+/**
+ * Composable per il pannello order history.
+ */
 @Composable
 fun OrderHistoryPanel(
     orders: List<CustomerOrderHistoryEntry>,
@@ -1699,6 +1798,9 @@ fun OrderHistoryPanel(
         }
     }
 }
+/**
+ * Composable per la card customer order.
+ */
 
 @Composable
 private fun CustomerOrderCard(
@@ -1833,6 +1935,9 @@ private fun CustomerOrderCard(
         )
     }
 }
+/**
+ * Composable per gestire qr preview box.
+ */
 
 @Composable
 private fun QrPreviewBox(code: String, modifier: Modifier = Modifier) {
@@ -1867,6 +1972,9 @@ private fun QrPreviewBox(code: String, modifier: Modifier = Modifier) {
         Text(code, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
+/**
+ * Helper per gestire build qr bitmap.
+ */
 
 private fun buildQrBitmap(content: String, size: Int = 512): Bitmap? = try {
     val matrix: BitMatrix = MultiFormatWriter().encode(content, BarcodeFormat.QR_CODE, size, size)
@@ -1880,6 +1988,9 @@ private fun buildQrBitmap(content: String, size: Int = 512): Bitmap? = try {
 } catch (_: Exception) {
     null
 }
+/**
+ * Composable per gestire customer order filter chips.
+ */
 
 @Composable
 private fun CustomerOrderFilterChips(
@@ -1905,6 +2016,9 @@ private fun CustomerOrderFilterChips(
     }
 }
 
+/**
+ * Composable per mostrare l'overlay app order history.
+ */
 @Composable
 fun AppOrderHistoryOverlay(
     onDismiss: () -> Unit,
@@ -1937,4 +2051,3 @@ fun AppOrderHistoryOverlay(
         }
     }
 }
-

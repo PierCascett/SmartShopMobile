@@ -24,27 +24,54 @@ import it.unito.smartshopmobile.data.entity.Category
 import it.unito.smartshopmobile.data.remote.SmartShopApiService
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Repository per la gestione delle categorie prodotti.
+ *
+ * Gestisce una struttura gerarchica di categorie (parent/children) con
+ * supporto per macro-categorie e sottocategorie. Implementa pattern
+ * Offline-First con Room come Single Source of Truth.
+ *
+ * @property categoryDao DAO per accesso al database locale
+ * @property apiService Servizio API per sincronizzazione remota
+ */
 class CategoryRepository(
     private val categoryDao: CategoryDao,
     private val apiService: SmartShopApiService
 ) {
     
-    // Ottiene tutte le categorie dal database locale (cache)
+    /**
+     * Osserva tutte le categorie dal database locale.
+     *
+     * @return Flow che emette lista di tutte le categorie ordinate alfabeticamente
+     */
     fun getAllCategories(): Flow<List<Category>> {
         return categoryDao.getAllCategories()
     }
     
-    // Ottiene le categorie macro dal database locale
+    /**
+     * Osserva le macro-categorie (categorie parent univoche).
+     *
+     * @return Flow che emette lista di macro-categorie
+     */
     fun getMacroCategories(): Flow<List<Category>> {
         return categoryDao.getMacroCategories()
     }
     
-    // Ottiene le sottocategorie dal database locale
+    /**
+     * Osserva le sottocategorie di una categoria parent specifica.
+     *
+     * @param parentId ID della categoria parent
+     * @return Flow che emette lista di sottocategorie
+     */
     fun getSubcategories(parentId: String): Flow<List<Category>> {
         return categoryDao.getSubcategories(parentId)
     }
     
-    // Sincronizza i dati dal server al database locale
+    /**
+     * Sincronizza tutte le categorie dal server al database locale.
+     *
+     * @return Result<Unit> success se sincronizzazione riuscita
+     */
     suspend fun refreshCategories(): Result<Unit> {
         return try {
             val response = apiService.getAllCategories()
@@ -61,6 +88,9 @@ class CategoryRepository(
             Result.failure(e)
         }
     }
+    /**
+     * Helper per gestire category.
+     */
 
     private fun Category.toEntity(): Category = this
 }

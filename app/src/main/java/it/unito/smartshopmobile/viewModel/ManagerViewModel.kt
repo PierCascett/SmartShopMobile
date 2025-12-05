@@ -79,6 +79,13 @@ data class ManagerUiState(
     val isTransferring: Boolean = false
 )
 
+/**
+ * ViewModel per il flusso manager: riordini, inventario e trasferimenti stock.
+ *
+ * Osserva fornitori/categorie/prodotti/scaffali dai repository, gestisce la creazione di
+ * riordini, i trasferimenti magazzino <-> scaffale e gli stati di caricamento/errore,
+ * esponendo uno `StateFlow<ManagerUiState>` unificato per la UI Compose.
+ */
 class ManagerViewModel(application: Application) : AndroidViewModel(application) {
     private val database = SmartShopDatabase.getDatabase(application)
     private val repository = RestockRepository(
@@ -116,6 +123,9 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
         observeShelves()
         refreshAllData()
     }
+    /**
+     * Helper per gestire observe restocks.
+     */
 
     private fun observeRestocks() {
         viewModelScope.launch {
@@ -124,6 +134,9 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
             }
         }
     }
+    /**
+     * Helper per gestire observe products and categories.
+     */
 
     private fun observeProductsAndCategories() {
         viewModelScope.launch {
@@ -150,6 +163,9 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
             }
         }
     }
+    /**
+     * Helper per gestire observe suppliers.
+     */
 
     private fun observeSuppliers() {
         viewModelScope.launch {
@@ -163,6 +179,9 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
             }
         }
     }
+    /**
+     * Helper per gestire observe shelves.
+     */
 
     private fun observeShelves() {
         viewModelScope.launch {
@@ -176,6 +195,9 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
             }
         }
     }
+    /**
+     * Helper per gestire filter products by category.
+     */
 
     private fun filterProductsByCategory(categoryId: String?): List<Product> {
         val filtered = if (categoryId.isNullOrBlank()) {
@@ -185,6 +207,9 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
         }
         return mergeProductVariants(filtered)
     }
+    /**
+     * Helper per gestire merge product variants.
+     */
 
     private fun mergeProductVariants(products: List<Product>): List<Product> {
         return products
@@ -206,6 +231,7 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
             .sortedBy { it.name }
     }
 
+    /** Ricarica l'elenco dei riordini e aggiorna flag loading/error. */
     fun refreshRestocks() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -218,6 +244,7 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /** Aggiorna catalogo, fornitori e scaffali da backend/DB. */
     private fun refreshCatalogData() {
         viewModelScope.launch {
             categoryRepository.refreshCategories()
@@ -227,6 +254,10 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /**
+     * Esegue un refresh completo di dati manager: riconcilia arrivi, riordini,
+     * catalogo, fornitori e scaffali, impostando i flag di loading.
+     */
     fun refreshAllData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -239,6 +270,10 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /**
+     * Invia un nuovo riordino se prodotto, fornitore e quantita sono validi.
+     * Gestisce messaggi di errore/successo e reset dei campi input.
+     */
     fun submitRestock(responsabileId: Int? = null) {
         val state = _uiState.value
         val qty = state.quantity.toIntOrNull()
@@ -280,6 +315,10 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /**
+     * Esegue il trasferimento di stock dal magazzino allo scaffale selezionato.
+     * Valida input e disponibilità, poi invoca l'InventoryRepository aggiornando i messaggi di stato.
+     */
     fun moveStockToShelf() {
         val state = _uiState.value
         val qty = state.transferQuantity.toIntOrNull()
@@ -337,14 +376,17 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /** Aggiorna il campo quantità riordino accettando solo cifre. */
     fun onQuantityChanged(value: String) {
         _uiState.update { it.copy(quantity = value.filter { ch -> ch.isDigit() }) }
     }
 
+    /** Aggiorna il campo quantità trasferimento accettando solo cifre. */
     fun onTransferQuantityChanged(value: String) {
         _uiState.update { it.copy(transferQuantity = value.filter { ch -> ch.isDigit() }) }
     }
 
+    /** Imposta la categoria selezionata e rifiltra i prodotti disponibili. */
     fun onCategorySelected(categoryId: String?) {
         _uiState.update { state ->
             val filtered = filterProductsByCategory(categoryId)
@@ -356,33 +398,39 @@ class ManagerViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /** Seleziona il prodotto corrente per riordino/trasferimento. */
     fun onProductSelected(productId: String?) {
         _uiState.update { it.copy(selectedProductId = productId) }
     }
 
+    /** Imposta il fornitore per il riordino. */
     fun onSupplierSelected(supplierId: Int?) {
         _uiState.update { it.copy(selectedSupplierId = supplierId) }
     }
 
+    /** Imposta lo scaffale di destinazione per il trasferimento stock. */
     fun onShelfSelected(shelfId: Int?) {
         _uiState.update { it.copy(selectedShelfId = shelfId) }
     }
 
+    /** Mostra il dettaglio del prodotto selezionato. */
     fun showProductDetail(productId: String) {
         val product = cachedProducts.firstOrNull { it.id == productId }
         _uiState.update { it.copy(showProductDetail = product) }
     }
 
+    /** Chiude il dettaglio prodotto. */
     fun dismissProductDetail() {
         _uiState.update { it.copy(showProductDetail = null) }
     }
 
+    /** Pulisce il messaggio di successo dei riordini. */
     fun clearSuccessMessage() {
         _uiState.update { it.copy(successMessage = null) }
     }
 
+    /** Pulisce il messaggio di successo dei trasferimenti. */
     fun clearTransferSuccess() {
         _uiState.update { it.copy(transferSuccess = null) }
     }
 }
-

@@ -70,6 +70,18 @@ data class Restock(
     val responsabileCognome: String?
 )
 
+/**
+ * DTO per la richiesta di creazione nuovo riordino all'API.
+ *
+ * Contiene solo i dati essenziali forniti dal manager per creare
+ * un nuovo riordino nel sistema.
+ *
+ * @property idProdotto ID del prodotto da riordinare
+ * @property idFornitore ID del fornitore selezionato
+ * @property quantitaOrdinata Quantità da ordinare
+ * @property dataArrivoPrevista Data arrivo stimata (opzionale)
+ * @property idResponsabile ID del manager che crea il riordino
+ */
 data class CreateRestockRequest(
     @SerializedName("idProdotto") val idProdotto: String,
     @SerializedName("idFornitore") val idFornitore: Int,

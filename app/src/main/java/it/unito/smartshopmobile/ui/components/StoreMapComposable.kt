@@ -61,6 +61,9 @@ import it.unito.smartshopmobile.ui.map.toShelfPolygon
 import kotlinx.coroutines.delay
 
 // Helper: point-in-polygon usando vertici trasformati nello spazio schermo
+/**
+ * Helper per gestire is point in polygon screen.
+ */
 private fun isPointInPolygonScreen(
     tap: Offset,
     polygon: ShelfPolygon,
@@ -94,6 +97,17 @@ private fun isPointInPolygonScreen(
 // Modello corsia con bounds per hit detection
 // Rettangoli placeholder rimossi: ora usiamo poligoni personalizzati
 
+/**
+ * Canvas composable che disegna la mappa del supermercato con i poligoni degli scaffali.
+ *
+ * Non gestisce stato interno di zoom/pan (fisso a 1x) per mantenere coerenza con i poligoni.
+ * Propaga i tap sul poligono selezionato tramite `onAisleClick`.
+ *
+ * @param selectedAisleId ID dell'aisle selezionato (per evidenziazione)
+ * @param onAisleClick Callback quando un poligono viene toccato
+ * @param modifier Modificatore Compose opzionale
+ * @param background Bitmap opzionale della mappa da disegnare come sfondo
+ */
 @Composable
 fun StoreMapCanvas(
     selectedAisleId: String?,
@@ -298,6 +312,9 @@ fun StoreMapCanvas(
         // Elementi extra (es. casse) rimossi finché non mappati sull'immagine
     }
 }
+/**
+ * Helper per gestire draw scope.
+ */
 
 private fun DrawScope.drawPolygonShelf(
     polygon: ShelfPolygon,
@@ -341,11 +358,20 @@ private fun DrawScope.drawPolygonShelf(
 
 // Ripple model
 private data class Ripple(val center: Offset, val startTime: Long = System.currentTimeMillis()) {
+    /**
+     * Helper per gestire progress.
+     */
     fun progress(): Float = ((System.currentTimeMillis() - startTime).toFloat() / 650f).coerceIn(0f, 1f)
+    /**
+     * Helper per gestire is finished.
+     */
     fun isFinished(): Boolean = progress() >= 1f
 }
 
 // Utility color lighten/darken extensions
+/**
+ * Helper per gestire color.
+ */
 private fun Color.lighten(amount: Float): Color {
     val a = amount.coerceIn(0f, 1f)
     return Color(
@@ -355,6 +381,9 @@ private fun Color.lighten(amount: Float): Color {
         alpha = alpha
     )
 }
+/**
+ * Helper per gestire color.
+ */
 private fun Color.darken(amount: Float): Color {
     val a = amount.coerceIn(0f, 1f)
     return Color(

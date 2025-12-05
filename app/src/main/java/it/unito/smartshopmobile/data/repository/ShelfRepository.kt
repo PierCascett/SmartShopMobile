@@ -23,12 +23,32 @@ import it.unito.smartshopmobile.data.entity.Shelf
 import it.unito.smartshopmobile.data.remote.SmartShopApiService
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Repository per la gestione degli scaffali del supermercato.
+ *
+ * Fornisce accesso agli scaffali fisici utilizzati per la mappa interattiva
+ * e il picking degli ordini da parte dei dipendenti. Implementa pattern
+ * Offline-First con sincronizzazione periodica dall'API.
+ *
+ * @property shelfDao DAO per cache locale scaffali
+ * @property apiService Servizio API per sincronizzazione remota
+ */
 class ShelfRepository(
     private val shelfDao: ShelfDao,
     private val apiService: SmartShopApiService
 ) {
+    /**
+     * Osserva tutti gli scaffali dal database locale.
+     *
+     * @return Flow che emette lista di tutti gli scaffali ordinati per ID
+     */
     fun getAll(): Flow<List<Shelf>> = shelfDao.getAll()
 
+    /**
+     * Sincronizza scaffali dal server al database locale.
+     *
+     * @return Result<Unit> success se sincronizzazione riuscita
+     */
     suspend fun refresh(): Result<Unit> {
         return try {
             val response = apiService.getAllShelves()
@@ -45,4 +65,3 @@ class ShelfRepository(
         }
     }
 }
-

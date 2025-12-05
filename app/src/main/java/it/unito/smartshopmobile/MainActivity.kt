@@ -103,12 +103,52 @@ import it.unito.smartshopmobile.viewModel.LoginViewModel
 import it.unito.smartshopmobile.viewModel.MainViewModel
 import kotlinx.coroutines.launch
 
+/**
+ * Activity principale dell'applicazione SmartShop Mobile.
+ *
+ * Entry point dell'app che gestisce:
+ * - Inizializzazione ViewModels con lifecycle-aware delegation
+ * - Navigazione condizionale basata su UserRole (Customer/Employee/Manager)
+ * - Applicazione del tema Material Design 3
+ * - Gestione overlay (menu, carrello, preferiti)
+ * - Sincronizzazione sessione tra ViewModels
+ *
+ * Architettura MVVM:
+ * - Activity come Controller che coordina View (Compose) e ViewModels
+ * - State hoisting: stato UI osservato tramite collectAsState()
+ * - Unidirectional data flow: eventi → ViewModel → State → UI
+ * - Separation of concerns: business logic nei ViewModels
+ *
+ * ViewModels gestiti:
+ * - MainViewModel: stato globale app, sessione, navigazione
+ * - LoginViewModel: autenticazione utente
+ * - CatalogViewModel: catalogo prodotti, carrello, ordini (Customer)
+ * - AccountPreferencesViewModel: preferenze profilo locale
+ *
+ * Routing basato su ruolo:
+ * - null → LoginScreenMVVM
+ * - CUSTOMER → CatalogScreen con bottom navigation
+ * - EMPLOYEE → EmployeeScreen (mappa, picking ordini)
+ * - MANAGER → ManagerScreen (inventario, riordini)
+ *
+ * @property mainViewModel ViewModel per stato globale e navigazione
+ * @property loginViewModel ViewModel per login/registrazione
+ * @property catalogViewModel ViewModel per catalogo e carrello
+ * @property accountPreferencesViewModel ViewModel per preferenze locali
+ */
 class MainActivity : ComponentActivity() {
     private val mainViewModel: MainViewModel by viewModels()
     private val loginViewModel: LoginViewModel by viewModels()
     private val catalogViewModel: CatalogViewModel by viewModels()
     private val accountPreferencesViewModel: AccountPreferencesViewModel by viewModels()
+    /**
+     * On Create.
+     */
 
+    /**
+     * Inizializza la MainActivity impostando tema, ViewModel e routing in base alla sessione.
+     * Gestisce toast, sincronizzazione sessione con CatalogViewModel e overlay principali.
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -240,7 +280,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+/**
+ * Content With Session Bar.
+ */
 
+/**
+ * Layout condiviso che avvolge i flussi Customer/Employee/Manager con barra sessione.
+ * Applica TopAppBar con avatar/email e delega il contenuto al ruolo corrente.
+ */
 @Composable
 private fun ContentWithSessionBar(
     modifier: Modifier,
@@ -320,7 +367,14 @@ private fun ContentWithSessionBar(
         }
     }
 }
+/**
+ * Customer Home.
+ */
 
+/**
+ * Contenuto principale per il ruolo Customer con bottom navigation (Shop/Orders/Account).
+ * Coordina snackbar, tab correnti e delega alle schermate Catalog, Storico e Account.
+ */
 @Composable
 private fun CustomerHome(
     state: CatalogUiState,
@@ -501,7 +555,14 @@ private fun CustomerHome(
         }
     }
 }
+/**
+ * Session Bar.
+ */
 
+/**
+ * Barra superiore della sessione con avatar/email e pulsante logout.
+ * Mostra l'avatar da backend (cache-busted) o un'icona di fallback.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SessionBar(
@@ -555,6 +616,9 @@ private fun SessionBar(
     )
 }
 
+/**
+ * Composable per gestire main preview.
+ */
 @Preview(showBackground = true)
 @Composable
 fun MainPreview() {
@@ -563,7 +627,11 @@ fun MainPreview() {
         LoginScreen(onLogin = { _, _, _ -> })
     }
 }
+/**
+ * Map Role.
+ */
 
+/** Converte il ruolo stringa del backend in enum `UserRole`. */
 private fun mapRole(user: User?): UserRole? {
     return UserRole.fromDbRole(user?.ruolo)
 }

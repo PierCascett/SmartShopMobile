@@ -24,12 +24,31 @@ import it.unito.smartshopmobile.data.entity.Restock
 import it.unito.smartshopmobile.data.remote.SmartShopApiService
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * Repository per la gestione dei riordini magazzino.
+ *
+ * Coordina la creazione di riordini ai fornitori e l'osservazione dello
+ * storico riordini. Utilizzato dal manager per rifornire il magazzino.
+ *
+ * @property apiService Servizio API per operazioni riordini
+ * @property restockDao DAO per cache locale storico
+ */
 class RestockRepository(
     private val apiService: SmartShopApiService,
     private val restockDao: RestockDao
 ) {
+    /**
+     * Osserva tutti i riordini dal database locale.
+     *
+     * @return Flow che emette lista riordini ordinati per data decrescente
+     */
     fun observeRestocks(): Flow<List<Restock>> = restockDao.getRestocks()
 
+    /**
+     * Sincronizza riordini dal server al database locale.
+     *
+     * @return Result<Unit> success se sincronizzazione riuscita
+     */
     suspend fun fetchRestocks(): Result<Unit> {
         return try {
             val response = apiService.getRestocks()
@@ -46,6 +65,9 @@ class RestockRepository(
             Result.failure(e)
         }
     }
+    /**
+     * Helper per gestire create restock.
+     */
 
     suspend fun createRestock(request: CreateRestockRequest): Result<Restock> {
         return try {

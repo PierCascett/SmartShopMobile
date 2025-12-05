@@ -68,6 +68,9 @@ private val LightColorScheme = lightColorScheme(
     onTertiaryContainer = OnTertiaryContainerLight,
 )
 
+/**
+ * Composable per gestire smart shop mobile theme.
+ */
 @Composable
 fun SmartShopMobileTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),

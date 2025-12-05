@@ -23,9 +23,23 @@ import it.unito.smartshopmobile.data.entity.StockTransferResult
 import it.unito.smartshopmobile.data.remote.SmartShopApiService
 import org.json.JSONObject
 
+/**
+ * Repository per la gestione dell'inventario (stock management).
+ *
+ * Fornisce operazioni per trasferire merce dal magazzino agli scaffali
+ * e riconciliare gli arrivi da riordini. API-only (nessuna cache locale).
+ *
+ * @property apiService Servizio API per operazioni inventario
+ */
 class InventoryRepository(
     private val apiService: SmartShopApiService
 ) {
+    /**
+     * Sposta quantità di prodotto dal magazzino a uno scaffale specifico.
+     *
+     * @param request Richiesta con prodotto, quantità e scaffale destinazione
+     * @return Result<StockTransferResult> con quantità aggiornate o errore
+     */
     suspend fun moveStock(request: StockTransferRequest): Result<StockTransferResult> {
         return try {
             val response = apiService.moveStockToShelf(request)
@@ -43,6 +57,9 @@ class InventoryRepository(
             Result.failure(e)
         }
     }
+    /**
+     * Helper per gestire reconcile arrivals.
+     */
 
     suspend fun reconcileArrivals(): Result<Unit> {
         return try {
@@ -63,6 +80,9 @@ class InventoryRepository(
             Result.failure(e)
         }
     }
+    /**
+     * Helper per gestire parse error.
+     */
 
     private fun parseError(raw: String?): String? = raw?.let {
         try {

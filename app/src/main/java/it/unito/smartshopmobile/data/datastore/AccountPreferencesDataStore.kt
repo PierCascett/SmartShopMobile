@@ -27,6 +27,17 @@ import kotlinx.coroutines.flow.map
 
 private val Context.accountPrefsDataStore by preferencesDataStore(name = "account_preferences")
 
+/**
+ * Data class immutabile che rappresenta le preferenze dell'account utente.
+ *
+ * Contiene informazioni di profilo locali che possono essere modificate
+ * senza necessariamente sincronizzarle con il backend.
+ *
+ * @property nome Nome dell'utente
+ * @property cognome Cognome dell'utente
+ * @property indirizzoSpedizione Indirizzo di spedizione preferito
+ * @property telefono Numero di telefono di contatto
+ */
 data class AccountPreferences(
     val nome: String = "",
     val cognome: String = "",
@@ -34,12 +45,49 @@ data class AccountPreferences(
     val telefono: String = ""
 )
 
+/**
+ * Gestisce la persistenza delle preferenze account tramite DataStore.
+ *
+ * Questa classe fornisce un modo per salvare e ripristinare le informazioni
+ * di profilo dell'utente localmente, permettendo form pre-compilati e
+ * aggiornamenti rapidi senza chiamate di rete immediate.
+ *
+ * Caratteristiche principali:
+ * - Cache locale dei dati profilo
+ * - Flow reattivo per osservare modifiche
+ * - Update atomico di tutti i campi
+ * - Persistenza tra riavvii app
+ *
+ * Uso tipico:
+ * ```kotlin
+ * // Osserva preferenze
+ * accountPrefsDataStore.data.collect { prefs ->
+ *     // Usa prefs.nome, prefs.cognome, etc.
+ * }
+ *
+ * // Aggiorna profilo
+ * accountPrefsDataStore.updateProfile(
+ *     nome = "Mario",
+ *     cognome = "Rossi",
+ *     indirizzo = "Via Roma 1",
+ *     telefono = "1234567890"
+ * )
+ * ```
+ *
+ * @property context Contesto Android per accedere al DataStore
+ */
 class AccountPreferencesDataStore(private val context: Context) {
     private val KEY_NOME = stringPreferencesKey("nome")
     private val KEY_COGNOME = stringPreferencesKey("cognome")
     private val KEY_INDIRIZZO = stringPreferencesKey("indirizzo_spedizione")
     private val KEY_TELEFONO = stringPreferencesKey("telefono")
 
+    /**
+     * Flow reattivo che emette le preferenze account correnti.
+     *
+     * Il Flow si aggiorna automaticamente quando le preferenze vengono modificate.
+     * Emette valori di default (stringhe vuote) se non sono mai state impostate.
+     */
     val data: Flow<AccountPreferences> = context.accountPrefsDataStore.data.map { prefs ->
         AccountPreferences(
             nome = prefs[KEY_NOME].orEmpty(),
@@ -49,6 +97,17 @@ class AccountPreferencesDataStore(private val context: Context) {
         )
     }
 
+    /**
+     * Aggiorna tutti i campi del profilo account in un'unica operazione atomica.
+     *
+     * Tutti i parametri vengono salvati contemporaneamente per garantire
+     * la consistenza dei dati.
+     *
+     * @param nome Nuovo nome dell'utente
+     * @param cognome Nuovo cognome dell'utente
+     * @param indirizzo Nuovo indirizzo di spedizione
+     * @param telefono Nuovo numero di telefono
+     */
     suspend fun updateProfile(nome: String, cognome: String, indirizzo: String, telefono: String) {
         context.accountPrefsDataStore.edit { prefs ->
             prefs[KEY_NOME] = nome

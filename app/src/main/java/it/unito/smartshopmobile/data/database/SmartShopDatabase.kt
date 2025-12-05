@@ -40,6 +40,30 @@ import it.unito.smartshopmobile.data.entity.Restock
 import it.unito.smartshopmobile.data.entity.Shelf
 import it.unito.smartshopmobile.data.entity.Supplier
 
+/**
+ * Database Room principale dell'applicazione SmartShop.
+ *
+ * Gestisce la persistenza locale di tutte le entità (prodotti, ordini, categorie, ecc.)
+ * con pattern Singleton thread-safe. Fornisce accesso ai DAO per operazioni CRUD.
+ *
+ * Caratteristiche:
+ * - Versione 13: include indirizzo spedizione negli ordini
+ * - Singleton pattern: unica istanza per l'intera applicazione
+ * - TypeConverters per List<String> (tags prodotti)
+ * - fallbackToDestructiveMigration: ricrea DB se schema cambia (solo dev!)
+ *
+ * Note produzione:
+ * - Implementare Migration per preservare dati utente
+ * - Rimuovere fallbackToDestructiveMigration
+ * - Attivare exportSchema per tracciare versioni
+ *
+ * @property categoryDao DAO per operazioni su categorie
+ * @property productDao DAO per operazioni su prodotti
+ * @property orderDao DAO per operazioni su ordini e righe
+ * @property restockDao DAO per operazioni su riordini
+ * @property shelfDao DAO per operazioni su scaffali
+ * @property supplierDao DAO per operazioni su fornitori
+ */
 @Database(
     entities = [Category::class, Product::class, Order::class, OrderLine::class, Restock::class, Shelf::class, Supplier::class],
     version = 13, // include indirizzo spedizione negli ordini
@@ -48,16 +72,37 @@ import it.unito.smartshopmobile.data.entity.Supplier
 @TypeConverters(Converters::class)
 abstract class SmartShopDatabase : RoomDatabase() {
 
+    /**
+     * DAO per accesso alle categorie prodotti.
+     */
     abstract fun categoryDao(): CategoryDao
+    /**
+     * Helper per gestire product dao.
+     */
     abstract fun productDao(): ProductDao
+    /**
+     * Helper per gestire order dao.
+     */
     abstract fun orderDao(): OrderDao
+    /**
+     * Helper per gestire restock dao.
+     */
     abstract fun restockDao(): RestockDao
+    /**
+     * Helper per gestire shelf dao.
+     */
     abstract fun shelfDao(): ShelfDao
+    /**
+     * Helper per gestire supplier dao.
+     */
     abstract fun supplierDao(): SupplierDao
 
     companion object {
         @Volatile
         private var INSTANCE: SmartShopDatabase? = null
+        /**
+         * Helper per gestire get database.
+         */
 
         fun getDatabase(context: Context): SmartShopDatabase {
             return INSTANCE ?: synchronized(this) {

@@ -37,7 +37,7 @@ import java.util.concurrent.TimeUnit
  * - Base URL configurabile per backend Node.js
  *
  * Configurazione:
- * - BACKEND_HOST: IP del server backend (192.168.1.51)
+ * - BACKEND_HOST: IP del server backend (192.168.1.51)/(192.168.1.4)
  * - BACKEND_PORT: porta del server backend (3000)
  * - Base URL API: http://HOST:PORT/api/
  * - Asset URL: http://HOST:PORT/ (per immagini)

@@ -22,6 +22,29 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+/**
+ * Entity Room che rappresenta una categoria di prodotti nel catalogo SmartShop.
+ *
+ * Supporta una struttura gerarchica con categorie padre e sottocategorie.
+ * Ogni categoria può avere una sovracategoria (parent) identificata da parentId.
+ *
+ * Caratteristiche principali:
+ * - Struttura ad albero con self-referencing via parentId
+ * - Contatore prodotti per categoria (prodottiTotali)
+ * - Descrizione opzionale per ogni categoria
+ * - Usata per filtri e navigazione nel catalogo
+ *
+ * Esempio gerarchia:
+ * - "alimentari" (parent) → "latticini" (child)
+ * - "bevande" (parent) → "alcoliche" (child)
+ *
+ * @property id ID univoco della categoria (chiave primaria)
+ * @property nome Nome visualizzato della categoria
+ * @property descrizione Descrizione testuale opzionale
+ * @property parentId ID della sovracategoria (null se root)
+ * @property parentName Nome della sovracategoria (denormalizzato)
+ * @property prodottiTotali Numero totale di prodotti in questa categoria
+ */
 @Entity(tableName = "categorie_catalogo")
 data class Category(
     @PrimaryKey

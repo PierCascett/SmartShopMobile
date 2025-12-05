@@ -1,3 +1,9 @@
+/**
+ * SupermarketPolygons.kt
+ *
+ * Modello e utilities per i poligoni della mappa supermercato (Compose Canvas).
+ * Documentazione aggiunta per uniformare tutti i file sorgente.
+ */
 package it.unito.smartshopmobile.ui.map
 
 import androidx.compose.ui.geometry.Offset
@@ -24,6 +30,16 @@ import it.unito.smartshopmobile.data.entity.MapPolygon
  */
 
 // Modello per poligoni scaffali
+/**
+ * Rappresenta un poligono di scaffale sulla mappa del supermercato.
+ *
+ * @property id Identificativo dello scaffale associato
+ * @property points Vertici del poligono nello spazio immagine originale
+ * @property fillColor Colore di riempimento semitrasparente
+ * @property strokeColor Colore del bordo
+ * @property textColor Colore delle eventuali etichette
+ * @property label Etichetta opzionale da mostrare in mappa
+ */
 data class ShelfPolygon(
     val id: String,
     val points: List<Offset>,
@@ -33,6 +49,9 @@ data class ShelfPolygon(
     val label: String? = null
 ) {
     // Punto nel poligono (ray casting)
+    /**
+     * Helper per gestire contains point.
+     */
     fun containsPoint(p: Offset): Boolean {
         var result = false
         var j = points.size - 1
@@ -47,6 +66,9 @@ data class ShelfPolygon(
         return result
     }
     // Centroid approssimato (media dei vertici)
+    /**
+     * Helper per gestire centroid.
+     */
     fun centroid(): Offset {
         val n = points.size
         if (n == 0) return Offset.Zero
@@ -56,6 +78,9 @@ data class ShelfPolygon(
         return Offset(sx / n, sy / n)
     }
 }
+/**
+ * Helper per gestire map polygon.
+ */
 
 fun MapPolygon.toShelfPolygon(): ShelfPolygon =
     ShelfPolygon(

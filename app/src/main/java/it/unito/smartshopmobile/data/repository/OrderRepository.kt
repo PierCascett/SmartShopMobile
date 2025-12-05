@@ -28,11 +28,33 @@ import it.unito.smartshopmobile.data.remote.SmartShopApiService
 import kotlinx.coroutines.flow.Flow
 import org.json.JSONObject
 
+/**
+ * Repository per la gestione degli ordini clienti.
+ *
+ * Coordina la creazione ordini tramite API, l'osservazione dello stato ordini
+ * tramite Room cache, e l'aggiornamento degli stati da parte di dipendenti e manager.
+ * Implementa pattern Offline-First con sincronizzazione periodica.
+ *
+ * Caratteristiche principali:
+ * - Creazione ordini da carrello (checkout)
+ * - Osservazione ordini completi con righe (OrderWithLines)
+ * - Aggiornamento stati (IN_LAVORAZIONE, PRONTO_RITIRO, SPEDITO, CONSEGNATO)
+ * - Cache locale per picking offline
+ *
+ * @property apiService Servizio API per operazioni remote
+ * @property orderDao DAO per cache locale ordini
+ */
 class OrderRepository(
     private val apiService: SmartShopApiService,
     private val orderDao: OrderDao
 ) {
+    /**
+     * Helper per gestire observe orders.
+     */
     fun observeOrders(): Flow<List<OrderWithLines>> = orderDao.getOrdersWithLines()
+    /**
+     * Helper per gestire create order.
+     */
 
     suspend fun createOrder(request: CreateOrderRequest): Result<OrderCreated> {
         return try {
@@ -47,6 +69,9 @@ class OrderRepository(
             Result.failure(e)
         }
     }
+    /**
+     * Helper per gestire refresh orders.
+     */
 
     suspend fun refreshOrders(): Result<Unit> {
         return try {
@@ -71,6 +96,9 @@ class OrderRepository(
             Result.failure(e)
         }
     }
+    /**
+     * Helper per gestire update order status.
+     */
 
     suspend fun updateOrderStatus(orderId: Int, stato: String): Result<Unit> {
         return try {

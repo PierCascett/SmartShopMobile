@@ -62,6 +62,13 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.random.Random
 
+/**
+ * ViewModel principale per il dominio Customer: gestisce catalogo, carrello, ordini e preferiti.
+ *
+ * Unifica stato locale (Room/DataStore) e remoto (Retrofit) in un unico `CatalogUiState` esposto
+ * via `StateFlow`, si occupa di sincronizzazione dati, gestione overlay (carrello/preferiti),
+ * storico ordini e aggiornamento profilo utente, rispettando un flusso unidirezionale di eventi.
+ */
 class CatalogViewModel(application: Application) : AndroidViewModel(application) {
 
     // Repository
@@ -105,6 +112,9 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         started = true
         refreshData()
     }
+    /**
+     * Helper per gestire observe data.
+     */
 
     private fun observeData() {
         // Osserva i prodotti dal database locale
@@ -139,6 +149,9 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
                 }
         }
     }
+    /**
+     * Helper per gestire observe order history.
+     */
 
     private fun observeOrderHistory() {
         viewModelScope.launch {
@@ -165,6 +178,9 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
             }
         }
     }
+    /**
+     * Helper per gestire merge products by id.
+     */
 
     private fun mergeProductsById(products: List<Product>): List<Product> {
         return products
@@ -182,11 +198,13 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
             }
     }
 
+    /** Memorizza l'utente loggato e avvia l'osservazione dei preferiti. */
     fun setLoggedUser(user: User) {
         mutateState { it.copy(loggedUser = user) }
         observeFavorites(user.id)
     }
 
+    /** Pulisce la sessione e azzera lo stato (carrello, preferiti, utente). */
     fun clearSession() {
         started = false
         favoritesJob?.cancel()
@@ -194,6 +212,10 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         mutateState { CatalogUiState() }
     }
 
+    /**
+     * Aggiorna i contatti cliente (indirizzo/telefono) usati per ordini.
+     * Non effettua persistenza remota.
+     */
     fun setCustomerContacts(indirizzo: String, telefono: String?) {
         mutateState {
             it.copy(
@@ -203,6 +225,10 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /**
+     * Aggiorna il profilo utente sul backend e nello stato locale.
+     * Restituisce Result per consentire feedback in UI.
+     */
     suspend fun updateUserProfile(
         nome: String,
         cognome: String,
@@ -220,6 +246,9 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         }
         return result
     }
+    /**
+     * Helper per gestire update customer profile.
+     */
 
     @Deprecated("Usa updateUserProfile per qualsiasi ruolo")
     suspend fun updateCustomerProfile(
@@ -229,6 +258,7 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         telefono: String?
     ): Result<User> = updateUserProfile(nome, cognome, email, telefono)
 
+    /** Carica una foto profilo e aggiorna l'avatar dell'utente loggato. */
     suspend fun uploadProfilePhoto(uri: android.net.Uri): Result<String> {
         val current = _uiState.value.loggedUser ?: return Result.failure(Exception("Utente non loggato"))
         return try {
@@ -249,6 +279,9 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
             Result.failure(e)
         }
     }
+    /**
+     * Helper per gestire refresh data.
+     */
 
     private fun refreshData() {
         viewModelScope.launch {
@@ -272,21 +305,32 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /** Ritenta il recupero dati catalogo dopo un errore. */
     fun retry() {
         refreshData()
     }
 
+    /** Richiama il refresh del catalogo (alias di retry). */
     fun refreshCatalog() {
         refreshData()
     }
+    /**
+     * Helper per gestire on search query change.
+     */
 
     fun onSearchQueryChange(query: String) = mutateState {
         it.copy(searchQuery = query)
     }
+    /**
+     * Helper per gestire on parent category selected.
+     */
 
     fun onParentCategorySelected(parentId: String?) = mutateState {
         it.copy(selectedParentId = parentId, selectedCategoryId = null)
     }
+    /**
+     * Helper per gestire on category selected.
+     */
 
     fun onCategorySelected(categoryId: String?) = mutateState { current ->
         val parentId = categoryId?.let { id ->
@@ -294,19 +338,31 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         }
         current.copy(selectedCategoryId = categoryId, selectedParentId = parentId)
     }
+    /**
+     * Helper per gestire on product selected.
+     */
 
     fun onProductSelected(productId: String?) = mutateState { state ->
         val product = state.allProducts.firstOrNull { it.id == productId }
         state.copy(selectedProduct = product)
     }
+    /**
+     * Helper per gestire on only offers toggle.
+     */
 
     fun onOnlyOffersToggle() = mutateState { current ->
         current.copy(onlyOffers = !current.onlyOffers)
     }
+    /**
+     * Helper per gestire on availability filter change.
+     */
 
     fun onAvailabilityFilterChange(filter: AvailabilityFilter) = mutateState {
         it // availability filter disabilitato
     }
+    /**
+     * Helper per gestire on tag toggle.
+     */
 
     fun onTagToggle(tag: String) = mutateState { state ->
         val updated = state.selectedTags.toMutableSet().apply {
@@ -314,6 +370,9 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         }
         state.copy(selectedTags = updated)
     }
+    /**
+     * Helper per gestire on bookmark.
+     */
 
     fun onBookmark(productId: String) {
         val userId = _uiState.value.loggedUser?.id ?: return
@@ -324,6 +383,9 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
             favoritesDataStore.saveFavorites(userId, updated)
         }
     }
+    /**
+     * Helper per gestire on add to cart.
+     */
 
     fun onAddToCart(productId: String) = mutateState { state ->
         val product = state.allProducts.firstOrNull { it.id == productId }
@@ -340,6 +402,9 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         }
         state.copy(cart = updatedCart.toMap(), showToast = false, toastMessage = null)
     }
+    /**
+     * Helper per gestire on decrease cart item.
+     */
 
     fun onDecreaseCartItem(productId: String) = mutateState { state ->
         val currentQuantity = state.cart[productId] ?: return@mutateState state
@@ -348,23 +413,33 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         }
         state.copy(cart = updatedCart.toMap())
     }
+    /**
+     * Helper per gestire on remove from cart.
+     */
 
     fun onRemoveFromCart(productId: String) = mutateState { state ->
         if (!state.cart.containsKey(productId)) return@mutateState state
         val updatedCart = state.cart.toMutableMap().apply { remove(productId) }
         state.copy(cart = updatedCart.toMap())
     }
+    /**
+     * Helper per gestire on delivery method selected.
+     */
 
     fun onDeliveryMethodSelected(method: DeliveryMethod) = mutateState { state ->
         state.copy(deliveryMethod = method)
     }
 
+    /** Consuma il toast corrente azzerando flag e messaggio. */
     fun consumeToast() = mutateState { it.copy(showToast = false, toastMessage = null) }
 
+    /** Pulisce l'ID dell'ultimo ordine inviato. */
     fun clearOrderFeedback() = mutateState { it.copy(lastOrderId = null) }
 
+    /** Pulisce eventuali messaggi di ritiro da locker. */
     fun clearPickupMessage() = mutateState { it.copy(pickupMessage = null) }
 
+    /** Aggiorna lo storico ordini dal backend per l'utente loggato. */
     fun refreshOrderHistory() {
         if (_uiState.value.loggedUser == null) {
             mutateState { it.copy(orderHistoryError = "Accedi per visualizzare lo storico ordini") }
@@ -386,6 +461,10 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /**
+     * Simula il ritiro di un ordine LOCKER: mostra messaggio e prova a settare lo stato su CONCLUSO.
+     * Evita esecuzioni multiple se un pickup è già in corso.
+     */
     fun simulateLockerPickup(orderId: Int) {
         val snapshot = _uiState.value
         if (snapshot.pickupInProgressId != null) return
@@ -415,6 +494,9 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
             }
         }
     }
+    /**
+     * Helper per gestire filter products.
+     */
 
     private fun filterProducts(state: CatalogUiState): List<Product> {
         val categoryMap = state.allCategories.associateBy { it.id }
@@ -444,8 +526,14 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
                 }
             }
     }
+    /**
+     * Helper per gestire parse tags from json.
+     */
 
     private fun parseTagsFromJson(tags: List<String>?): List<String> = tags ?: emptyList()
+    /**
+     * Helper per gestire order timestamp.
+     */
 
     private fun orderTimestamp(raw: String?): Long {
         if (raw.isNullOrBlank()) return 0L
@@ -462,6 +550,9 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
             }
         }
     }
+    /**
+     * Helper per gestire mutate state.
+     */
 
     private fun mutateState(transform: (CatalogUiState) -> CatalogUiState) {
         _uiState.update { current ->
@@ -469,6 +560,9 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
             recomputeDerivedState(updated)
         }
     }
+    /**
+     * Helper per gestire observe favorites.
+     */
 
     private fun observeFavorites(userId: Int) {
         favoritesJob?.cancel()
@@ -478,6 +572,9 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
             }
         }
     }
+    /**
+     * Helper per gestire recompute derived state.
+     */
 
     private fun recomputeDerivedState(state: CatalogUiState): CatalogUiState {
         val visibleProducts = filterProducts(state)
@@ -540,6 +637,9 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
             favoriteProducts = favoriteProducts
         )
     }
+    /**
+     * Helper per gestire locker code for.
+     */
 
     private fun lockerCodeFor(orderId: Int): String {
         val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
@@ -549,6 +649,10 @@ class CatalogViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    /**
+     * Invia un ordine usando il carrello corrente e il metodo di consegna selezionato.
+     * Valida utente, carrello non vuoto e indirizzo per consegna a domicilio prima di procedere.
+     */
     fun submitOrder() {
         val snapshot = _uiState.value
         val user = snapshot.loggedUser
@@ -648,6 +752,9 @@ enum class DeliveryMethod(val label: String, val apiValue: String) {
     DOMICILIO("Spesa a domicilio", "DOMICILIO");
 
     companion object {
+        /**
+         * Helper per gestire from api.
+         */
         fun fromApi(value: String?): DeliveryMethod =
             values().firstOrNull { it.apiValue.equals(value, ignoreCase = true) } ?: LOCKER
     }
@@ -662,13 +769,6 @@ data class CustomerOrderHistoryEntry(
     val order: Order,
     val sequenceNumber: Int
 )
-
-
-
-
-
-
-
 
 
 

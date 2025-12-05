@@ -27,7 +27,34 @@ import androidx.room.Relation
 import com.google.gson.annotations.SerializedName
 
 /**
- * Entity per ordini e righe ordine (usata sia per API che per Room).
+ * Entity Room che rappresenta un ordine cliente nel sistema SmartShop.
+ *
+ * Questa entità gestisce sia i dati provenienti dall'API backend che
+ * la persistenza locale tramite Room Database. Supporta due modalità di
+ * consegna: ritiro in locker e consegna a domicilio.
+ *
+ * Caratteristiche principali:
+ * - Cache locale per funzionamento offline-first
+ * - Stati ordine: IN_LAVORAZIONE, PRONTO_RITIRO, SPEDITO, CONSEGNATO
+ * - Relazione 1-N con OrderLine per le righe dell'ordine
+ * - Campi @Ignore per dati non persistiti localmente (locker, consegnaDomicilio, righe)
+ * - Supporto completo serializzazione JSON con @SerializedName
+ *
+ * @property idOrdine ID univoco dell'ordine (chiave primaria)
+ * @property idUtente ID del cliente che ha effettuato l'ordine
+ * @property dataOrdine Data e ora di creazione ordine (formato ISO 8601)
+ * @property stato Stato corrente dell'ordine
+ * @property totale Importo totale dell'ordine
+ * @property metodoConsegna "LOCKER" o "DOMICILIO"
+ * @property idLocker ID del locker assegnato (null se domicilio)
+ * @property codiceRitiro Codice PIN per ritiro locker (null se domicilio)
+ * @property indirizzoSpedizione Indirizzo consegna a domicilio (null se locker)
+ * @property nomeCliente Nome del cliente
+ * @property cognomeCliente Cognome del cliente
+ * @property emailCliente Email del cliente
+ * @property locker Informazioni dettagliate locker (solo da API, non persistito)
+ * @property consegnaDomicilio Informazioni consegna (solo da API, non persistito)
+ * @property righe Lista righe ordine (solo da API, non persistito qui)
  */
 @Entity(tableName = "ordini_cache")
 data class Order(
@@ -110,6 +137,21 @@ data class Order(
     )
 }
 
+/**
+ * Entity Room che rappresenta una singola riga (item) di un ordine.
+ *
+ * Ogni riga contiene le informazioni su un prodotto specifico nell'ordine:
+ * quantità, prezzi unitari e totali, e dettagli del prodotto.
+ *
+ * @property idRiga ID univoco della riga ordine (chiave primaria)
+ * @property idOrdine ID dell'ordine padre (foreign key verso Order)
+ * @property idProdotto ID del prodotto ordinato
+ * @property quantita Quantità ordinata di questo prodotto
+ * @property prezzoUnitario Prezzo per singola unità al momento dell'ordine
+ * @property prezzoTotale Prezzo totale per questa riga (quantita * prezzoUnitario)
+ * @property nomeProdotto Nome del prodotto (denormalizzato)
+ * @property marcaProdotto Marca del prodotto (denormalizzato)
+ */
 @Entity(tableName = "righe_ordine_cache")
 data class OrderLine(
     @PrimaryKey
@@ -139,6 +181,15 @@ data class OrderLine(
     val marcaProdotto: String
 )
 
+/**
+ * Data class che combina un Order con le sue OrderLine tramite relazione Room.
+ *
+ * Usata per query che necessitano di ordine completo con tutte le righe.
+ * Room popola automaticamente la lista lines tramite @Relation.
+ *
+ * @property order L'ordine principale
+ * @property lines Lista di righe dell'ordine
+ */
 data class OrderWithLines(
     @Embedded val order: Order,
     @Relation(
@@ -148,6 +199,14 @@ data class OrderWithLines(
     val lines: List<OrderLine>
 )
 
+/**
+ * DTO per la richiesta di creazione nuovo ordine all'API.
+ *
+ * @property idUtente ID del cliente che effettua l'ordine
+ * @property metodoConsegna "LOCKER" o "DOMICILIO"
+ * @property indirizzoSpedizione Indirizzo (richiesto se metodoConsegna = "DOMICILIO")
+ * @property items Lista di prodotti e quantità da ordinare
+ */
 data class CreateOrderRequest(
     @SerializedName("idUtente")
     val idUtente: Int,
@@ -159,6 +218,12 @@ data class CreateOrderRequest(
     val items: List<OrderItemRequest>
 )
 
+/**
+ * DTO per un singolo item nella richiesta di creazione ordine.
+ *
+ * @property idProdotto ID del prodotto da ordinare
+ * @property quantita Quantità desiderata
+ */
 data class OrderItemRequest(
     @SerializedName("idProdotto")
     val idProdotto: String,
@@ -166,6 +231,12 @@ data class OrderItemRequest(
     val quantita: Int
 )
 
+/**
+ * DTO per la risposta di creazione ordine dall'API.
+ *
+ * @property idOrdine ID del nuovo ordine creato
+ * @property totale Importo totale calcolato dal backend
+ */
 data class OrderCreated(
     @SerializedName("idOrdine")
     val idOrdine: Int,
@@ -173,11 +244,25 @@ data class OrderCreated(
     val totale: Double
 )
 
+/**
+ * DTO per la richiesta di aggiornamento stato ordine.
+ *
+ * @property stato Nuovo stato (es. "PRONTO_RITIRO", "CONSEGNATO")
+ */
 data class UpdateOrderStatusRequest(
     @SerializedName("stato")
     val stato: String
 )
 
+/**
+ * DTO contenente informazioni dettagliate su un locker.
+ *
+ * @property id ID del locker
+ * @property codice Codice identificativo del locker fisico
+ * @property posizione Descrizione posizione fisica del locker
+ * @property occupato True se il locker è attualmente occupato
+ * @property codiceRitiro Codice PIN per il ritiro (generato al momento dell'assegnazione)
+ */
 data class LockerInfo(
     @SerializedName("id")
     val id: Int,
@@ -191,6 +276,13 @@ data class LockerInfo(
     val codiceRitiro: String? = null
 )
 
+/**
+ * DTO contenente informazioni su una consegna a domicilio.
+ *
+ * @property idRider ID del rider assegnato alla consegna (null se non ancora assegnato)
+ * @property dataAssegnazione Data/ora di assegnazione al rider
+ * @property dataConsegna Data/ora di consegna effettiva (null se non ancora consegnato)
+ */
 data class HomeDeliveryInfo(
     @SerializedName("idRider")
     val idRider: Int?,

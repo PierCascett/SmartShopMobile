@@ -1,3 +1,9 @@
+/**
+ * EmployeeFlowUiTest.kt
+ *
+ * Test UI end-to-end per il flusso dipendente (picking e consegne).
+ * Header KDoc aggiunto per uniformare la documentazione dei file androidTest.
+ */
 package it.unito.smartshopmobile.uiTest.employee
 
 import androidx.compose.ui.test.hasImeAction
@@ -23,6 +29,23 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
+/**
+ * Test UI End-to-End per il flusso completo dell'employee.
+ *
+ * Questa classe verifica l'intero processo di gestione ordini da parte di un employee:
+ * - Login come employee
+ * - Apertura della mappa e visualizzazione ordini
+ * - Selezione e presa in carico di un ordine
+ * - Visualizzazione dettagli ordine
+ * - Compilazione della checklist articoli
+ * - Marcatura ordine come pronto al ritiro
+ *
+ * Include pause strategiche per permettere l'osservazione visiva di ogni step.
+ *
+ * @property composeRule Regola di test Compose per interagire con l'UI dell'app
+ * @property employeeEmail Email di test per il login dell'employee (giulia@gmail.com)
+ * @property employeePassword Password di test per il login dell'employee (casc)
+ */
 @RunWith(AndroidJUnit4::class)
 class EmployeeFlowUiTest {
 
@@ -32,6 +55,21 @@ class EmployeeFlowUiTest {
     private val employeeEmail = "giulia@gmail.com"
     private val employeePassword = "casc"
 
+    /**
+     * Test completo del flusso employee: apertura mappa e gestione ordine.
+     *
+     * Il test esegue i seguenti passaggi:
+     * 1. Effettua il login come employee
+     * 2. Clicca su "Scegli un ordine" nella mappa
+     * 3. Aggiorna la lista degli ordini
+     * 4. Clicca su "Prendi in carico" per il primo ordine disponibile
+     * 5. Visualizza i dettagli dell'ordine
+     * 6. Scorre fino alla checklist articoli
+     * 7. Seleziona il toggle per il primo articolo
+     * 8. Clicca su "Pronto al ritiro" per completare l'ordine
+     *
+     * Include pause estese per permettere l'osservazione visiva completa del flusso.
+     */
     @Test
     fun employeeFlow_openMapAndChooseOrder() {
         pause(1200)
@@ -120,6 +158,13 @@ class EmployeeFlowUiTest {
         pause(1800)
     }
 
+    /**
+     * Effettua il login come employee.
+     *
+     * Verifica se l'utente è già loggato. Se non lo è, o se è loggato con un altro account,
+     * effettua il logout e poi il login con le credenziali dell'employee.
+     * Attende la visualizzazione della mappa employee prima di procedere.
+     */
     private fun loginAsEmployee() {
         composeRule.waitForIdle()
         pause(600)
@@ -161,6 +206,13 @@ class EmployeeFlowUiTest {
         pause(1000)
     }
 
+    /**
+     * Verifica se l'utente si trova nella schermata di login.
+     *
+     * Controlla la presenza dei campi email e password con le rispettive IME actions.
+     *
+     * @return true se entrambi i campi di login sono presenti, false altrimenti
+     */
     private fun isOnLoginScreen(): Boolean {
         val emailField = composeRule.onAllNodes(
             hasSetTextAction() and hasImeAction(ImeAction.Next),
@@ -174,6 +226,13 @@ class EmployeeFlowUiTest {
             passwordField.fetchSemanticsNodes().isNotEmpty()
     }
 
+    /**
+     * Verifica se l'utente si trova sulla schermata della mappa employee.
+     *
+     * Controlla la presenza del testo "Mappa" nell'interfaccia.
+     *
+     * @return true se il testo "Mappa" è presente, false altrimenti
+     */
     private fun isOnEmployeeMap(): Boolean {
         return composeRule.onAllNodes(
             hasText("Mappa", substring = true, ignoreCase = true),
@@ -181,6 +240,14 @@ class EmployeeFlowUiTest {
         ).fetchSemanticsNodes().isNotEmpty()
     }
 
+    /**
+     * Scorre la schermata verso il basso (swipe up).
+     *
+     * Esegue un numero specificato di swipe up sulla root della UI
+     * per scorrere il contenuto verso l'alto.
+     *
+     * @param times Numero di volte da ripetere lo scroll (default: 2)
+     */
     private fun scrollDown(times: Int = 2) {
         repeat(times) {
             composeRule.onRoot().performTouchInput { swipeUp() }
@@ -188,7 +255,14 @@ class EmployeeFlowUiTest {
         }
     }
 
-    // Utility per rallentare visivamente i passaggi del test
+    /**
+     * Utility per rallentare visivamente i passaggi del test.
+     *
+     * Mette in pausa l'esecuzione per permettere l'osservazione visiva
+     * del comportamento dell'interfaccia utente durante il test.
+     *
+     * @param ms Durata della pausa in millisecondi (default: 1200ms)
+     */
     private fun pause(ms: Long = 1200) {
         Thread.sleep(ms)
     }

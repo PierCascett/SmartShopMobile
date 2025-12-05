@@ -92,6 +92,16 @@ import kotlinx.coroutines.launch
 
 // LoginScreenMVVM: UI che usa il ViewModel per stato e azioni
 @Composable
+/**
+ * Schermata di login MVVM che si appoggia a `LoginViewModel`.
+ *
+ * Visualizza il form di autenticazione, gestisce errori/toast tramite `SnackbarHost`
+ * e propaga l'utente autenticato al chiamante via `onLoginSuccess`.
+ *
+ * @param viewModel ViewModel di login da cui leggere stato ed eseguire azioni
+ * @param onLoginSuccess Callback invocato con utente e ruolo dopo login riuscito
+ * @param modifier Modificatore Compose opzionale
+ */
 fun LoginScreenMVVM(
     viewModel: LoginViewModel,
     onLoginSuccess: (user: User, role: UserRole) -> Unit,
@@ -296,6 +306,9 @@ fun LoginScreenMVVM(
 }
 
 // Variante per preview senza ViewModel
+/**
+ * Composable per gestire login screen.
+ */
 @Composable
 fun LoginScreen(
     onLogin: (email: String, password: String, role: UserRole) -> Unit,
@@ -422,15 +435,20 @@ fun LoginScreen(
     }
 }
 
+/**
+ * Composable per gestire login preview light.
+ */
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_NO)
 @Composable
 fun LoginPreviewLight() {
     LoginScreen(onLogin = { _, _, _ -> })
 }
 
+/**
+ * Composable per gestire login preview dark.
+ */
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 fun LoginPreviewDark() {
     LoginScreen(onLogin = { _, _, _ -> })
 }
-
