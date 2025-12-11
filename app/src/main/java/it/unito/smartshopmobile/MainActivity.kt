@@ -138,39 +138,6 @@ import kotlinx.coroutines.launch
  * @property catalogViewModel ViewModel per catalogo e carrello
  * @property accountPreferencesViewModel ViewModel per preferenze locali
  */
-/**
- * Activity principale dell'applicazione SmartShop Mobile.
- *
- * Entry point dell'app che gestisce:
- * - Inizializzazione ViewModels con lifecycle-aware delegation
- * - Navigazione condizionale basata su UserRole (Customer/Employee/Manager)
- * - Applicazione del tema Material Design 3
- * - Gestione overlay (menu, carrello, preferiti)
- * - Sincronizzazione sessione tra ViewModels
- *
- * Architettura MVVM:
- * - Activity come Controller che coordina View (Compose) e ViewModels
- * - State hoisting: stato UI osservato tramite collectAsState()
- * - Unidirectional data flow: eventi → ViewModel → State → UI
- * - Separation of concerns: business logic nei ViewModels
- *
- * ViewModels gestiti:
- * - MainViewModel: stato globale app, sessione, navigazione
- * - LoginViewModel: autenticazione utente
- * - CatalogViewModel: catalogo prodotti, carrello, ordini (Customer)
- * - AccountPreferencesViewModel: preferenze profilo locale
- *
- * Routing basato su ruolo:
- * - null → LoginScreenMVVM
- * - CUSTOMER → CatalogScreen con bottom navigation
- * - EMPLOYEE → EmployeeScreen (mappa, picking ordini)
- * - MANAGER → ManagerScreen (inventario, riordini)
- *
- * @property mainViewModel ViewModel per stato globale e navigazione
- * @property loginViewModel ViewModel per login/registrazione
- * @property catalogViewModel ViewModel per catalogo e carrello
- * @property accountPreferencesViewModel ViewModel per preferenze locali
- */
 class MainActivity : ComponentActivity() {
     private val mainViewModel: MainViewModel by viewModels()
     private val loginViewModel: LoginViewModel by viewModels()
