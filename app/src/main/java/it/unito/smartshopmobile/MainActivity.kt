@@ -490,6 +490,13 @@ private fun CustomerHome(
         cognome = accountPrefs.cognome.ifBlank { state.loggedUser?.cognome.orEmpty() },
         telefono = accountPrefs.telefono.ifBlank { state.loggedUser?.telefono.orEmpty() })
 
+    LaunchedEffect(selectedTab, state.errorMessage) {
+        val shouldRetryCatalog = selectedTab == CustomerTab.SHOP && state.errorMessage != null
+        if (shouldRetryCatalog) {
+            catalogViewModel.refreshCatalog()
+        }
+    }
+
     LaunchedEffect(resolvedPrefs.indirizzoSpedizione, resolvedPrefs.telefono) {
         catalogViewModel.setCustomerContacts(
             indirizzo = resolvedPrefs.indirizzoSpedizione,
