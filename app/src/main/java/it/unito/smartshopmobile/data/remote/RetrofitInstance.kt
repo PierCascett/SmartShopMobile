@@ -18,9 +18,7 @@
  */
 package it.unito.smartshopmobile.data.remote
 
-
-import it.unito.smartshopmobile.data.remote.RetrofitInstance.api
-import it.unito.smartshopmobile.data.remote.RetrofitInstance.assetBaseUrl
+import it.unito.smartshopmobile.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -55,8 +53,9 @@ import java.util.concurrent.TimeUnit
  * @property assetBaseUrl Base URL per assets statici (immagini, avatar)
  */
 object RetrofitInstance {
-    private const val BACKEND_HOST = "192.168.1.51"
-    private const val BACKEND_PORT = "3000"
+    // IP rilevato automaticamente a tempo di build dal PC di sviluppo
+    private val BACKEND_HOST: String = BuildConfig.BACKEND_HOST
+    private val BACKEND_PORT: String = BuildConfig.BACKEND_PORT
 
     val assetBaseUrl: String
         get() = "http://$BACKEND_HOST:$BACKEND_PORT/"

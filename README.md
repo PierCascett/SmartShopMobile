@@ -86,16 +86,17 @@ Android application built with Jetpack Compose for a smart supermarket, featurin
    ```bash
    npm install
    ```
-2) Create a `.env` file (in `backend`) with connection parameters (replace placeholders with your values):
-   ```env
-   PORT=3000
-   HOST=<YOUR_LAN_IP>         # e.g. 192.168.x.x reachable from emulator/phone
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_NAME=SmartShopMobileV2
-   DB_USER=postgres
-   DB_PASSWORD=<YOUR_DB_PASSWORD>
-   ```
+2) Configure DB/host (defaults live in `backend/db.js`; edit there or override via env vars):
+   - Defaults: `DB_HOST=localhost`, `DB_PORT=5432`, `DB_NAME=SmartShopMobileV2`, `DB_USER=postgres`, `DB_PASSWORD=12345`.
+   - Optional `.env` (only if you want to override without editing the file):
+     ```env
+     PORT=3000
+     DB_HOST=localhost # PostgreSQL host (the `host` field in db.js)
+     DB_PORT=5432
+     DB_NAME=SmartShopMobileV2
+     DB_USER=postgres
+     DB_PASSWORD=<YOUR_DB_PASSWORD>
+     ```
 3) Import the sample dump into PostgreSQL:
    ```bash
    psql -U postgres -f ../app/src/main/java/it/unito/smartshopmobile/data/SmartshopDumpV2.sql
@@ -111,11 +112,12 @@ Android application built with Jetpack Compose for a smart supermarket, featurin
 
 ## Android app configuration
 1) Open the project in Android Studio.
-2) Set the backend host in `app/src/main/java/it/unito/smartshopmobile/data/remote/RetrofitInstance.kt`:
+2) Backend host/port come from `BuildConfig.BACKEND_HOST` / `BuildConfig.BACKEND_PORT`, injected in `app/build.gradle.kts`. The build script auto-detects your machine IPv4 (fallback `10.0.2.2` for emulator):
    ```kotlin
-   private const val BACKEND_HOST = "<YOUR_BACKEND_HOST>" // e.g. 192.168.x.x reachable by device
-   private const val BACKEND_PORT = "<YOUR_BACKEND_PORT>" // e.g. 3000
+   buildConfigField("String", "BACKEND_HOST", "\"$detectedBackendHost\"") // reachable by emulator/phone
+   buildConfigField("String", "BACKEND_PORT", "\"3000\"")
    ```
+   `RetrofitInstance` already reads these values; no manual changes needed there.
 3) Sync Gradle and run the app on emulator or device (same network as backend).
 
 ### Build and test
@@ -146,6 +148,3 @@ Android application built with Jetpack Compose for a smart supermarket, featurin
 - Retrofit calls target `/api/...` (base URL `http://<HOST>:<PORT>/api/`); images use `http://<HOST>:<PORT>/`.
 - For production consider disabling HTTP logging and using HTTPS/BuildConfig for configurable host/port.
 - For more functional details, download and read `Project_Description.pdf` in the repo root.
-
-
-

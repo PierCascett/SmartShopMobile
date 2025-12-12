@@ -1,3 +1,6 @@
+import java.net.Inet4Address
+import java.net.NetworkInterface
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +8,30 @@ plugins {
     id("com.google.devtools.ksp") version "2.0.21-1.0.28"
     id("jacoco")
 }
+
+// Rileva automaticamente l'IP locale del PC a tempo di build
+fun getLocalIpAddress(): String {
+    try {
+        val interfaces = NetworkInterface.getNetworkInterfaces()
+        for (iface in interfaces) {
+            val addresses = iface.inetAddresses
+            for (addr in addresses) {
+                if (!addr.isLoopbackAddress && addr is Inet4Address) {
+                    val ip = addr.hostAddress
+                    if (ip != null && !ip.startsWith("127.")) {
+                        return ip
+                    }
+                }
+            }
+        }
+    } catch (_: Exception) {
+        println("Errore rilevamento IP, uso fallback")
+    }
+    return "10.0.2.2" // fallback per emulatore
+}
+
+val detectedBackendHost: String = getLocalIpAddress()
+println("Backend Host rilevato: $detectedBackendHost")
 
 android {
     namespace = "it.unito.smartshopmobile"
@@ -19,6 +46,10 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         android.buildFeatures.buildConfig = true
+
+        // Inietta l'IP rilevato in BuildConfig
+        buildConfigField("String", "BACKEND_HOST", "\"$detectedBackendHost\"")
+        buildConfigField("String", "BACKEND_PORT", "\"3000\"")
     }
 
     buildTypes {
